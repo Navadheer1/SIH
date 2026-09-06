@@ -13,6 +13,10 @@ from app.config import (
 )
 from app.services.osm_service import haversine_distance_km
 from app.services.risk_service import calculate_risk_score
+from app.services.threat_zone_service import calculate_threat_zones
+from app.services.asset_exposure_service import analyze_asset_exposure
+from app.services.impact_service import calculate_impact_assessment
+
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +111,21 @@ def evaluate_event_for_alert(
                     matching_alert_idx = idx
                     break
 
+    # Compute Phase 2 Impact Assessment
+    frp_val = float(spot_or_cluster.get("frp", 0.0) or spot_or_cluster.get("observations", [{}])[0].get("frp", 0.0) if spot_or_cluster.get("observations") else 0.0)
+    ind_ctx = osm_context or spot_or_cluster.get("industrial_context") or {}
+    nearby_feats = ind_ctx.get("nearby_features", []) if isinstance(ind_ctx, dict) else []
+
+    threat_zones = calculate_threat_zones(frp_val, risk_score=risk_score, severity=risk_level)
+    asset_analysis = analyze_asset_exposure(lat, lon, nearby_feats, threat_zones)
+    impact_assessment = calculate_impact_assessment(
+        frp=frp_val,
+        risk_score=risk_score,
+        persistence_score=spot_or_cluster.get("persistence_score", 0.0),
+        asset_analysis=asset_analysis,
+        classification=risk_result.get("classification", "UNCERTAIN")
+    )
+
     # 3. If matching unresolved alert exists -> UPDATE existing alert
     if matching_alert_idx is not None:
         target_alert = alerts[matching_alert_idx]
@@ -119,13 +138,19 @@ def evaluate_event_for_alert(
         target_alert["evidence"] = risk_result.get("reasons", [])
         target_alert["updated_at"] = now_str
         target_alert["features"] = risk_result.get("features", {})
+        target_alert["impact_score"] = impact_assessment["impact_score"]
+        target_alert["impact_level"] = impact_assessment["impact_level"]
+        target_alert["priority_index"] = impact_assessment["priority_index"]
+        target_alert["priority_label"] = impact_assessment["priority_label"]
+        target_alert["exposed_assets_count"] = asset_analysis["total_exposed_assets"]
+        target_alert["critical_infrastructure_count"] = asset_analysis["critical_infrastructure_count"]
+        target_alert["nearest_critical_asset"] = asset_analysis["nearest_critical_asset"]
 
         _save_alerts_db(alerts)
         logger.info(f"Updated existing alert {target_alert['alert_id']} with latest risk score {risk_score}")
         return target_alert, "updated"
 
     # 4. If no matching unresolved alert exists -> CREATE new alert
-    ind_ctx = osm_context or spot_or_cluster.get("industrial_context") or {}
     facility_name = ind_ctx.get("nearby_facility") if isinstance(ind_ctx, dict) else None
     industrial_dist = ind_ctx.get("distance_km") if isinstance(ind_ctx, dict) else None
 
@@ -146,6 +171,13 @@ def evaluate_event_for_alert(
         "status": "NEW",
         "evidence": risk_result.get("reasons", []),
         "features": risk_result.get("features", {}),
+        "impact_score": impact_assessment["impact_score"],
+        "impact_level": impact_assessment["impact_level"],
+        "priority_index": impact_assessment["priority_index"],
+        "priority_label": impact_assessment["priority_label"],
+        "exposed_assets_count": asset_analysis["total_exposed_assets"],
+        "critical_infrastructure_count": asset_analysis["critical_infrastructure_count"],
+        "nearest_critical_asset": asset_analysis["nearest_critical_asset"],
         "created_at": now_str,
         "updated_at": now_str,
         "timestamp_epoch": now_ts,
@@ -160,6 +192,7 @@ def evaluate_event_for_alert(
     _save_alerts_db(alerts)
     logger.info(f"Created new alert {new_alert['alert_id']} with risk score {risk_score}")
     return new_alert, "created"
+
 
 
 def get_all_alerts(

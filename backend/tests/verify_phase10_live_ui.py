@@ -82,7 +82,8 @@ def run_verification():
         page.on("requestfailed", handle_request_failed)
 
         print(f"[Step 2] Navigating to {FRONTEND_URL}...")
-        response = page.goto(FRONTEND_URL, wait_until="networkidle", timeout=30000)
+        response = page.goto(FRONTEND_URL, wait_until="domcontentloaded", timeout=30000)
+        page.wait_for_timeout(2000)
         if response and response.ok:
             results["app_startup"] = True
             print("  ✓ Application loaded successfully with HTTP 200 OK")
@@ -93,8 +94,9 @@ def run_verification():
         # Check title & header
         title = page.title()
         print(f"  Page Title: '{title}'")
-        header_text = page.locator(".dashboard-header").inner_text()
+        header_text = page.locator(".eoc-topbar").inner_text()
         print(f"  Header Brand: '{header_text.splitlines()[0]}'")
+
 
         # Wait for Map container
         page.wait_for_selector(".leaflet-container", timeout=10000)
@@ -117,25 +119,31 @@ def run_verification():
 
         # [Step 3] Test SIH Demo Investigation Button
         print("\n[Step 3] Testing '⚡ Demo Investigation' button...")
-        demo_btn = page.locator(".btn-demo-investigation")
+        demo_btn = page.locator(".btn-eoc-demo, .btn-demo-investigation")
         if demo_btn.count() > 0:
             demo_btn.first.click()
+
             print("  ✓ Clicked '⚡ Demo Investigation' button")
             results["demo_investigation_triggered"] = True
             time.sleep(3)
 
-            # Wait for Investigation Workspace
-            workspace = page.locator(".investigation-workspace-wrapper")
+            # Wait for Incident Intelligence Panel or Full Workspace
+            workspace = page.locator(".incident-intelligence-panel, .investigation-workspace-wrapper")
             workspace.wait_for(timeout=15000)
             results["workspace_rendered"] = True
-            print("  ✓ Investigation Workspace rendered successfully")
-
+            print("  ✓ Incident Intelligence Panel / Workspace rendered successfully")
 
             # Check Event Header
-            event_id = page.locator(".event-primary-id").inner_text()
-            risk_score = page.locator(".score-val").inner_text()
-            risk_level = page.locator(".priority-level-tag").inner_text()
-            classification = page.locator(".classification-title-value").inner_text()
+            if page.locator(".intel-incident-id").count() > 0:
+                event_id = page.locator(".intel-incident-id").inner_text()
+                risk_score = page.locator(".score-badge").inner_text()
+                risk_level = page.locator(".intel-severity-pill").inner_text()
+                classification = page.locator(".classification-name").inner_text()
+            else:
+                event_id = page.locator(".event-primary-id").inner_text()
+                risk_score = page.locator(".score-val").inner_text()
+                risk_level = page.locator(".priority-level-tag").inner_text()
+                classification = page.locator(".classification-title-value").inner_text()
 
             results["event_id"] = event_id
             results["risk_score"] = risk_score
@@ -143,9 +151,10 @@ def run_verification():
             results["classification"] = classification
 
             print(f"  Event ID: {event_id}")
-            print(f"  Investigation Priority Score: {risk_score} / 100")
+            print(f"  Investigation Priority Score: {risk_score}")
             print(f"  Risk Level: {risk_level}")
             print(f"  Primary Classification: {classification}")
+
 
             # Capture workspace screenshot
             shot2 = os.path.join(SCREENSHOT_DIR, "02_investigation_workspace.png")
@@ -153,7 +162,15 @@ def run_verification():
             results["screenshots"].append(shot2)
             print(f"  ✓ Saved workspace screenshot: {shot2}")
 
+            # If inside Incident Intelligence Panel, launch full investigation workspace for modal checks
+            deep_btn = page.locator(".btn-open-deep-workspace")
+            if deep_btn.count() > 0:
+                deep_btn.click()
+                time.sleep(2)
+                print("  ✓ Clicked 'Launch Full Multi-Modal Investigation Workspace'")
+
             # Check individual cards
+
             if page.locator(".firms-evidence-card").count() > 0:
                 results["firms_card"] = True
                 print("  ✓ FIRMS Sensor Telemetry Card present")

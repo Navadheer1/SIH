@@ -1,7 +1,13 @@
-import React, { useEffect } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
-import { Hotspot, OsmFeature, PersistentCluster, ThermalAlert } from '../types/hotspot';
-import { Legend } from './Legend';
+import React, { useState, useEffect } from 'react';
+import { MapContainer, TileLayer, CircleMarker, Circle, Popup, useMap } from 'react-leaflet';
+import {
+  Hotspot,
+  OsmFeature,
+  PersistentCluster,
+  ThermalAlert,
+  ThreatZonesResponse,
+  ExposedAsset,
+} from '../types/hotspot';
 
 interface FireMapProps {
   viewMode: 'hotspots' | 'clusters';
@@ -17,6 +23,9 @@ interface FireMapProps {
   selectedAlert: ThermalAlert | null;
   onSelectAlert: (alert: ThermalAlert) => void;
   nearbyFeatures: OsmFeature[];
+  threatZones?: ThreatZonesResponse | null;
+  exposedAssets?: ExposedAsset[];
+  onSelectAsset?: (asset: ExposedAsset) => void;
 }
 
 const MapViewController: React.FC<{ center: [number, number]; zoom: number }> = ({ center, zoom }) => {
@@ -40,38 +49,123 @@ export const FireMap: React.FC<FireMapProps> = ({
   onSelectCluster,
   selectedAlert,
   onSelectAlert,
-  nearbyFeatures,
+  nearbyFeatures: _nearbyFeatures,
+  threatZones,
+  exposedAssets = [],
+  onSelectAsset,
 }) => {
-  const getHotspotColor = (frp: number): string => {
-    if (frp > 20) return '#ef4444';
-    if (frp >= 5) return '#f97316';
-    return '#eab308';
+  // Layer Toggles
+  const [showThreatZones, setShowThreatZones] = useState<boolean>(true);
+  const [showCriticalAssets, setShowCriticalAssets] = useState<boolean>(true);
+  const [showIndustrial, setShowIndustrial] = useState<boolean>(true);
+  const [showHealthcare, setShowHealthcare] = useState<boolean>(true);
+  const [showTransport, setShowTransport] = useState<boolean>(true);
+  const [showEducation, setShowEducation] = useState<boolean>(true);
+
+  const getSeverity = (frp: number): 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW' => {
+    if (frp >= 50) return 'CRITICAL';
+    if (frp >= 25) return 'HIGH';
+    if (frp >= 10) return 'MODERATE';
+    return 'LOW';
   };
 
-  const getClusterColor = (score: number): string => {
-    if (score >= 81) return '#ef4444'; // Red
-    if (score >= 61) return '#a855f7'; // Purple
-    if (score >= 31) return '#f97316'; // Orange
-    return '#eab308';                  // Yellow
-  };
-
-  const getOsmMarkerColor = (type: string): string => {
-    switch (type) {
-      case 'industrial':
-        return '#a855f7';
-      case 'power':
-        return '#eab308';
-      case 'urban':
-        return '#06b6d4';
-      case 'road':
-        return '#64748b';
-      default:
-        return '#3b82f6';
+  const getSeverityColor = (sev: string): string => {
+    switch (sev) {
+      case 'CRITICAL': return '#ef4444';
+      case 'HIGH': return '#f97316';
+      case 'MODERATE': return '#eab308';
+      case 'LOW': return '#22c55e';
+      default: return '#3b82f6';
     }
   };
 
+  const getAssetColor = (cat: string): string => {
+    switch (cat) {
+      case 'HEALTHCARE': return '#ec4899'; // Pink
+      case 'EDUCATION': return '#8b5cf6';  // Purple
+      case 'INDUSTRIAL': return '#f59e0b'; // Amber
+      case 'UTILITIES': return '#eab308';  // Yellow
+      case 'TRANSPORT': return '#06b6d4';  // Cyan
+      case 'SETTLEMENTS': return '#10b981';// Green
+      default: return '#3b82f6';
+    }
+  };
+
+  const getAssetIcon = (category: string): string => {
+    switch (category) {
+      case 'INDUSTRIAL': return '🏭';
+      case 'HEALTHCARE': return '🏥';
+      case 'EDUCATION': return '🎓';
+      case 'TRANSPORT': return '🚆';
+      case 'UTILITIES': return '⚡';
+      case 'PUBLIC': return '🏛️';
+      case 'SETTLEMENTS': return '🏘️';
+      default: return '📍';
+    }
+  };
+
+  // Selected Coordinates for Threat Zone Overlay
+  const selectedLat = selectedAlert?.latitude ?? selectedHotspot?.latitude ?? selectedCluster?.center_latitude;
+  const selectedLon = selectedAlert?.longitude ?? selectedHotspot?.longitude ?? selectedCluster?.center_longitude;
+
+  const filteredAssets = exposedAssets.filter((asset) => {
+    if (!showCriticalAssets && (asset.category === 'HEALTHCARE' || asset.category === 'INDUSTRIAL' || asset.category === 'UTILITIES')) return false;
+    if (!showIndustrial && asset.category === 'INDUSTRIAL') return false;
+    if (!showHealthcare && asset.category === 'HEALTHCARE') return false;
+    if (!showTransport && asset.category === 'TRANSPORT') return false;
+    if (!showEducation && asset.category === 'EDUCATION') return false;
+    return true;
+  });
+
   return (
-    <div className="map-wrapper">
+    <div className="map-wrapper" style={{ position: 'relative' }}>
+      {/* MAP LAYER CONTROLS FLOATING BAR */}
+      <div className="map-layer-toggles-bar">
+        <span className="layer-bar-title">MAP LAYERS:</span>
+        <button
+          type="button"
+          className={`layer-toggle-btn ${showThreatZones ? 'active' : ''}`}
+          onClick={() => setShowThreatZones(!showThreatZones)}
+        >
+          🎯 Threat Zones
+        </button>
+        <button
+          type="button"
+          className={`layer-toggle-btn ${showCriticalAssets ? 'active' : ''}`}
+          onClick={() => setShowCriticalAssets(!showCriticalAssets)}
+        >
+          ⚡ Critical Assets
+        </button>
+        <button
+          type="button"
+          className={`layer-toggle-btn ${showIndustrial ? 'active' : ''}`}
+          onClick={() => setShowIndustrial(!showIndustrial)}
+        >
+          🏭 Industrial
+        </button>
+        <button
+          type="button"
+          className={`layer-toggle-btn ${showHealthcare ? 'active' : ''}`}
+          onClick={() => setShowHealthcare(!showHealthcare)}
+        >
+          🏥 Healthcare
+        </button>
+        <button
+          type="button"
+          className={`layer-toggle-btn ${showTransport ? 'active' : ''}`}
+          onClick={() => setShowTransport(!showTransport)}
+        >
+          🛣️ Transport
+        </button>
+        <button
+          type="button"
+          className={`layer-toggle-btn ${showEducation ? 'active' : ''}`}
+          onClick={() => setShowEducation(!showEducation)}
+        >
+          🎓 Education
+        </button>
+      </div>
+
       <MapContainer
         center={center}
         zoom={zoom}
@@ -85,7 +179,120 @@ export const FireMap: React.FC<FireMapProps> = ({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {/* ACTIVE ALERTS MARKERS OVERLAY (Phase 7 & 8) */}
+        {/* DYNAMIC THREAT ZONE OVERLAYS (Phase 2) */}
+        {showThreatZones && threatZones && selectedLat && selectedLon && (
+          <>
+            {/* Inner Zone */}
+            <Circle
+              center={[selectedLat, selectedLon]}
+              radius={threatZones.zones.inner_zone.radius_km * 1000}
+              pathOptions={{
+                color: threatZones.zones.inner_zone.color,
+                fillColor: threatZones.zones.inner_zone.color,
+                fillOpacity: threatZones.zones.inner_zone.fill_opacity,
+                weight: 2,
+                dashArray: '6 6',
+              }}
+            >
+              <Popup>
+                <strong>{threatZones.zones.inner_zone.name}</strong> ({threatZones.zones.inner_zone.radius_km} km radius)<br />
+                {threatZones.zones.inner_zone.description}
+              </Popup>
+            </Circle>
+
+            {/* Secondary Zone */}
+            <Circle
+              center={[selectedLat, selectedLon]}
+              radius={threatZones.zones.secondary_zone.radius_km * 1000}
+              pathOptions={{
+                color: threatZones.zones.secondary_zone.color,
+                fillColor: threatZones.zones.secondary_zone.color,
+                fillOpacity: threatZones.zones.secondary_zone.fill_opacity,
+                weight: 1.5,
+                dashArray: '4 4',
+              }}
+            >
+              <Popup>
+                <strong>{threatZones.zones.secondary_zone.name}</strong> ({threatZones.zones.secondary_zone.radius_km} km radius)<br />
+                {threatZones.zones.secondary_zone.description}
+              </Popup>
+            </Circle>
+
+            {/* Monitoring Zone */}
+            <Circle
+              center={[selectedLat, selectedLon]}
+              radius={threatZones.zones.monitoring_zone.radius_km * 1000}
+              pathOptions={{
+                color: threatZones.zones.monitoring_zone.color,
+                fillColor: threatZones.zones.monitoring_zone.color,
+                fillOpacity: threatZones.zones.monitoring_zone.fill_opacity,
+                weight: 1,
+                dashArray: '3 3',
+              }}
+            >
+              <Popup>
+                <strong>{threatZones.zones.monitoring_zone.name}</strong> ({threatZones.zones.monitoring_zone.radius_km} km radius)<br />
+                {threatZones.zones.monitoring_zone.description}
+              </Popup>
+            </Circle>
+          </>
+        )}
+
+        {/* EXPOSED ASSET MARKERS (Phase 2) */}
+        {filteredAssets.map((asset, aIdx) => (
+          <CircleMarker
+            key={`asset-${asset.asset_name}-${aIdx}`}
+            center={[asset.latitude, asset.longitude]}
+            radius={8}
+            eventHandlers={{
+              click: () => onSelectAsset && onSelectAsset(asset),
+            }}
+            pathOptions={{
+              color: '#ffffff',
+              fillColor: getAssetColor(asset.category),
+              fillOpacity: 0.9,
+              weight: 2,
+            }}
+          >
+            <Popup className="custom-popup">
+              <div className="popup-container">
+                <div className="popup-header" style={{ color: getAssetColor(asset.category) }}>
+                  {getAssetIcon(asset.category)} {asset.asset_name}
+                </div>
+                <div className="popup-body">
+                  <div className="popup-row">
+                    <span className="popup-label">Category:</span>
+                    <span className="popup-val">{asset.category}</span>
+                  </div>
+                  <div className="popup-row">
+                    <span className="popup-label">Distance:</span>
+                    <span className="popup-val highlight-frp">{asset.distance_km.toFixed(2)} km</span>
+                  </div>
+                  <div className="popup-row">
+                    <span className="popup-label">Threat Zone:</span>
+                    <span className="popup-val">{asset.threat_zone}</span>
+                  </div>
+                  <div className="popup-row">
+                    <span className="popup-label">Exposure Status:</span>
+                    <span className="popup-val" style={{ color: '#38bdf8' }}>{asset.status}</span>
+                  </div>
+                  {onSelectAsset && (
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      style={{ marginTop: '0.5rem', width: '100%' }}
+                      onClick={() => onSelectAsset(asset)}
+                    >
+                      🔍 Inspect Asset Details
+                    </button>
+                  )}
+                </div>
+              </div>
+            </Popup>
+          </CircleMarker>
+        ))}
+
+        {/* ACTIVE ALERTS MARKERS OVERLAY */}
         {activeAlerts.map((alt) => {
           const isSelected = selectedAlert && selectedAlert.alert_id === alt.alert_id;
           const color = alt.risk_level === 'CRITICAL' ? '#ef4444' : '#f97316';
@@ -116,6 +323,12 @@ export const FireMap: React.FC<FireMapProps> = ({
                       <span className="popup-label">Risk Priority:</span>
                       <span className="popup-val highlight-frp">{alt.risk_score} / 100 ({alt.risk_level})</span>
                     </div>
+                    {alt.impact_score !== undefined && (
+                      <div className="popup-row">
+                        <span className="popup-label">Impact Score:</span>
+                        <span className="popup-val highlight-frp">{alt.impact_score} / 100 ({alt.priority_index || 'P1'})</span>
+                      </div>
+                    )}
                     <div className="popup-row">
                       <span className="popup-label">Classification:</span>
                       <span className="popup-val">{alt.classification.replace(/_/g, ' ')}</span>
@@ -124,20 +337,12 @@ export const FireMap: React.FC<FireMapProps> = ({
                       <span className="popup-label">Status:</span>
                       <span className="popup-val">{alt.status}</span>
                     </div>
-                    <div className="popup-row">
-                      <span className="popup-label">Facility:</span>
-                      <span className="popup-val">{alt.facility_name || 'None'}</span>
-                    </div>
-                    <div className="popup-row">
-                      <span className="popup-label">Satellite Imagery:</span>
-                      <span className="popup-val" style={{ color: '#10b981', fontWeight: 600 }}>📡 Sentinel-2 Patch Ready</span>
-                    </div>
                     <button
                       className="btn btn-primary btn-sm"
                       style={{ marginTop: '0.5rem', width: '100%' }}
                       onClick={() => onSelectAlert(alt)}
                     >
-                      📡 Inspect Satellite & Incident Evidence
+                      ⚡ Open Incident & Impact Intelligence
                     </button>
                   </div>
                 </div>
@@ -146,15 +351,22 @@ export const FireMap: React.FC<FireMapProps> = ({
           );
         })}
 
-        {/* MODE 1: Single Hotspots View */}
+        {/* MODE 1: Single Hotspots View with Severity Levels */}
         {viewMode === 'hotspots' &&
           hotspots.map((spot, index) => {
-            const color = getHotspotColor(spot.frp);
+            const severity = getSeverity(spot.frp);
+            const color = getSeverityColor(severity);
             const isSelected =
               selectedHotspot &&
               selectedHotspot.latitude === spot.latitude &&
               selectedHotspot.longitude === spot.longitude;
-            const radius = isSelected ? 18 : Math.min(Math.max(spot.frp / 4, 6), 14);
+
+            let baseRadius = 5;
+            if (severity === 'CRITICAL') baseRadius = 11;
+            else if (severity === 'HIGH') baseRadius = 8;
+            else if (severity === 'MODERATE') baseRadius = 6;
+
+            const radius = isSelected ? baseRadius + 7 : baseRadius;
 
             return (
               <CircleMarker
@@ -167,44 +379,34 @@ export const FireMap: React.FC<FireMapProps> = ({
                 pathOptions={{
                   color: isSelected ? '#ffffff' : color,
                   fillColor: color,
-                  fillOpacity: isSelected ? 0.95 : 0.8,
-                  weight: isSelected ? 3 : 1.5,
+                  fillOpacity: isSelected ? 1.0 : (severity === 'CRITICAL' ? 0.95 : 0.8),
+                  weight: isSelected ? 3.5 : (severity === 'CRITICAL' ? 2.5 : 1.5),
                 }}
               >
                 <Popup className="custom-popup">
                   <div className="popup-container">
-                    <div className="popup-header">🔥 FIRMS HOTSPOT</div>
+                    <div className="popup-header" style={{ color }}>
+                      🔥 THERMAL ANOMALY ({severity})
+                    </div>
                     <div className="popup-body">
                       <div className="popup-row">
-                        <span className="popup-label">Satellite:</span>
-                        <span className="popup-val">{spot.satellite}</span>
+                        <span className="popup-label">Severity Level:</span>
+                        <span className="popup-val highlight-frp">{severity}</span>
                       </div>
                       <div className="popup-row">
-                        <span className="popup-label">Instrument:</span>
-                        <span className="popup-val">{spot.instrument}</span>
+                        <span className="popup-label">Radiative Power:</span>
+                        <span className="popup-val highlight-frp">{spot.frp.toFixed(1)} MW</span>
                       </div>
                       <div className="popup-row">
-                        <span className="popup-label">Acquired:</span>
-                        <span className="popup-val">{spot.acquired_at}</span>
-                      </div>
-                      <div className="popup-row">
-                        <span className="popup-label">Brightness:</span>
-                        <span className="popup-val">{spot.brightness} K</span>
-                      </div>
-                      <div className="popup-row">
-                        <span className="popup-label">FRP:</span>
-                        <span className="popup-val highlight-frp">{spot.frp} MW</span>
-                      </div>
-                      <div className="popup-row">
-                        <span className="popup-label">Optical Evidence:</span>
-                        <span className="popup-val" style={{ color: '#38bdf8' }}>📡 Sentinel-2 Evidence</span>
+                        <span className="popup-label">Coordinates:</span>
+                        <span className="popup-val">{spot.latitude.toFixed(3)}°N, {spot.longitude.toFixed(3)}°E</span>
                       </div>
                       <button
-                        className="btn btn-secondary btn-sm"
-                        style={{ marginTop: '0.5rem', width: '100%' }}
+                        className="btn btn-primary btn-sm"
+                        style={{ marginTop: '0.6rem', width: '100%' }}
                         onClick={() => onSelectHotspot(spot)}
                       >
-                        📡 Inspect Satellite & Risk Context
+                        ⚡ Open Incident & Impact Intelligence
                       </button>
                     </div>
                   </div>
@@ -216,10 +418,9 @@ export const FireMap: React.FC<FireMapProps> = ({
         {/* MODE 2: Persistent Thermal Clusters View */}
         {viewMode === 'clusters' &&
           clusters.map((cluster, index) => {
-            const color = getClusterColor(cluster.persistence_score);
             const isSelected =
               selectedCluster && selectedCluster.cluster_id === cluster.cluster_id;
-            const radius = isSelected ? 20 : Math.min(Math.max(cluster.observation_count * 2.5, 10), 22);
+            const radius = isSelected ? 20 : 12;
 
             return (
               <CircleMarker
@@ -230,44 +431,30 @@ export const FireMap: React.FC<FireMapProps> = ({
                   click: () => onSelectCluster(cluster),
                 }}
                 pathOptions={{
-                  color: isSelected ? '#ffffff' : color,
-                  fillColor: color,
-                  fillOpacity: isSelected ? 0.95 : 0.85,
+                  color: isSelected ? '#ffffff' : '#ef4444',
+                  fillColor: '#ef4444',
+                  fillOpacity: isSelected ? 0.95 : 0.8,
                   weight: isSelected ? 3.5 : 2,
                 }}
               >
                 <Popup className="custom-popup">
                   <div className="popup-container">
-                    <div className="popup-header" style={{ color: color }}>
-                      🔴 PERSISTENT THERMAL SOURCE
-                    </div>
+                    <div className="popup-header">📡 PERSISTENT CLUSTER</div>
                     <div className="popup-body">
                       <div className="popup-row">
                         <span className="popup-label">Cluster ID:</span>
                         <span className="popup-val">{cluster.cluster_id}</span>
                       </div>
                       <div className="popup-row">
-                        <span className="popup-label">Persistence Score:</span>
-                        <span className="popup-val highlight-frp">{cluster.persistence_score} / 100</span>
-                      </div>
-                      <div className="popup-row">
-                        <span className="popup-label">Classification:</span>
-                        <span className="popup-val">{cluster.classification}</span>
-                      </div>
-                      <div className="popup-row">
-                        <span className="popup-label">Observations:</span>
-                        <span className="popup-val">{cluster.observation_count}</span>
-                      </div>
-                      <div className="popup-row">
-                        <span className="popup-label">Duration:</span>
-                        <span className="popup-val">{cluster.duration_hours} hrs</span>
+                        <span className="popup-label">Detections:</span>
+                        <span className="popup-val">{cluster.observation_count} observations</span>
                       </div>
                       <button
                         className="btn btn-primary btn-sm"
                         style={{ marginTop: '0.5rem', width: '100%' }}
                         onClick={() => onSelectCluster(cluster)}
                       >
-                        📊 View Satellite & Priority Timeline
+                        ⚡ Open Incident & Impact Intelligence
                       </button>
                     </div>
                   </div>
@@ -275,49 +462,7 @@ export const FireMap: React.FC<FireMapProps> = ({
               </CircleMarker>
             );
           })}
-
-        {/* Nearby OSM Facilities */}
-        {nearbyFeatures.map((feat, idx) => {
-          const color = getOsmMarkerColor(feat.type);
-          return (
-            <CircleMarker
-              key={`osm-${feat.osm_id}-${idx}`}
-              center={[feat.latitude, feat.longitude]}
-              radius={8}
-              pathOptions={{
-                color: '#ffffff',
-                fillColor: color,
-                fillOpacity: 0.9,
-                weight: 1.5,
-              }}
-            >
-              <Popup className="custom-popup">
-                <div className="popup-container">
-                  <div className="popup-header" style={{ color: color }}>
-                    📍 OSM NEARBY FEATURE
-                  </div>
-                  <div className="popup-body">
-                    <div className="popup-row">
-                      <span className="popup-label">Name:</span>
-                      <span className="popup-val">{feat.name}</span>
-                    </div>
-                    <div className="popup-row">
-                      <span className="popup-label">Category:</span>
-                      <span className="popup-val">{feat.type} ({feat.category})</span>
-                    </div>
-                    <div className="popup-row">
-                      <span className="popup-label">Distance:</span>
-                      <span className="popup-val highlight-frp">{feat.distance_km} km</span>
-                    </div>
-                  </div>
-                </div>
-              </Popup>
-            </CircleMarker>
-          );
-        })}
       </MapContainer>
-
-      <Legend viewMode={viewMode} />
     </div>
   );
 };

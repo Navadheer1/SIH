@@ -56,6 +56,7 @@ export interface PersistentCluster {
   duration_hours: number;
   spatial_radius_km: number;
   persistence_score: number;
+  total_frp?: number;
   classification: 'TEMPORARY' | 'SUSPICIOUS' | 'PERSISTENT' | 'HIGHLY PERSISTENT';
   observations: Hotspot[];
   industrial_context?: {
@@ -138,6 +139,10 @@ export interface ThermalAlert {
   longitude: number;
   risk_score: number;
   risk_level: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW';
+  frp?: number;
+  impact_score?: number;
+  impact_level?: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW';
+  priority_index?: PriorityIndex;
   classification: string;
   model_source: 'ML_MODEL' | 'PROTOTYPE_RULE_ENGINE';
   persistence_score: number;
@@ -214,3 +219,265 @@ export interface FusedEvidenceResponse {
     satellite: SatelliteEvidence;
   };
 }
+
+export type IncidentSeverity = 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW';
+
+export type IncidentLifecycleStatus =
+  | 'AI_DETECTED'
+  | 'UNDER_VERIFICATION'
+  | 'CONFIRMED'
+  | 'RESPONSE_INITIATED'
+  | 'CONTAINMENT'
+  | 'RESOLVED'
+  | 'DISMISSED';
+
+export type AuthorityRole =
+  | 'SEOC_DIRECTOR'
+  | 'FIRE_RESCUE_CHIEF'
+  | 'INDUSTRIAL_SAFETY_INSPECTOR'
+  | 'POLICE_COMMISSIONER'
+  | 'CITIZEN_OBSERVER';
+
+export interface SystemPipelineEvent {
+  id: string;
+  timestamp: string;
+  stage: string;
+  description: string;
+  type: 'info' | 'success' | 'warning' | 'alert';
+}
+
+export function mapAlertStatusToLifecycle(status: string): IncidentLifecycleStatus {
+  switch (status) {
+    case 'NEW':
+      return 'AI_DETECTED';
+    case 'ACKNOWLEDGED':
+      return 'UNDER_VERIFICATION';
+    case 'INVESTIGATING':
+      return 'RESPONSE_INITIATED';
+    case 'RESOLVED':
+      return 'RESOLVED';
+    case 'DISMISSED':
+      return 'DISMISSED';
+    default:
+      return 'AI_DETECTED';
+  }
+}
+
+export function getSeverityFromFrpAndRisk(frp: number, riskScore?: number): IncidentSeverity {
+  if ((riskScore !== undefined && riskScore >= 75) || frp >= 50) return 'CRITICAL';
+  if ((riskScore !== undefined && riskScore >= 50) || frp >= 25) return 'HIGH';
+  if ((riskScore !== undefined && riskScore >= 30) || frp >= 10) return 'MODERATE';
+  return 'LOW';
+}
+
+export type PriorityIndex = 'P1' | 'P2' | 'P3' | 'P4';
+
+export interface ThreatZoneDetail {
+  name: string;
+  radius_km: number;
+  color: string;
+  fill_opacity: number;
+  threat_level: string;
+  description: string;
+}
+
+export interface ThreatZonesResponse {
+  zones: {
+    inner_zone: ThreatZoneDetail;
+    secondary_zone: ThreatZoneDetail;
+    monitoring_zone: ThreatZoneDetail;
+  };
+  factors_applied: Record<string, any>;
+  disclaimer: string;
+}
+
+export interface ExposedAsset {
+  asset_name: string;
+  category: 'INDUSTRIAL' | 'HEALTHCARE' | 'EDUCATION' | 'TRANSPORT' | 'UTILITIES' | 'SETTLEMENTS' | 'PUBLIC';
+  raw_type: string;
+  latitude: number;
+  longitude: number;
+  distance_km: number;
+  threat_zone: string;
+  exposure_level: string;
+  status: string;
+  data_source: string;
+}
+
+export interface AssetAnalysisResponse {
+  total_exposed_assets: number;
+  critical_infrastructure_count: number;
+  category_counts: Record<string, number>;
+  nearest_critical_asset?: ExposedAsset | null;
+  exposed_assets: ExposedAsset[];
+  data_provenance: string;
+}
+
+export interface ImpactAssessmentResponse {
+  impact_score: number;
+  impact_level: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW';
+  priority_index: PriorityIndex;
+  priority_label: string;
+  priority_description: string;
+  components: {
+    asset_exposure: number;
+    infrastructure_criticality: number;
+    fire_severity: number;
+    persistence: number;
+    industrial_context: number;
+  };
+  max_component_weights: Record<string, number>;
+  explainable_reasons: string[];
+  summary_statement: string;
+}
+
+export interface FullIncidentImpactResponse {
+  incident: {
+    latitude: number;
+    longitude: number;
+    frp: number;
+    brightness: number;
+    classification: string;
+    risk_score: number;
+    risk_level: string;
+  };
+  threat_zones: ThreatZonesResponse;
+  asset_analysis: AssetAnalysisResponse;
+  impact_assessment: ImpactAssessmentResponse;
+  data_provenance: string;
+}
+
+export interface PriorityIncidentItem {
+  cluster_id: string;
+  latitude: number;
+  longitude: number;
+  frp: number;
+  risk_score: number;
+  risk_level: string;
+  impact_score: number;
+  impact_level: string;
+  priority_index: PriorityIndex;
+  priority_label: string;
+  classification: string;
+  exposed_assets_count: number;
+  critical_infrastructure_count: number;
+  nearest_critical_asset?: ExposedAsset | null;
+  persistence_score: number;
+  duration_hours: number;
+  observation_count: number;
+}
+
+/* ==========================================================================
+   PHASE 3 — FIRE SPREAD INTELLIGENCE & 3D THREAT TYPES
+   ========================================================================== */
+
+export type TimeHorizonKey = 'NOW' | '+1H' | '+3H' | '+6H' | '+12H';
+
+export interface TimeHorizonGeometry {
+  time_horizon: TimeHorizonKey;
+  hours: number;
+  label: string;
+  center_latitude: number;
+  center_longitude: number;
+  displacement_km: number;
+  radii_km: {
+    core: number;
+    high_risk: number;
+    uncertainty: number;
+    monitoring: number;
+  };
+  projected_area_sqkm: number;
+  confidence_score: number;
+  confidence_level: 'HIGH' | 'MEDIUM' | 'LOW';
+  polygon_points: [number, number][];
+  relative_intensity: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW';
+}
+
+export interface SpreadProjectionResponse {
+  incident_origin: {
+    latitude: number;
+    longitude: number;
+    frp: number;
+    risk_score: number;
+    classification: string;
+  };
+  wind_data: {
+    available: boolean;
+    wind_speed_kmh?: number | null;
+    wind_direction_deg?: number | null;
+    heading_deg?: number | null;
+    cardinal_direction: string;
+    status_text: string;
+  };
+  spread_speed_kmh: number;
+  estimated_direction: string;
+  projections: Record<TimeHorizonKey, TimeHorizonGeometry>;
+  explainable_reasons: string[];
+  disclaimer: string;
+  data_provenance: string;
+}
+
+export interface TimeSeriesHorizonImpact {
+  time_horizon: TimeHorizonKey;
+  hours: number;
+  center_latitude: number;
+  center_longitude: number;
+  projected_area_sqkm: number;
+  confidence_score: number;
+  confidence_level: string;
+  total_exposed_assets: number;
+  critical_infrastructure_count: number;
+  impact_score: number;
+  impact_level: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW';
+  priority_index: PriorityIndex;
+  priority_label: string;
+  nearest_critical_asset?: ExposedAsset | null;
+  exposed_assets: ExposedAsset[];
+}
+
+export interface FutureImpactForecastResponse {
+  incident_origin: any;
+  wind_data: any;
+  spread_speed_kmh: number;
+  estimated_direction: string;
+  time_series_forecast: Record<TimeHorizonKey, TimeSeriesHorizonImpact>;
+  escalation: {
+    detected: boolean;
+    initial_priority: string;
+    projected_12h_priority: string;
+    reasons: string[];
+  };
+  explainable_reasons: string[];
+  disclaimer: string;
+  data_provenance: string;
+}
+
+export interface SimulationResultResponse {
+  status: string;
+  is_simulation: boolean;
+  isolation_guarantee: string;
+  simulated_scenario_inputs: {
+    wind_speed_kmh?: number | null;
+    wind_direction_deg?: number | null;
+    frp?: number | null;
+    persistence_score?: number | null;
+  };
+  comparison_summary: {
+    time_horizon: string;
+    live_conditions: Record<string, any>;
+    simulated_conditions: Record<string, any>;
+    deltas: {
+      delta_impact_score: number;
+      delta_exposed_assets: number;
+      delta_projected_area_sqkm: number;
+      impact_escalated: boolean;
+    };
+  };
+  live_forecast: FutureImpactForecastResponse;
+  simulated_forecast: FutureImpactForecastResponse;
+  data_provenance: string;
+  disclaimer: string;
+}
+
+
+
