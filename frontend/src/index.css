@@ -8038,3 +8038,378 @@ input, select, textarea {
   border: 1px solid var(--border-color) !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
 }
+
+/* ==========================================================================
+   3D SATELLITE INTELLIGENCE GLOBE & MISSION CONTROL HUD STYLES
+   ========================================================================== */
+
+.satellite-globe-viewport {
+  position: relative;
+  width: 100%;
+  height: 590px;
+  min-height: 520px;
+  background: #020617;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.map-view-switcher-group {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  margin-right: 12px;
+}
+
+.btn-mode-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-mode-switcher:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.btn-mode-switcher.active {
+  background: #0f172a;
+  border-color: #38bdf8;
+  color: #f8fafc;
+  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.2);
+}
+
+.globe-telemetry-hud {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 20;
+  background: rgba(3, 7, 18, 0.88);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 8px;
+  padding: 10px 14px;
+  max-width: 380px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.hud-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+  padding-bottom: 5px;
+}
+
+.hud-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 10px #10b981;
+  animation: pulse-dot 1.8s infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.hud-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #38bdf8;
+  text-transform: uppercase;
+}
+
+.hud-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 14px;
+}
+
+.hud-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.hud-label {
+  font-size: 0.6rem;
+  color: #94a3b8;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hud-value {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.hud-pass-badge {
+  margin-top: 8px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  border-radius: 4px;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.66rem;
+  color: #34d399;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.globe-top-controls {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.globe-control-pill-group {
+  display: flex;
+  gap: 4px;
+  background: rgba(3, 7, 18, 0.88);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  padding: 3px;
+}
+
+.btn-globe-pill {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-globe-pill:hover {
+  color: #f8fafc;
+}
+
+.btn-globe-pill.active {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.globe-nav-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-globe-nav {
+  background: rgba(3, 7, 18, 0.88);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-globe-nav:hover {
+  background: rgba(14, 165, 233, 0.25);
+  color: #38bdf8;
+  border-color: #38bdf8;
+}
+
+.globe-phase-indicator {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  z-index: 20;
+  background: rgba(3, 7, 18, 0.88);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 6px;
+  padding: 8px 12px;
+  max-width: 440px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.phase-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.phase-pill {
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 0.66rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+}
+
+.phase-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #f8fafc;
+  font-family: ui-monospace, monospace;
+}
+
+.phase-disclaimer {
+  font-size: 0.62rem;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
+.globe-timeline-panel {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 20;
+  background: rgba(3, 7, 18, 0.88);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 6px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+}
+
+.timeline-title {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #38bdf8;
+  font-family: ui-monospace, monospace;
+}
+
+.timeline-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.btn-timeline-step {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  font-size: 0.66rem;
+  font-family: ui-monospace, monospace;
+  padding: 3px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-timeline-step:hover {
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-timeline-step.active {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #38bdf8;
+  font-weight: 700;
+}
+
+.timeline-count {
+  font-size: 0.6rem;
+  color: #64748b;
+  font-family: ui-monospace, monospace;
+}
+
+.globe-scientific-tooltip {
+  position: absolute;
+  z-index: 35;
+  pointer-events: none;
+  background: rgba(3, 7, 18, 0.94);
+  backdrop-filter: blur(14px);
+  border: 1px solid #f97316;
+  border-radius: 6px;
+  padding: 8px 12px;
+  min-width: 240px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+  transform: translate(0, 0);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(249, 115, 22, 0.3);
+  padding-bottom: 4px;
+}
+
+.tooltip-icon {
+  font-size: 0.85rem;
+}
+
+.tooltip-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #f97316;
+  letter-spacing: 0.08em;
+}
+
+.tooltip-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.68rem;
+}
+
+.tt-label {
+  color: #94a3b8;
+}
+
+.tt-val {
+  color: #f8fafc;
+  font-weight: 600;
+}
+
+.tooltip-footer {
+  font-size: 0.6rem;
+  color: #38bdf8;
+  font-style: italic;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  padding-top: 4px;
+}
+

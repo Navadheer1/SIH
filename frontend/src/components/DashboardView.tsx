@@ -8,11 +8,13 @@ import {
 import { CompactStatusStrip } from './CompactStatusStrip';
 import { HeroKpiStrip } from './HeroKpiStrip';
 import { FireMap } from './FireMap';
+import { SatelliteIntelligenceGlobe } from './globe/SatelliteIntelligenceGlobe';
 import type { IncidentDrawerData } from './IncidentEvidenceDrawer';
 import { RecentActivitySection } from './RecentActivitySection';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faMap,
+  faSatellite,
   faFire,
   faArrowsRotate,
   faIndustry,
@@ -68,6 +70,8 @@ export function DashboardView({
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
   const [activeMapCoords, setActiveMapCoords] = useState<[number, number] | null>(null);
   const [activeMapZoom, setActiveMapZoom] = useState<number>(5);
+  const [displayMode, setDisplayMode] = useState<'3d_globe' | '2d_map'>('3d_globe');
+  const [activeTargetHotspot, setActiveTargetHotspot] = useState<Hotspot | null>(null);
 
   // Filtered Decision Counts
   const totalHotspots = hotspots.length;
@@ -188,6 +192,21 @@ export function DashboardView({
       onSelectPriorityIncident(matchingPri);
     }
 
+    const matchingHotspot = hotspots.find((h) => h.observation_id === item.id);
+    const targetHotspot: Hotspot = matchingHotspot || {
+      observation_id: item.id,
+      latitude: item.latitude,
+      longitude: item.longitude,
+      brightness: item.brightness || 340,
+      confidence: 'nominal',
+      frp: item.frp || 25,
+      acquired_at: item.acquired_at || new Date().toISOString(),
+      satellite: item.satellite || 'NASA FIRMS',
+      instrument: 'VIIRS',
+      source: 'NASA FIRMS',
+    };
+    setActiveTargetHotspot(targetHotspot);
+
     // Coordinate with parent selection handlers to open the Right Sidebar Investigation Panel
     const matchingAlert = alerts.find((a) => a.cluster_id === item.id || a.alert_id === item.id);
     if (matchingAlert) {
@@ -199,24 +218,7 @@ export function DashboardView({
       onSelectCluster(matchingCluster);
       return;
     }
-    const matchingHotspot = hotspots.find((h) => h.observation_id === item.id);
-    if (matchingHotspot) {
-      onSelectHotspot(matchingHotspot);
-      return;
-    }
-    // Fallback: construct hotspot from incident data
-    onSelectHotspot({
-      observation_id: item.id,
-      latitude: item.latitude,
-      longitude: item.longitude,
-      brightness: item.brightness || 340,
-      confidence: 'nominal',
-      frp: item.frp || 25,
-      acquired_at: item.acquired_at || new Date().toISOString(),
-      satellite: item.satellite || 'NASA FIRMS',
-      instrument: 'VIIRS',
-      source: 'NASA FIRMS',
-    });
+    onSelectHotspot(targetHotspot);
   };
 
   const getSeverityBadgeClass = (level: string) => {
@@ -258,62 +260,108 @@ export function DashboardView({
         <div className="dashboard-map-panel card-white">
           <div className="panel-header-bar">
             <div className="panel-title-group">
-              <FontAwesomeIcon icon={faMap} className="panel-header-icon text-green" />
-              <h3 className="panel-title">Live Thermal & Industrial Intelligence Map</h3>
+              <FontAwesomeIcon icon={displayMode === '3d_globe' ? faSatellite : faMap} className="panel-header-icon text-green" />
+              <h3 className="panel-title">
+                {displayMode === '3d_globe' ? 'Satellite Observation & 3D Thermal Risk Platform' : 'Tactical GIS Map'}
+              </h3>
             </div>
 
-            <div className="map-layer-controls">
+            {/* PRIMARY VIEW MODE SWITCHER: 3D GLOBE VS 2D MAP */}
+            <div className="map-view-switcher-group">
               <button
                 type="button"
-                className={`btn-layer-pill ${mapLayerMode === 'all' ? 'active' : ''}`}
-                onClick={() => setMapLayerMode('all')}
+                className={`btn-mode-switcher ${displayMode === '3d_globe' ? 'active' : ''}`}
+                onClick={() => setDisplayMode('3d_globe')}
+                title="Cinematic 3D Satellite Observation & Thermal Risk Propagation Globe"
               >
-                All Sources
+                <FontAwesomeIcon icon={faSatellite} className="mr-1 text-cyan" />
+                <span>3D Satellite Globe</span>
               </button>
               <button
                 type="button"
-                className={`btn-layer-pill ${mapLayerMode === 'hotspots' ? 'active' : ''}`}
-                onClick={() => setMapLayerMode('hotspots')}
+                className={`btn-mode-switcher ${displayMode === '2d_map' ? 'active' : ''}`}
+                onClick={() => setDisplayMode('2d_map')}
+                title="Tactical 2D Leaflet GIS Map with Street & Satellite Layers"
               >
-                <FontAwesomeIcon icon={faFire} className="pill-icon-mr" />
-                <span>Thermal Spots</span>
-              </button>
-              <button
-                type="button"
-                className={`btn-layer-pill ${mapLayerMode === 'clusters' ? 'active' : ''}`}
-                onClick={() => setMapLayerMode('clusters')}
-              >
-                <FontAwesomeIcon icon={faArrowsRotate} className="pill-icon-mr" />
-                <span>Persistent</span>
-              </button>
-              <button
-                type="button"
-                className={`btn-layer-pill ${mapLayerMode === 'industrial' ? 'active' : ''}`}
-                onClick={() => setMapLayerMode('industrial')}
-              >
-                <FontAwesomeIcon icon={faIndustry} className="pill-icon-mr" />
-                <span>Industrial</span>
+                <FontAwesomeIcon icon={faMap} className="mr-1 text-emerald" />
+                <span>2D Tactical Map</span>
               </button>
             </div>
+
+            {displayMode === '2d_map' && (
+              <div className="map-layer-controls">
+                <button
+                  type="button"
+                  className={`btn-layer-pill ${mapLayerMode === 'all' ? 'active' : ''}`}
+                  onClick={() => setMapLayerMode('all')}
+                >
+                  All Sources
+                </button>
+                <button
+                  type="button"
+                  className={`btn-layer-pill ${mapLayerMode === 'hotspots' ? 'active' : ''}`}
+                  onClick={() => setMapLayerMode('hotspots')}
+                >
+                  <FontAwesomeIcon icon={faFire} className="pill-icon-mr" />
+                  <span>Thermal Spots</span>
+                </button>
+                <button
+                  type="button"
+                  className={`btn-layer-pill ${mapLayerMode === 'clusters' ? 'active' : ''}`}
+                  onClick={() => setMapLayerMode('clusters')}
+                >
+                  <FontAwesomeIcon icon={faArrowsRotate} className="pill-icon-mr" />
+                  <span>Persistent</span>
+                </button>
+                <button
+                  type="button"
+                  className={`btn-layer-pill ${mapLayerMode === 'industrial' ? 'active' : ''}`}
+                  onClick={() => setMapLayerMode('industrial')}
+                >
+                  <FontAwesomeIcon icon={faIndustry} className="pill-icon-mr" />
+                  <span>Industrial</span>
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="map-embed-wrapper">
-            <FireMap
-              hotspots={hotspots}
-              clusters={clusters}
-              activeAlerts={alerts}
-              selectedHotspot={null}
-              selectedCluster={null}
-              selectedPriorityIncident={selectedPriorityIncident}
-              onSelectHotspot={onSelectHotspot}
-              onSelectCluster={onSelectCluster}
-              onSelectAlert={onSelectAlert}
-              mapCenter={activeMapCoords || [20.5937, 78.9629]}
-              mapZoom={activeMapZoom}
-              viewMode={mapLayerMode === 'clusters' ? 'clusters' : 'hotspots'}
-              basemap={basemap}
-              onBasemapChange={onBasemapChange}
-            />
+            {displayMode === '3d_globe' ? (
+              <SatelliteIntelligenceGlobe
+                hotspots={hotspots}
+                clusters={clusters}
+                activeAlerts={alerts}
+                priorityItems={priorityItems}
+                selectedHotspot={activeTargetHotspot}
+                onSelectHotspot={(h) => {
+                  setActiveTargetHotspot(h);
+                  onSelectHotspot(h);
+                }}
+                onSelectCluster={onSelectCluster}
+                onSelectPriorityIncident={onSelectPriorityIncident}
+                initialCoords={activeMapCoords || [20.5937, 78.9629]}
+              />
+            ) : (
+              <FireMap
+                hotspots={hotspots}
+                clusters={clusters}
+                activeAlerts={alerts}
+                selectedHotspot={activeTargetHotspot}
+                selectedCluster={null}
+                selectedPriorityIncident={selectedPriorityIncident}
+                onSelectHotspot={(h) => {
+                  setActiveTargetHotspot(h);
+                  onSelectHotspot(h);
+                }}
+                onSelectCluster={onSelectCluster}
+                onSelectAlert={onSelectAlert}
+                mapCenter={activeMapCoords || [20.5937, 78.9629]}
+                mapZoom={activeMapZoom}
+                viewMode={mapLayerMode === 'clusters' ? 'clusters' : 'hotspots'}
+                basemap={basemap}
+                onBasemapChange={onBasemapChange}
+              />
+            )}
           </div>
 
           {/* COMPACT RECENT ACTIVITY FEED BELOW MAP */}
