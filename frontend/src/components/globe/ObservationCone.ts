@@ -122,18 +122,24 @@ export function createObservationCone(): ObservationConeSystem {
     const distance = satPos.distanceTo(groundPos);
     coneMesh.scale.set(1, distance / coneHeight, 1);
 
-    // Position footprint ring on ground surface
-    footprintMesh.position.copy(groundPos);
-    footprintMesh.lookAt(new THREE.Vector3(0, 0, 0));
-    footprintMat.color.setHex(isPass ? 0x10b981 : 0x06b6d4);
-    footprintMat.opacity = isPass ? 0.6 : 0.2;
+    // Position footprint ring on ground surface (Only for general swath pass; hide when locked to an incident to avoid ring clutter)
+    if (isTargeted) {
+      footprintMesh.visible = false;
+      scanRingMesh.visible = false;
+    } else {
+      footprintMesh.visible = true;
+      scanRingMesh.visible = true;
+      footprintMesh.position.copy(groundPos);
+      footprintMesh.lookAt(new THREE.Vector3(0, 0, 0));
+      footprintMat.color.setHex(isPass ? 0x10b981 : 0x06b6d4);
+      footprintMat.opacity = isPass ? 0.35 : 0.15;
 
-    // Animate scan ring pulse
-    scanRingMesh.position.copy(groundPos);
-    scanRingMesh.lookAt(new THREE.Vector3(0, 0, 0));
-    const scanScale = (timeSec * 1.5) % 3.0 + 0.5;
-    scanRingMesh.scale.set(scanScale, scanScale, 1);
-    scanRingMat.opacity = (1.0 - (scanScale / 3.5)) * (isPass ? 0.8 : 0.25);
+      const scanPulse = ((timeSec * 0.8) % 1.0) * swathBaseRadius;
+      scanRingMesh.position.copy(groundPos);
+      scanRingMesh.lookAt(new THREE.Vector3(0, 0, 0));
+      scanRingMesh.scale.set(scanPulse, scanPulse, 1);
+      scanRingMat.opacity = (1.0 - scanPulse / swathBaseRadius) * 0.4;
+    }
   };
 
   return {

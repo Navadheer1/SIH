@@ -8513,4 +8513,209 @@ input, select, textarea {
   margin-bottom: 4px;
 }
 
+/* =========================================================================
+   THERMOSCOPE 3D RISK FIELD EXPLANATION CARD (Requirement 9)
+   ========================================================================= */
+.risk-explanation-card {
+  position: absolute;
+  top: 70px;
+  right: 12px;
+  z-index: 25;
+  width: 320px;
+  background: rgba(3, 7, 18, 0.92);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(249, 115, 22, 0.45);
+  border-radius: 8px;
+  padding: 12px 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.75);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  animation: fadeInSlide 0.3s ease-out;
+}
+
+@keyframes fadeInSlide {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.explanation-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding-bottom: 6px;
+}
+
+.explanation-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.explanation-icon {
+  font-size: 0.85rem;
+}
+
+.explanation-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #f8fafc;
+  letter-spacing: 0.1em;
+}
+
+.explanation-badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.explanation-badge.critical {
+  background: rgba(239, 68, 68, 0.25);
+  border: 1px solid #ef4444;
+  color: #fca5a5;
+}
+
+.explanation-badge.elevated,
+.explanation-badge.high {
+  background: rgba(249, 115, 22, 0.25);
+  border: 1px solid #f97316;
+  color: #fdba74;
+}
+
+.explanation-badge.moderate,
+.explanation-badge.low {
+  background: rgba(14, 165, 233, 0.25);
+  border: 1px solid #0ea5e9;
+  color: #7dd3fc;
+}
+
+.explanation-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  margin-bottom: 10px;
+}
+
+.explanation-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.explanation-label {
+  font-size: 0.58rem;
+  color: #94a3b8;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.explanation-val {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.explanation-facility-block {
+  margin-bottom: 10px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 4px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.facility-label {
+  font-size: 0.56rem;
+  color: #38bdf8;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.facility-name-val {
+  font-size: 0.70rem;
+  color: #f8fafc;
+  font-weight: 600;
+}
+
+.explanation-basis-block {
+  background: rgba(2, 6, 23, 0.85);
+  border-left: 3px solid #f97316;
+  padding: 6px 8px;
+  border-radius: 0 4px 4px 0;
+}
+
+.basis-title {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #f97316;
+  letter-spacing: 0.1em;
+  margin-bottom: 2px;
+}
+
+.basis-formula {
+  font-size: 0.64rem;
+  color: #cbd5e1;
+  line-height: 1.3;
+  letter-spacing: 0.04em;
+}
+
+/* =========================================================================
+   DEMO MODE STEP BANNER (Requirement 20)
+   ========================================================================= */
+.globe-demo-banner {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(3, 7, 18, 0.94);
+  backdrop-filter: blur(14px);
+  border: 1px solid #f97316;
+  border-radius: 8px;
+  padding: 8px 16px;
+  box-shadow: 0 8px 30px rgba(249, 115, 22, 0.35);
+  animation: bannerSlideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+@keyframes bannerSlideDown {
+  from { opacity: 0; transform: translate(-50%, -12px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.demo-step-tag {
+  background: #f97316;
+  color: #030712;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.demo-step-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.demo-step-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #f8fafc;
+  letter-spacing: 0.08em;
+}
+
+.demo-step-desc {
+  font-size: 0.68rem;
+  color: #94a3b8;
+}
+
 

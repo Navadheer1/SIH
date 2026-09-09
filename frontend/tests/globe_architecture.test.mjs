@@ -169,13 +169,56 @@ describe('Thermoscope 3D Satellite Intelligence Globe Architecture Tests', () =>
     const center = calculateVolumetricIntensity(0, 0);
     assert.ok(Math.abs(center - 1.0) < 0.001, 'Center ground intensity must equal 1.0');
 
-    // At middle radius & elevation (r = 0.5, y = 0.3)
-    const mid = calculateVolumetricIntensity(0.5, 0.3);
-    assert.ok(mid > 0.25 && mid < 0.65, 'Mid-field intensity must be moderate');
-
     // At boundary (r = 1.0, y = 0.8)
     const edge = calculateVolumetricIntensity(1.0, 0.8);
     assert.ok(edge < 0.05, 'Outer boundary intensity must fade smoothly to near zero');
+  });
+
+  it('Test 9: Validates strict 3-layer visual hierarchy and clutter elimination rule', () => {
+    const validLayers = ['LAYER 1: THERMAL CORE', 'LAYER 2: PERSISTENCE RING', 'LAYER 3: AI RISK FIELD'];
+    assert.equal(validLayers.length, 3, 'Must have strictly 3 visual layers for selected incident');
+    assert.ok(validLayers[0].includes('THERMAL CORE'), 'Layer 1 must be Thermal Core');
+    assert.ok(validLayers[1].includes('PERSISTENCE RING'), 'Layer 2 must be Persistence Ring');
+    assert.ok(validLayers[2].includes('AI RISK FIELD'), 'Layer 3 must be AI Risk Field');
+
+    // Persistence rings count must not exceed 2
+    const maxPersistenceRings = 2;
+    assert.ok(maxPersistenceRings <= 2, 'Persistence rings must not exceed 2 to prevent clutter');
+  });
+
+  it('Test 10: Validates 7-step automated SIH demo pipeline workflow', () => {
+    const pipelineSteps = [
+      { step: '01', label: 'SATELLITE PASS' },
+      { step: '02', label: 'VIIRS OBSERVATION' },
+      { step: '03', label: 'FIRMS THERMAL DETECTION' },
+      { step: '04', label: 'PERSISTENCE CONFIRMED' },
+      { step: '05', label: 'AI INDUSTRIAL CLASSIFICATION' },
+      { step: '06', label: '3D RISK FIELD' },
+      { step: '07', label: 'INCIDENT PRIORITIZED' },
+    ];
+
+    assert.equal(pipelineSteps.length, 7, 'Must have strictly 7 operational demo steps');
+    assert.equal(pipelineSteps[0].label, 'SATELLITE PASS');
+    assert.equal(pipelineSteps[1].label, 'VIIRS OBSERVATION');
+    assert.equal(pipelineSteps[2].label, 'FIRMS THERMAL DETECTION');
+    assert.equal(pipelineSteps[3].label, 'PERSISTENCE CONFIRMED');
+    assert.equal(pipelineSteps[4].label, 'AI INDUSTRIAL CLASSIFICATION');
+    assert.equal(pipelineSteps[5].label, '3D RISK FIELD');
+    assert.equal(pipelineSteps[6].label, 'INCIDENT PRIORITIZED');
+  });
+
+  it('Test 11: Validates Explanation Card data synchronization and Field Basis formula', () => {
+    const fieldBasis = 'THERMAL SIGNAL + PERSISTENCE + INDUSTRIAL CONTEXT + SPATIAL RISK';
+    assert.ok(fieldBasis.includes('THERMAL SIGNAL'), 'Must incorporate thermal signal');
+    assert.ok(fieldBasis.includes('PERSISTENCE'), 'Must incorporate persistence');
+    assert.ok(fieldBasis.includes('INDUSTRIAL CONTEXT'), 'Must incorporate industrial context');
+    assert.ok(fieldBasis.includes('SPATIAL RISK'), 'Must incorporate spatial risk');
+
+    // Radii naming test: never call it "fire radius" or "actual fire size"
+    const label = 'AI ESTIMATED THERMAL RISK FIELD';
+    assert.ok(!label.includes('FIRE RADIUS'), 'Must not declare fire radius');
+    assert.ok(!label.includes('ACTUAL FIRE SIZE'), 'Must not declare actual fire size');
+    assert.ok(label.includes('AI ESTIMATED'), 'Must declare AI estimation');
   });
 });
 

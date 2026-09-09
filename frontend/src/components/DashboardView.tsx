@@ -333,6 +333,7 @@ export function DashboardView({
                 activeAlerts={alerts}
                 priorityItems={priorityItems}
                 selectedHotspot={activeTargetHotspot}
+                selectedPriorityIncident={selectedPriorityIncident}
                 onSelectHotspot={(h) => {
                   setActiveTargetHotspot(h);
                   onSelectHotspot(h);
