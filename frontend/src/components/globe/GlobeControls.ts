@@ -9,6 +9,8 @@ export interface GlobeCameraControls {
   attachDOM: (element: HTMLElement) => void;
   detachDOM: () => void;
   isAnimating: () => boolean;
+  setHintCallback: (cb: () => void) => void;
+  setCtrlStatusCallback: (cb: (active: boolean | null) => void) => void;
 }
 
 export function createGlobeControls(camera: THREE.PerspectiveCamera): GlobeCameraControls {
@@ -37,9 +39,14 @@ export function createGlobeControls(camera: THREE.PerspectiveCamera): GlobeCamer
 
   // Mouse interaction state
   let isDragging = false;
+  let isMouseOver = false;
   let prevMouseX = 0;
   let prevMouseY = 0;
   let domTarget: HTMLElement | null = null;
+
+  // Hint & status callbacks for UX
+  let hintCallback: (() => void) | null = null;
+  let ctrlStatusCallback: ((active: boolean | null) => void) | null = null;
 
   const updateCameraPosition = () => {
     // Clamp polar angle to avoid gimbal flip at poles
@@ -80,11 +87,48 @@ export function createGlobeControls(camera: THREE.PerspectiveCamera): GlobeCamer
   };
 
   const onWheel = (e: WheelEvent) => {
-    e.preventDefault();
-    const zoomSpeed = 0.0035;
-    targetRadius += e.deltaY * zoomSpeed * (radius * 0.15);
-    targetRadius = Math.max(minRadius, Math.min(maxRadius, targetRadius));
-    isFlying = false;
+    // REQUIREMENT: CTRL + SCROLL ZOOM ONLY
+    // Normal scroll without Ctrl: DO NOT zoom the map. Allow normal page scrolling.
+    // Ctrl + Scroll: Zoom the 3D globe in or out.
+    // Shift + Scroll: Do not use for zoom.
+    if (e.ctrlKey && !e.shiftKey) {
+      e.preventDefault();
+      const zoomSpeed = 0.0035;
+      targetRadius += e.deltaY * zoomSpeed * (radius * 0.15);
+      targetRadius = Math.max(minRadius, Math.min(maxRadius, targetRadius));
+      isFlying = false;
+      ctrlStatusCallback?.(true);
+    } else {
+      // Normal scroll: DO NOT zoom. DO NOT preventDefault().
+      // Allows natural page scrolling.
+      // Trigger hint callback: "HOLD CTRL + SCROLL TO ZOOM"
+      hintCallback?.();
+    }
+  };
+
+  const onMouseEnter = () => {
+    isMouseOver = true;
+  };
+
+  const onMouseLeave = () => {
+    isMouseOver = false;
+    ctrlStatusCallback?.(null);
+  };
+
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Control' && isMouseOver) {
+      ctrlStatusCallback?.(true);
+    }
+  };
+
+  const onKeyUp = (e: KeyboardEvent) => {
+    if (e.key === 'Control') {
+      if (isMouseOver) {
+        ctrlStatusCallback?.(false);
+      } else {
+        ctrlStatusCallback?.(null);
+      }
+    }
   };
 
   const attachDOM = (element: HTMLElement) => {
@@ -93,15 +137,23 @@ export function createGlobeControls(camera: THREE.PerspectiveCamera): GlobeCamer
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
     element.addEventListener('wheel', onWheel, { passive: false });
+    element.addEventListener('mouseenter', onMouseEnter);
+    element.addEventListener('mouseleave', onMouseLeave);
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
   };
 
   const detachDOM = () => {
     if (domTarget) {
       domTarget.removeEventListener('mousedown', onMouseDown);
       domTarget.removeEventListener('wheel', onWheel);
+      domTarget.removeEventListener('mouseenter', onMouseEnter);
+      domTarget.removeEventListener('mouseleave', onMouseLeave);
     }
     window.removeEventListener('mousemove', onMouseMove);
     window.removeEventListener('mouseup', onMouseUp);
+    window.removeEventListener('keydown', onKeyDown);
+    window.removeEventListener('keyup', onKeyUp);
     domTarget = null;
   };
 
@@ -162,6 +214,14 @@ export function createGlobeControls(camera: THREE.PerspectiveCamera): GlobeCamer
     updateCameraPosition();
   };
 
+  const setHintCallback = (cb: () => void) => {
+    hintCallback = cb;
+  };
+
+  const setCtrlStatusCallback = (cb: (active: boolean | null) => void) => {
+    ctrlStatusCallback = cb;
+  };
+
   // Initial camera setup
   updateCameraPosition();
 
@@ -173,5 +233,7 @@ export function createGlobeControls(camera: THREE.PerspectiveCamera): GlobeCamer
     attachDOM,
     detachDOM,
     isAnimating: () => isFlying,
+    setHintCallback,
+    setCtrlStatusCallback,
   };
 }

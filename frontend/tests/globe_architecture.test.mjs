@@ -220,5 +220,102 @@ describe('Thermoscope 3D Satellite Intelligence Globe Architecture Tests', () =>
     assert.ok(!label.includes('ACTUAL FIRE SIZE'), 'Must not declare actual fire size');
     assert.ok(label.includes('AI ESTIMATED'), 'Must declare AI estimation');
   });
+
+  it('Test 12: Validates CTRL + SCROLL ZOOM ONLY authorization and page scroll passthrough', () => {
+    // Zoom authorization logic simulated from GlobeControls.ts
+    function processWheelEvent({ ctrlKey, shiftKey, deltaY, currentRadius, minRadius, maxRadius }) {
+      let preventedDefault = false;
+      let targetRadius = currentRadius;
+      let hintTriggered = false;
+      let zoomAuthorized = false;
+
+      if (ctrlKey && !shiftKey) {
+        preventedDefault = true;
+        zoomAuthorized = true;
+        const zoomSpeed = 0.0035;
+        targetRadius += deltaY * zoomSpeed * (currentRadius * 0.15);
+        targetRadius = Math.max(minRadius, Math.min(maxRadius, targetRadius));
+      } else {
+        hintTriggered = true;
+      }
+
+      return { preventedDefault, targetRadius, hintTriggered, zoomAuthorized };
+    }
+
+    const minR = 23.6;
+    const maxR = 65.0;
+
+    // 1. Normal scroll without Ctrl
+    const normalScroll = processWheelEvent({
+      ctrlKey: false,
+      shiftKey: false,
+      deltaY: 100,
+      currentRadius: 48.0,
+      minRadius: minR,
+      maxRadius: maxR,
+    });
+    assert.equal(normalScroll.preventedDefault, false, 'Normal scroll must NOT prevent default (must allow page scroll)');
+    assert.equal(normalScroll.zoomAuthorized, false, 'Normal scroll must NOT zoom the globe');
+    assert.equal(normalScroll.targetRadius, 48.0, 'Camera radius must remain unchanged');
+    assert.equal(normalScroll.hintTriggered, true, 'Normal scroll must trigger UX hint');
+
+    // 2. Ctrl + Scroll
+    const ctrlZoomIn = processWheelEvent({
+      ctrlKey: true,
+      shiftKey: false,
+      deltaY: -100,
+      currentRadius: 48.0,
+      minRadius: minR,
+      maxRadius: maxR,
+    });
+    assert.equal(ctrlZoomIn.preventedDefault, true, 'Ctrl + scroll must prevent default page scroll');
+    assert.equal(ctrlZoomIn.zoomAuthorized, true, 'Ctrl + scroll must authorize zoom');
+    assert.ok(ctrlZoomIn.targetRadius < 48.0, 'Negative deltaY must zoom in (decrease radius)');
+    assert.equal(ctrlZoomIn.hintTriggered, false, 'UX hint must not trigger during authorized zoom');
+
+    // 3. Shift + Scroll (must NOT zoom)
+    const shiftScroll = processWheelEvent({
+      ctrlKey: false,
+      shiftKey: true,
+      deltaY: 100,
+      currentRadius: 48.0,
+      minRadius: minR,
+      maxRadius: maxR,
+    });
+    assert.equal(shiftScroll.zoomAuthorized, false, 'Shift + scroll must NOT zoom');
+    assert.equal(shiftScroll.preventedDefault, false, 'Shift + scroll must not prevent default');
+
+    // 4. Ctrl + Shift + Scroll (Shift must prevent zoom)
+    const ctrlShiftScroll = processWheelEvent({
+      ctrlKey: true,
+      shiftKey: true,
+      deltaY: 100,
+      currentRadius: 48.0,
+      minRadius: minR,
+      maxRadius: maxR,
+    });
+    assert.equal(ctrlShiftScroll.zoomAuthorized, false, 'Ctrl + Shift + scroll must NOT zoom');
+
+    // 5. Clamping bounds check
+    const extremeZoomIn = processWheelEvent({
+      ctrlKey: true,
+      shiftKey: false,
+      deltaY: -100000,
+      currentRadius: 48.0,
+      minRadius: minR,
+      maxRadius: maxR,
+    });
+    assert.equal(extremeZoomIn.targetRadius, minR, 'Extreme zoom in must clamp to minRadius');
+
+    const extremeZoomOut = processWheelEvent({
+      ctrlKey: true,
+      shiftKey: false,
+      deltaY: 100000,
+      currentRadius: 48.0,
+      minRadius: minR,
+      maxRadius: maxR,
+    });
+    assert.equal(extremeZoomOut.targetRadius, maxR, 'Extreme zoom out must clamp to maxRadius');
+  });
 });
 

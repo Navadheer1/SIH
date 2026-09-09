@@ -93,6 +93,12 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
     description: string;
   } | null>(null);
 
+  // Ctrl + Scroll Zoom UX States (Requirement: Ctrl + Scroll only)
+  const [showZoomHint, setShowZoomHint] = useState<boolean>(false);
+  const [ctrlZoomStatus, setCtrlZoomStatus] = useState<'enabled' | 'locked' | null>(null);
+  const zoomHintTimerRef = useRef<number | null>(null);
+  const zoomStatusTimerRef = useRef<number | null>(null);
+
   // 6-Stage State Machine Indicator
   const [expansionState, setExpansionState] = useState<{
     stage: ExpansionStage;
@@ -409,6 +415,29 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
 
     // 4. Camera Controls
     const controls = createGlobeControls(camera);
+    controls.setHintCallback(() => {
+      setShowZoomHint(true);
+      if (zoomHintTimerRef.current) clearTimeout(zoomHintTimerRef.current);
+      zoomHintTimerRef.current = window.setTimeout(() => {
+        setShowZoomHint(false);
+      }, 2000);
+    });
+
+    controls.setCtrlStatusCallback((active) => {
+      if (active === true) {
+        setCtrlZoomStatus('enabled');
+        if (zoomStatusTimerRef.current) clearTimeout(zoomStatusTimerRef.current);
+      } else if (active === false) {
+        setCtrlZoomStatus('locked');
+        if (zoomStatusTimerRef.current) clearTimeout(zoomStatusTimerRef.current);
+        zoomStatusTimerRef.current = window.setTimeout(() => {
+          setCtrlZoomStatus(null);
+        }, 1200);
+      } else {
+        setCtrlZoomStatus(null);
+      }
+    });
+
     controls.attachDOM(renderer.domElement);
     controlsRef.current = controls;
 
@@ -514,6 +543,8 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
 
     // Cleanup
     return () => {
+      if (zoomHintTimerRef.current) clearTimeout(zoomHintTimerRef.current);
+      if (zoomStatusTimerRef.current) clearTimeout(zoomStatusTimerRef.current);
       cancelAnimationFrame(animationFrameId);
       resizeObserver.disconnect();
       renderer.domElement.removeEventListener('mousemove', handlePointerMove);
@@ -842,6 +873,20 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
             </div>
           </div>
           <div className="tooltip-footer">Click anomaly to lock camera & activate 3D risk volume</div>
+        </div>
+      )}
+
+      {/* 6. CTRL + SCROLL UX HINT & STATUS INDICATOR */}
+      {showZoomHint && (
+        <div className="globe-zoom-hint" role="status" aria-live="polite">
+          <span className="hint-icon">🖱️</span>
+          <span>HOLD CTRL + SCROLL TO ZOOM</span>
+        </div>
+      )}
+      {ctrlZoomStatus && (
+        <div className={`globe-ctrl-indicator ${ctrlZoomStatus}`} role="status">
+          <span className={`ctrl-dot ${ctrlZoomStatus}`} />
+          <span>{ctrlZoomStatus === 'enabled' ? 'CTRL + SCROLL ZOOM ENABLED' : 'ZOOM LOCKED'}</span>
         </div>
       )}
     </div>

@@ -11,7 +11,7 @@ import {
   faXmark,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Circle, Polyline, Popup, useMap } from 'react-leaflet';
 import {
   Hotspot,
@@ -53,6 +53,79 @@ const MapViewController: React.FC<{ center: [number, number]; zoom: number }> = 
   useEffect(() => {
     map.setView(center, zoom);
   }, [center, zoom, map]);
+  return null;
+};
+
+// CTRL + SCROLL ZOOM ONLY handler for Leaflet 2D tactical map
+const LeafletCtrlScrollZoomHandler: React.FC<{
+  onShowHint: () => void;
+  onCtrlStatus: (active: boolean | null) => void;
+}> = ({ onShowHint, onCtrlStatus }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    const container = map.getContainer();
+    map.scrollWheelZoom.disable();
+
+    let isOver = false;
+    let lastZoomTime = 0;
+
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey && !e.shiftKey) {
+        // Ctrl + scroll zoom authorized: prevent document scroll and smoothly step zoom
+        e.preventDefault();
+        const now = Date.now();
+        if (now - lastZoomTime > 160) {
+          lastZoomTime = now;
+          if (e.deltaY < 0) {
+            map.zoomIn(1);
+          } else if (e.deltaY > 0) {
+            map.zoomOut(1);
+          }
+        }
+        onCtrlStatus(true);
+      } else {
+        // Normal scroll: DO NOT zoom, DO NOT preventDefault -> allows natural page scroll
+        onShowHint();
+      }
+    };
+
+    const onMouseEnter = () => {
+      isOver = true;
+    };
+
+    const onMouseLeave = () => {
+      isOver = false;
+      onCtrlStatus(null);
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Control' && isOver) {
+        onCtrlStatus(true);
+      }
+    };
+
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Control') {
+        onCtrlStatus(isOver ? false : null);
+      }
+    };
+
+    container.addEventListener('wheel', onWheel, { passive: false });
+    container.addEventListener('mouseenter', onMouseEnter);
+    container.addEventListener('mouseleave', onMouseLeave);
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+
+    return () => {
+      container.removeEventListener('wheel', onWheel);
+      container.removeEventListener('mouseenter', onMouseEnter);
+      container.removeEventListener('mouseleave', onMouseLeave);
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
+  }, [map, onShowHint, onCtrlStatus]);
+
   return null;
 };
 
@@ -99,6 +172,42 @@ export const FireMap: React.FC<FireMapProps> = ({
   // Layer Toggles
   const [showThreatZones] = useState<boolean>(true);
   const [showLegend, setShowLegend] = useState<boolean>(true);
+
+  // Ctrl + Scroll Zoom Interaction Feedback
+  const [showZoomHint, setShowZoomHint] = useState<boolean>(false);
+  const [ctrlZoomStatus, setCtrlZoomStatus] = useState<'enabled' | 'locked' | null>(null);
+  const zoomHintTimerRef = useRef<number | null>(null);
+  const zoomStatusTimerRef = useRef<number | null>(null);
+
+  const handleShowHint = useCallback(() => {
+    setShowZoomHint(true);
+    if (zoomHintTimerRef.current) clearTimeout(zoomHintTimerRef.current);
+    zoomHintTimerRef.current = window.setTimeout(() => {
+      setShowZoomHint(false);
+    }, 2000);
+  }, []);
+
+  const handleCtrlStatus = useCallback((active: boolean | null) => {
+    if (active === true) {
+      setCtrlZoomStatus('enabled');
+      if (zoomStatusTimerRef.current) clearTimeout(zoomStatusTimerRef.current);
+    } else if (active === false) {
+      setCtrlZoomStatus('locked');
+      if (zoomStatusTimerRef.current) clearTimeout(zoomStatusTimerRef.current);
+      zoomStatusTimerRef.current = window.setTimeout(() => {
+        setCtrlZoomStatus(null);
+      }, 1200);
+    } else {
+      setCtrlZoomStatus(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (zoomHintTimerRef.current) clearTimeout(zoomHintTimerRef.current);
+      if (zoomStatusTimerRef.current) clearTimeout(zoomStatusTimerRef.current);
+    };
+  }, []);
 
   const getSeverity = (frp: number): 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW' => {
     if (frp >= 50) return 'CRITICAL';
@@ -192,10 +301,11 @@ export const FireMap: React.FC<FireMapProps> = ({
       <MapContainer
         center={effectiveCenter}
         zoom={effectiveZoom}
-        scrollWheelZoom={true}
+        scrollWheelZoom={false}
         className="leaflet-container"
       >
         <MapViewController center={effectiveCenter} zoom={effectiveZoom} />
+        <LeafletCtrlScrollZoomHandler onShowHint={handleShowHint} onCtrlStatus={handleCtrlStatus} />
 
         {/* DYNAMIC BASEMAP TILE LAYER */}
         {activeBasemap === 'standard' ? (
@@ -659,6 +769,20 @@ export const FireMap: React.FC<FireMapProps> = ({
               Threat zones are simulation estimates — NOT official evacuation orders.
             </div>
           </div>
+        </div>
+      )}
+
+      {/* CTRL + SCROLL UX HINT & STATUS INDICATOR */}
+      {showZoomHint && (
+        <div className="globe-zoom-hint" role="status" aria-live="polite">
+          <span className="hint-icon">🖱️</span>
+          <span>HOLD CTRL + SCROLL TO ZOOM</span>
+        </div>
+      )}
+      {ctrlZoomStatus && (
+        <div className={`globe-ctrl-indicator ${ctrlZoomStatus}`} role="status">
+          <span className={`ctrl-dot ${ctrlZoomStatus}`} />
+          <span>{ctrlZoomStatus === 'enabled' ? 'CTRL + SCROLL ZOOM ENABLED' : 'ZOOM LOCKED'}</span>
         </div>
       )}
     </div>
