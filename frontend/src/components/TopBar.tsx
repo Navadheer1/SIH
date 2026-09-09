@@ -29,16 +29,26 @@ export const TopBar: React.FC<TopBarProps> = ({ currentView, onViewChange }) => 
           </div>
         </div>
 
-        {/* NAVIGATION TABS */}
-        <nav className="topbar-nav" aria-label="Main Navigation">
-          <button
-            type="button"
-            className={`nav-tab ${currentView === 'dashboard' ? 'active' : ''}`}
-            onClick={() => onViewChange('dashboard')}
-          >
-            <FontAwesomeIcon icon={faChartSimple} className="nav-fa-icon" />
-            <span className="nav-label">Dashboard</span>
-          </button>
+      {/* 2. PRIMARY NAVIGATION */}
+      <nav className="topbar-nav" aria-label="Main Navigation">
+        <button
+          type="button"
+          className={`nav-tab cinematic-tab ${currentView === 'landing' ? 'active' : ''}`}
+          onClick={() => onViewChange('landing')}
+          title="Switch to 3D Cinematic Observation Experience"
+        >
+          <span className="nav-icon">🪐</span>
+          <span className="nav-label">CINEMATIC VIEW</span>
+        </button>
+
+        <button
+          type="button"
+          className={`nav-tab ${currentView === 'dashboard' ? 'active' : ''}`}
+          onClick={() => onViewChange('dashboard')}
+        >
+          <span className="nav-icon">📊</span>
+          <span className="nav-label">DASHBOARD</span>
+        </button>
 
           <button
             type="button"
