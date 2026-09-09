@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import * as THREE from 'three';
 import {
   Hotspot,
@@ -98,6 +98,115 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
   const [ctrlZoomStatus, setCtrlZoomStatus] = useState<'enabled' | 'locked' | null>(null);
   const zoomHintTimerRef = useRef<number | null>(null);
   const zoomStatusTimerRef = useRef<number | null>(null);
+
+  // Fullscreen State (Synced with actual document.fullscreenElement)
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(() => {
+    if (typeof document !== 'undefined') {
+      return !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
+    }
+    return false;
+  });
+  const isHoveredRef = useRef<boolean>(false);
+
+  // Toggle browser fullscreen on container
+  const toggleFullscreen = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const currentFsEl =
+      document.fullscreenElement ||
+      (document as any).webkitFullscreenElement ||
+      (document as any).mozFullScreenElement ||
+      (document as any).msFullscreenElement;
+
+    if (currentFsEl === container) {
+      // Exit fullscreen
+      const exitFn =
+        document.exitFullscreen ||
+        (document as any).webkitExitFullscreen ||
+        (document as any).mozCancelFullScreen ||
+        (document as any).msExitFullscreen;
+      if (exitFn) {
+        exitFn.call(document).catch((err: any) => {
+          console.warn('Error exiting fullscreen:', err);
+        });
+      }
+    } else {
+      // Enter fullscreen
+      const requestFn =
+        container.requestFullscreen ||
+        (container as any).webkitRequestFullscreen ||
+        (container as any).mozRequestFullScreen ||
+        (container as any).msRequestFullscreen;
+      if (requestFn) {
+        requestFn.call(container).catch((err: any) => {
+          console.warn('Error requesting fullscreen:', err);
+        });
+      }
+    }
+  }, []);
+
+  // Sync with browser fullscreenchange event (handles button click, ESC key, or browser UI exit)
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const container = containerRef.current;
+      const currentFsEl =
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement;
+
+      setIsFullscreen(!!container && currentFsEl === container);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, []);
+
+  // Keyboard shortcut 'F' to toggle fullscreen when map is focused/active (Requirement 11)
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'f' || e.key === 'F') {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const isMapActive =
+          isHoveredRef.current ||
+          document.activeElement === container ||
+          container.contains(document.activeElement);
+
+        if (!isMapActive) return;
+
+        // Do not intercept if user is typing in form controls
+        const activeTag = document.activeElement?.tagName?.toLowerCase();
+        if (
+          activeTag === 'input' ||
+          activeTag === 'textarea' ||
+          activeTag === 'select' ||
+          (document.activeElement as HTMLElement)?.isContentEditable
+        ) {
+          return;
+        }
+
+        e.preventDefault();
+        toggleFullscreen();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [toggleFullscreen]);
 
   // 6-Stage State Machine Indicator
   const [expansionState, setExpansionState] = useState<{
@@ -541,8 +650,49 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
     });
     resizeObserver.observe(container);
 
+    // Fullscreen Resize Synchronization (Requirement 8)
+    const handleFsResize = () => {
+      const isFS = document.fullscreenElement === container;
+      const w = container.clientWidth || (isFS ? window.innerWidth : 800);
+      const h = container.clientHeight || (isFS ? window.innerHeight : 560);
+      if (w > 0 && h > 0) {
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+      }
+      setTimeout(() => {
+        if (!container) return;
+        const curW = container.clientWidth || window.innerWidth;
+        const curH = container.clientHeight || window.innerHeight;
+        if (curW > 0 && curH > 0) {
+          camera.aspect = curW / curH;
+          camera.updateProjectionMatrix();
+          renderer.setSize(curW, curH);
+        }
+      }, 120);
+      setTimeout(() => {
+        if (!container) return;
+        const curW = container.clientWidth || window.innerWidth;
+        const curH = container.clientHeight || window.innerHeight;
+        if (curW > 0 && curH > 0) {
+          camera.aspect = curW / curH;
+          camera.updateProjectionMatrix();
+          renderer.setSize(curW, curH);
+        }
+      }, 300);
+    };
+
+    document.addEventListener('fullscreenchange', handleFsResize);
+    document.addEventListener('webkitfullscreenchange', handleFsResize);
+    document.addEventListener('mozfullscreenchange', handleFsResize);
+    document.addEventListener('MSFullscreenChange', handleFsResize);
+
     // Cleanup
     return () => {
+      document.removeEventListener('fullscreenchange', handleFsResize);
+      document.removeEventListener('webkitfullscreenchange', handleFsResize);
+      document.removeEventListener('mozfullscreenchange', handleFsResize);
+      document.removeEventListener('MSFullscreenChange', handleFsResize);
       if (zoomHintTimerRef.current) clearTimeout(zoomHintTimerRef.current);
       if (zoomStatusTimerRef.current) clearTimeout(zoomStatusTimerRef.current);
       cancelAnimationFrame(animationFrameId);
@@ -584,7 +734,17 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
   }, [clusters, selectedCluster]);
 
   return (
-    <div className="satellite-globe-viewport" ref={containerRef}>
+    <div
+      className={`satellite-globe-viewport ${isFullscreen ? 'is-fullscreen' : ''}`}
+      ref={containerRef}
+      tabIndex={0}
+      onMouseEnter={() => {
+        isHoveredRef.current = true;
+      }}
+      onMouseLeave={() => {
+        isHoveredRef.current = false;
+      }}
+    >
       {/* 1. TOP-LEFT MISSION CONTROL TELEMETRY HUD */}
       <div className="globe-telemetry-hud">
         <div className="hud-header">
@@ -800,6 +960,16 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
             title="Global Orbital Observation Perspective"
           >
             🌍 Global View
+          </button>
+          <button
+            type="button"
+            className={`btn-globe-nav btn-globe-fullscreen ${isFullscreen ? 'active' : ''}`}
+            onClick={toggleFullscreen}
+            title={isFullscreen ? 'EXIT FULL SCREEN' : 'ENTER FULL SCREEN'}
+            aria-label={isFullscreen ? 'Exit full screen' : 'Enter full screen'}
+          >
+            <span className="fullscreen-icon">⛶</span>
+            <span>{isFullscreen ? 'EXIT FULL SCREEN' : 'FULL SCREEN'}</span>
           </button>
         </div>
       </div>

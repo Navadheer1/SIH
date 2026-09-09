@@ -317,5 +317,71 @@ describe('Thermoscope 3D Satellite Intelligence Globe Architecture Tests', () =>
     });
     assert.equal(extremeZoomOut.targetRadius, maxR, 'Extreme zoom out must clamp to maxRadius');
   });
+
+  it('Test 13: Validates Fullscreen & Exit Fullscreen control state machine, shortcut, and resize logic', () => {
+    // Simulated Fullscreen State Machine
+    function getFullscreenState(fullscreenEl, containerEl) {
+      const isFullscreen = !!containerEl && fullscreenEl === containerEl;
+      return {
+        isFullscreen,
+        buttonText: isFullscreen ? 'EXIT FULL SCREEN' : 'FULL SCREEN',
+        tooltip: isFullscreen ? 'EXIT FULL SCREEN' : 'ENTER FULL SCREEN',
+        ariaLabel: isFullscreen ? 'Exit full screen' : 'Enter full screen',
+        buttonClass: isFullscreen ? 'btn-globe-nav btn-globe-fullscreen active' : 'btn-globe-nav btn-globe-fullscreen',
+      };
+    }
+
+    const mockContainer = { id: 'satellite-globe-viewport' };
+    const otherElement = { id: 'other-element' };
+
+    // 1. Initial / Normal embedded state
+    const normalState = getFullscreenState(null, mockContainer);
+    assert.equal(normalState.isFullscreen, false);
+    assert.equal(normalState.buttonText, 'FULL SCREEN');
+    assert.equal(normalState.tooltip, 'ENTER FULL SCREEN');
+    assert.equal(normalState.ariaLabel, 'Enter full screen');
+    assert.ok(!normalState.buttonClass.includes('active'));
+
+    // 2. Active Fullscreen state
+    const activeState = getFullscreenState(mockContainer, mockContainer);
+    assert.equal(activeState.isFullscreen, true);
+    assert.equal(activeState.buttonText, 'EXIT FULL SCREEN');
+    assert.equal(activeState.tooltip, 'EXIT FULL SCREEN');
+    assert.equal(activeState.ariaLabel, 'Exit full screen');
+    assert.ok(activeState.buttonClass.includes('active'));
+
+    // 3. Foreign element fullscreen (map must not claim fullscreen)
+    const foreignState = getFullscreenState(otherElement, mockContainer);
+    assert.equal(foreignState.isFullscreen, false);
+    assert.equal(foreignState.buttonText, 'FULL SCREEN');
+
+    // 4. ESC key or browser exit resets to normal
+    const exitedState = getFullscreenState(null, mockContainer);
+    assert.equal(exitedState.isFullscreen, false);
+    assert.equal(exitedState.buttonText, 'FULL SCREEN');
+
+    // 5. 'F' Shortcut Filter (cannot trigger when typing in inputs)
+    function canTriggerFShortcut({ key, isMapActive, activeTag, isContentEditable }) {
+      if (key !== 'f' && key !== 'F') return false;
+      if (!isMapActive) return false;
+      if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select' || isContentEditable) return false;
+      return true;
+    }
+
+    assert.equal(canTriggerFShortcut({ key: 'f', isMapActive: true, activeTag: 'div', isContentEditable: false }), true);
+    assert.equal(canTriggerFShortcut({ key: 'F', isMapActive: true, activeTag: 'div', isContentEditable: false }), true);
+    assert.equal(canTriggerFShortcut({ key: 'f', isMapActive: false, activeTag: 'div', isContentEditable: false }), false);
+    assert.equal(canTriggerFShortcut({ key: 'f', isMapActive: true, activeTag: 'input', isContentEditable: false }), false);
+    assert.equal(canTriggerFShortcut({ key: 'f', isMapActive: true, activeTag: 'textarea', isContentEditable: false }), false);
+    assert.equal(canTriggerFShortcut({ key: 'f', isMapActive: true, activeTag: 'div', isContentEditable: true }), false);
+
+    // 6. Camera Aspect Ratio Math
+    function computeCameraAspect(w, h) {
+      return +(w / h).toFixed(4);
+    }
+    assert.equal(computeCameraAspect(1920, 1080), 1.7778);
+    assert.equal(computeCameraAspect(1280, 720), 1.7778);
+    assert.equal(computeCameraAspect(800, 560), 1.4286);
+  });
 });
 

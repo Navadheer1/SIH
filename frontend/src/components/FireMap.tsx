@@ -129,6 +129,21 @@ const LeafletCtrlScrollZoomHandler: React.FC<{
   return null;
 };
 
+// Invalidate Leaflet tile geometry when toggling fullscreen
+const LeafletFullscreenResizeHandler: React.FC<{ isFullscreen: boolean }> = ({ isFullscreen }) => {
+  const map = useMap();
+  useEffect(() => {
+    map.invalidateSize();
+    const t1 = setTimeout(() => map.invalidateSize(), 120);
+    const t2 = setTimeout(() => map.invalidateSize(), 300);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [isFullscreen, map]);
+  return null;
+};
+
 export const FireMap: React.FC<FireMapProps> = ({
   viewMode = 'hotspots',
   hotspots = [],
@@ -202,6 +217,112 @@ export const FireMap: React.FC<FireMapProps> = ({
     }
   }, []);
 
+  const mapWrapperRef = useRef<HTMLDivElement>(null);
+  const isMapHoveredRef = useRef<boolean>(false);
+
+  // Fullscreen State (Synced with actual document.fullscreenElement)
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(() => {
+    if (typeof document !== 'undefined') {
+      return !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
+    }
+    return false;
+  });
+
+  const toggleFullscreen = useCallback(() => {
+    const container = mapWrapperRef.current;
+    if (!container) return;
+
+    const currentFsEl =
+      document.fullscreenElement ||
+      (document as any).webkitFullscreenElement ||
+      (document as any).mozFullScreenElement ||
+      (document as any).msFullscreenElement;
+
+    if (currentFsEl === container) {
+      const exitFn =
+        document.exitFullscreen ||
+        (document as any).webkitExitFullscreen ||
+        (document as any).mozCancelFullScreen ||
+        (document as any).msExitFullscreen;
+      if (exitFn) {
+        exitFn.call(document).catch((err: any) => {
+          console.warn('Error exiting fullscreen:', err);
+        });
+      }
+    } else {
+      const requestFn =
+        container.requestFullscreen ||
+        (container as any).webkitRequestFullscreen ||
+        (container as any).mozRequestFullScreen ||
+        (container as any).msRequestFullscreen;
+      if (requestFn) {
+        requestFn.call(container).catch((err: any) => {
+          console.warn('Error requesting fullscreen:', err);
+        });
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const container = mapWrapperRef.current;
+      const currentFsEl =
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement;
+
+      setIsFullscreen(!!container && currentFsEl === container);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, []);
+
+  // Keyboard shortcut 'F'
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'f' || e.key === 'F') {
+        const container = mapWrapperRef.current;
+        if (!container) return;
+
+        const isMapActive =
+          isMapHoveredRef.current ||
+          document.activeElement === container ||
+          container.contains(document.activeElement);
+
+        if (!isMapActive) return;
+
+        const activeTag = document.activeElement?.tagName?.toLowerCase();
+        if (
+          activeTag === 'input' ||
+          activeTag === 'textarea' ||
+          activeTag === 'select' ||
+          (document.activeElement as HTMLElement)?.isContentEditable
+        ) {
+          return;
+        }
+
+        e.preventDefault();
+        toggleFullscreen();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [toggleFullscreen]);
+
   useEffect(() => {
     return () => {
       if (zoomHintTimerRef.current) clearTimeout(zoomHintTimerRef.current);
@@ -264,7 +385,14 @@ export const FireMap: React.FC<FireMapProps> = ({
   const filteredAssets = exposedAssets;
 
   return (
-    <div className="map-wrapper" style={{ position: 'relative' }}>
+    <div
+      className={`map-wrapper ${isFullscreen ? 'is-fullscreen' : ''}`}
+      ref={mapWrapperRef}
+      tabIndex={0}
+      onMouseEnter={() => { isMapHoveredRef.current = true; }}
+      onMouseLeave={() => { isMapHoveredRef.current = false; }}
+      style={{ position: 'relative' }}
+    >
       {/* MAP LAYER & BASEMAP CONTROLS FLOATING BAR */}
       <div className="map-layer-toggles-bar">
         {/* BASEMAP SWITCHER */}
@@ -296,6 +424,17 @@ export const FireMap: React.FC<FireMapProps> = ({
         >
           <FontAwesomeIcon icon={faBookOpen} /> {showLegend ? 'Hide Legend' : 'Show Legend'}
         </button>
+
+        <button
+          type="button"
+          className={`layer-toggle-btn ${isFullscreen ? 'active' : ''}`}
+          onClick={toggleFullscreen}
+          title={isFullscreen ? 'EXIT FULL SCREEN' : 'ENTER FULL SCREEN'}
+          aria-label={isFullscreen ? 'Exit full screen' : 'Enter full screen'}
+          style={{ marginLeft: '6px' }}
+        >
+          <span style={{ fontSize: '12px' }}>⛶</span> {isFullscreen ? 'EXIT FULL SCREEN' : 'FULL SCREEN'}
+        </button>
       </div>
 
       <MapContainer
@@ -306,6 +445,7 @@ export const FireMap: React.FC<FireMapProps> = ({
       >
         <MapViewController center={effectiveCenter} zoom={effectiveZoom} />
         <LeafletCtrlScrollZoomHandler onShowHint={handleShowHint} onCtrlStatus={handleCtrlStatus} />
+        <LeafletFullscreenResizeHandler isFullscreen={isFullscreen} />
 
         {/* DYNAMIC BASEMAP TILE LAYER */}
         {activeBasemap === 'standard' ? (
