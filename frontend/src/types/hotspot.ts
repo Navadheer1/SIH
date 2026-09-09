@@ -44,12 +44,15 @@ export interface HotspotsApiResponse {
 
 export interface OsmFeature {
   name: string;
-  type: 'industrial' | 'power' | 'urban' | 'road';
+  type: string;
   category: string;
   latitude: number;
   longitude: number;
   distance_km: number;
-  osm_id: string;
+  osm_id?: string;
+  id?: string;
+  source?: string;
+  importance_weight?: number;
 }
 
 export interface HotspotContextResponse {
@@ -140,17 +143,30 @@ export interface RiskScoreResponse {
 export interface PriorityRankingItem {
   rank: number;
   cluster_id: string;
+  hotspot_id?: string;
   latitude: number;
   longitude: number;
+  frp?: number;
+  brightness?: number;
+  confidence?: string;
   risk_score: number;
   risk_level: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW';
+  priority?: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW';
   classification: string;
   industrial_facility: string;
   industrial_distance_km: number | null;
+  closest_critical_asset?: OsmFeature | null;
+  exposed_assets_count?: number;
+  exposure_summary?: Record<string, number>;
+  nearby_features?: OsmFeature[];
+  data_status?: string;
   persistence_score: number;
   observation_count: number;
   duration_hours: number;
   reasons: string[];
+  recommended_action?: string;
+  components?: Record<string, number>;
+  data_source?: string;
 }
 
 export interface ThermalAlert {
@@ -730,34 +746,50 @@ export interface PriorityResult {
   priority_score: number;
   priority_level: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | string;
   priority_index: 'P1' | 'P2' | 'P3' | 'P4' | string;
-  scoring_breakdown: Record<string, number>;
-  factors: Record<string, any>;
-  explainability_summary: string;
-  ranking_reasons: string[];
+  priority_label?: string;
+  contributing_factors?: Record<string, number>;
+  reasons?: string[];
+  scoring_breakdown?: Record<string, number>;
+  factors?: Record<string, any>;
+  explainability_summary?: string;
+  ranking_reasons?: string[];
 }
 
 export interface ThreatZoneDetails {
-  radius_meters: number;
-  description: string;
-  key_actions: string[];
+  name?: string;
+  radius_km?: number;
+  radius_meters?: number;
+  color?: string;
+  fill_opacity?: number;
+  threat_level?: string;
+  description?: string;
+  key_actions?: string[];
 }
 
 export interface ThreatZoneResult {
   available: boolean;
-  threat_radius_meters: number;
+  threat_radius_meters?: number;
   estimated_spread_rate_m_min?: number | null;
   high_hazard_zone?: ThreatZoneDetails | null;
   moderate_hazard_zone?: ThreatZoneDetails | null;
   precautionary_zone?: ThreatZoneDetails | null;
-  zones?: Record<string, any>;
+  zones?: Record<string, ThreatZoneDetails>;
+  factors_applied?: Record<string, any>;
   spread_scenario?: Record<string, any>;
+  disclaimer?: string;
 }
 
 export interface AssetExposureItem {
-  name: string;
-  type: string;
+  asset_name?: string;
+  name?: string;
+  type?: string;
+  raw_type?: string;
   category: string;
   distance_km: number;
+  threat_zone?: string;
+  exposure_level?: string;
+  status?: string;
+  data_source?: string;
   latitude?: number;
   longitude?: number;
   osm_id?: string | number;
@@ -768,39 +800,66 @@ export interface AssetExposureResult {
   available: boolean;
   total_exposed_assets: number;
   critical_infrastructure_count: number;
-  high_vulnerability_count: number;
-  moderate_count: number;
-  facilities: AssetExposureItem[];
+  high_vulnerability_count?: number;
+  moderate_count?: number;
+  category_counts?: Record<string, number>;
+  nearest_critical_asset?: AssetExposureItem | null;
+  exposed_assets?: AssetExposureItem[];
+  facilities?: AssetExposureItem[];
+  source?: string;
 }
 
 export interface ImpactResult {
   available: boolean;
   impact_score: number;
   impact_level: string;
-  breakdown: Record<string, number>;
+  critical_infrastructure_count?: number;
+  impact_reasons?: string[];
+  summary_statement?: string;
+  breakdown?: Record<string, number>;
 }
 
 export interface FutureImpactItem {
-  projection_window_hours: number;
-  threat_level: string;
-  risk_summary: string;
+  time_horizon?: string;
+  hours?: number;
+  projection_window_hours?: number;
+  center_latitude?: number;
+  center_longitude?: number;
+  projected_area_sqkm?: number;
+  confidence_score?: number;
+  confidence_level?: string;
+  total_exposed_assets?: number;
+  critical_infrastructure_count?: number;
+  impact_score?: number;
+  impact_level?: string;
+  priority_index?: string;
+  priority_label?: string;
+  threat_level?: string;
+  risk_summary?: string;
   radius_meters?: number;
   scenario_spread_rate?: number;
   forecasted_time?: string;
+  nearest_critical_asset?: Record<string, any> | null;
+  exposed_assets?: Array<Record<string, any>>;
 }
 
 export interface FutureImpactResult {
   available: boolean;
-  scenarios_evaluated: number;
-  projections: FutureImpactItem[];
-  advisory_notes: string[];
+  escalation_detected?: boolean;
+  escalation_reasons?: string[];
+  scenarios_evaluated?: number;
+  projections?: Record<string, FutureImpactItem> | FutureImpactItem[];
+  advisory_notes?: string[];
+  disclaimer?: string;
 }
 
 export interface RecommendedAction {
+  action_id?: string;
   priority: string;
   title: string;
-  action_type: string;
-  recommended_stakeholders: string[];
+  action_type?: string;
+  category?: string;
+  recommended_stakeholders?: string[];
   rationale: string;
 }
 
@@ -832,13 +891,14 @@ export interface DecisionSupportResponse {
   summary: IncidentSummary;
   investigation: InvestigationResponse;
   priority: PriorityResult;
-  threat_zones: ThreatZoneResult;
+  threat_zone?: ThreatZoneResult;
+  threat_zones?: ThreatZoneResult;
   asset_exposure: AssetExposureResult;
   impact: ImpactResult;
   future_impact: FutureImpactResult;
   recommended_actions: RecommendedAction[];
   provenance: DecisionProvenance;
-  safety_flags: {
+  safety_flags?: {
     is_calibrated: boolean;
     is_synthetic: boolean;
     is_simulation_only: boolean;

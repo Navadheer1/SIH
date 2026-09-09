@@ -1,3 +1,20 @@
+import {
+  faBolt,
+  faChartSimple,
+  faCircle,
+  faDatabase,
+  faFire,
+  faGear,
+  faImage,
+  faIndustry,
+  faLocationDot,
+  faMagnifyingGlass,
+  faMap,
+  faRuler,
+  faSatellite,
+  faTriangleExclamation,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useState, useEffect, useCallback } from 'react';
 import { getApiUrl } from '../config/api';
 import { SystemStatusResponse, FirmsWorkerStatus } from '../types/hotspot';
@@ -47,22 +64,22 @@ export function SystemStatusView() {
     rawStatus?: string,
     type: 'conn' | 'avail' | 'online' = 'conn'
   ) => {
-    if (!rawStatus) return { icon: '⚪', label: 'CHECKING', cls: 'status-unknown', isConnected: false };
+    if (!rawStatus) return { icon: 'CHECKING', label: 'CHECKING', cls: 'status-unknown', isConnected: false };
     const s = rawStatus.toUpperCase();
 
     if (s === 'REACHABLE' || s === 'CONNECTED' || s === 'HEALTHY' || s === 'UP' || s === 'ONLINE' || s === 'AVAILABLE' || s === 'OPERATIONAL') {
       const label = type === 'avail' ? 'AVAILABLE' : type === 'online' ? 'ONLINE' : 'CONNECTED';
-      return { icon: '🟢', label, cls: 'status-connected', isConnected: true };
+      return { icon: 'CONNECTED', label, cls: 'status-connected', isConnected: true };
     }
     if (s === 'CONFIGURED' || s === 'RUNNING') {
-      return { icon: '🟢', label: 'CONFIGURED', cls: 'status-configured', isConnected: true };
+      return { icon: 'CONNECTED', label: 'CONFIGURED', cls: 'status-configured', isConnected: true };
     }
     if (s === 'DEGRADED' || s === 'STALE' || s === 'TESTING') {
-      return { icon: '🟡', label: 'DEGRADED', cls: 'status-degraded', isConnected: true };
+      return { icon: 'DEGRADED', label: 'DEGRADED', cls: 'status-degraded', isConnected: true };
     }
     // Disconnected / Offline / Unavailable
     const label = type === 'avail' ? 'UNAVAILABLE' : type === 'online' ? 'OFFLINE' : 'DISCONNECTED';
-    return { icon: '🔴', label, cls: 'status-offline', isConnected: false };
+    return { icon: 'OFFLINE', label, cls: 'status-offline', isConnected: false };
   };
 
   // Status evaluation for the 7 services
@@ -103,17 +120,17 @@ export function SystemStatusView() {
             onClick={() => fetchDiagnostics(true)}
             disabled={probing}
           >
-            {probing ? '🔄 Testing APIs...' : '⚡ Refresh Status'}
+            {probing ? 'Testing APIs...' : 'Refresh Status'}
           </button>
         </div>
       </div>
 
-      {error && <div className="status-error-banner">⚠️ System probe notice: {error}</div>}
+      {error && <div className="status-error-banner"><FontAwesomeIcon icon={faTriangleExclamation} /> System probe notice: {error}</div>}
 
       {/* 2. OVERALL PLATFORM BANNER */}
       <div className="overall-health-card">
         <div className="overall-left">
-          <span className="overall-dot">🟢</span>
+          <span className="overall-dot"><FontAwesomeIcon icon={faCircle} style={{ color: "#2F8F46" }} /></span>
           <div>
             <h3 className="overall-title">
               SYSTEM INTEGRITY: {statusData?.status || 'OPERATIONAL'}
@@ -134,7 +151,7 @@ export function SystemStatusView() {
       {/* 3. ARCHITECTURE PIPELINE DIAGRAM */}
       <div className="architecture-diagram-section">
         <div className="diagram-header">
-          <span className="diagram-icon">📐</span>
+          <span className="diagram-icon"><FontAwesomeIcon icon={faRuler} /></span>
           <h3 className="diagram-title">System Data Pipeline Architecture</h3>
           <span className="diagram-subtitle">Real-time data flow and service linkage</span>
         </div>
@@ -145,19 +162,19 @@ export function SystemStatusView() {
             <div className="track-label">1. THERMAL ANOMALY INGESTION</div>
             <div className="track-nodes">
               <div className={`pipeline-node ${firmsStatus.cls}`}>
-                <span className="node-icon">🔥</span>
+                <span className="node-icon"><FontAwesomeIcon icon={faFire} /></span>
                 <span className="node-name">NASA FIRMS</span>
                 <span className="node-status">{firmsStatus.icon} {firmsStatus.label}</span>
               </div>
               <div className="pipeline-arrow">↓</div>
               <div className={`pipeline-node ${backendStatus.cls}`}>
-                <span className="node-icon">⚙️</span>
+                <span className="node-icon"><FontAwesomeIcon icon={faGear} /></span>
                 <span className="node-name">FastAPI Backend</span>
                 <span className="node-status">{backendStatus.icon} {backendStatus.label}</span>
               </div>
               <div className="pipeline-arrow">↓</div>
               <div className={`pipeline-node ${dbStatus.cls}`}>
-                <span className="node-icon">🗄️</span>
+                <span className="node-icon"><FontAwesomeIcon icon={faDatabase} /></span>
                 <span className="node-name">Supabase DB</span>
                 <span className="node-status">{dbStatus.icon} {dbStatus.label}</span>
               </div>
@@ -169,31 +186,31 @@ export function SystemStatusView() {
             <div className="track-label">2. SATELLITE OPTICAL EVIDENCE</div>
             <div className="track-nodes">
               <div className={`pipeline-node ${dbStatus.cls}`}>
-                <span className="node-icon">📍</span>
+                <span className="node-icon"><FontAwesomeIcon icon={faLocationDot} /></span>
                 <span className="node-name">FIRMS Observation</span>
                 <span className="node-status">{dbStatus.icon} STORED</span>
               </div>
               <div className="pipeline-arrow">↓</div>
               <div className={`pipeline-node ${catalogStatus.cls}`}>
-                <span className="node-icon">🔍</span>
+                <span className="node-icon"><FontAwesomeIcon icon={faMagnifyingGlass} /></span>
                 <span className="node-name">Copernicus Catalog</span>
                 <span className="node-status">{catalogStatus.icon} {catalogStatus.label}</span>
               </div>
               <div className="pipeline-arrow">↓</div>
               <div className={`pipeline-node ${copernicusStatus.cls}`}>
-                <span className="node-icon">🛰️</span>
+                <span className="node-icon"><FontAwesomeIcon icon={faSatellite} /></span>
                 <span className="node-name">Sentinel-2 L2A</span>
                 <span className="node-status">{copernicusStatus.icon} {copernicusStatus.label}</span>
               </div>
               <div className="pipeline-arrow">↓</div>
               <div className={`pipeline-node ${processingStatus.cls}`}>
-                <span className="node-icon">🖼️</span>
+                <span className="node-icon"><FontAwesomeIcon icon={faImage} /></span>
                 <span className="node-name">Processing API</span>
                 <span className="node-status">{processingStatus.icon} {processingStatus.label}</span>
               </div>
               <div className="pipeline-arrow">↓</div>
               <div className={`pipeline-node ${processingStatus.cls}`}>
-                <span className="node-icon">📊</span>
+                <span className="node-icon"><FontAwesomeIcon icon={faChartSimple} /></span>
                 <span className="node-name">Satellite Evidence</span>
                 <span className="node-status">{processingStatus.icon} FUSED</span>
               </div>
@@ -205,13 +222,13 @@ export function SystemStatusView() {
             <div className="track-label">3. INDUSTRIAL CONTEXT</div>
             <div className="track-nodes">
               <div className={`pipeline-node ${osmStatus.cls}`}>
-                <span className="node-icon">🗺️</span>
+                <span className="node-icon"><FontAwesomeIcon icon={faMap} /></span>
                 <span className="node-name">OpenStreetMap (OSM)</span>
                 <span className="node-status">{osmStatus.icon} {osmStatus.label}</span>
               </div>
               <div className="pipeline-arrow">↓</div>
               <div className={`pipeline-node ${osmStatus.cls}`}>
-                <span className="node-icon">🏭</span>
+                <span className="node-icon"><FontAwesomeIcon icon={faIndustry} /></span>
                 <span className="node-name">Industrial Context</span>
                 <span className="node-status">{osmStatus.icon} RESOLVED</span>
               </div>
@@ -226,7 +243,7 @@ export function SystemStatusView() {
         <div className={`service-health-card ${firmsStatus.cls}`}>
           <div className="card-top-row">
             <div className="service-title-wrap">
-              <span className="service-card-icon">🔥</span>
+              <span className="service-card-icon"><FontAwesomeIcon icon={faFire} /></span>
               <div>
                 <h4 className="service-card-title">1. NASA FIRMS</h4>
                 <span className="service-card-sub">Near-Real-Time Thermal Anomaly Stream</span>
@@ -270,7 +287,7 @@ export function SystemStatusView() {
         <div className={`service-health-card ${dbStatus.cls}`}>
           <div className="card-top-row">
             <div className="service-title-wrap">
-              <span className="service-card-icon">🗄️</span>
+              <span className="service-card-icon"><FontAwesomeIcon icon={faDatabase} /></span>
               <div>
                 <h4 className="service-card-title">2. SUPABASE DATABASE</h4>
                 <span className="service-card-sub">PostgreSQL Hotspot & Evidence Persistence</span>
@@ -312,7 +329,7 @@ export function SystemStatusView() {
         <div className={`service-health-card ${copernicusStatus.cls}`}>
           <div className="card-top-row">
             <div className="service-title-wrap">
-              <span className="service-card-icon">🛰️</span>
+              <span className="service-card-icon"><FontAwesomeIcon icon={faSatellite} /></span>
               <div>
                 <h4 className="service-card-title">3. COPERNICUS SENTINEL HUB</h4>
                 <span className="service-card-sub">Data Space Ecosystem OAuth2 Service</span>
@@ -352,7 +369,7 @@ export function SystemStatusView() {
         <div className={`service-health-card ${catalogStatus.cls}`}>
           <div className="card-top-row">
             <div className="service-title-wrap">
-              <span className="service-card-icon">🔍</span>
+              <span className="service-card-icon"><FontAwesomeIcon icon={faMagnifyingGlass} /></span>
               <div>
                 <h4 className="service-card-title">4. SENTINEL-2 CATALOG</h4>
                 <span className="service-card-sub">Spatial-Temporal STAC Search API</span>
@@ -386,7 +403,7 @@ export function SystemStatusView() {
         <div className={`service-health-card ${processingStatus.cls}`}>
           <div className="card-top-row">
             <div className="service-title-wrap">
-              <span className="service-card-icon">🖼️</span>
+              <span className="service-card-icon"><FontAwesomeIcon icon={faImage} /></span>
               <div>
                 <h4 className="service-card-title">5. SENTINEL-2 PROCESSING API</h4>
                 <span className="service-card-sub">Multi-spectral Raster Imagery Rendering</span>
@@ -420,7 +437,7 @@ export function SystemStatusView() {
         <div className={`service-health-card ${osmStatus.cls}`}>
           <div className="card-top-row">
             <div className="service-title-wrap">
-              <span className="service-card-icon">🗺️</span>
+              <span className="service-card-icon"><FontAwesomeIcon icon={faMap} /></span>
               <div>
                 <h4 className="service-card-title">6. OPENSTREETMAP</h4>
                 <span className="service-card-sub">Infrastructure & Asset Proximity Resolution</span>
@@ -454,7 +471,7 @@ export function SystemStatusView() {
         <div className={`service-health-card ${backendStatus.cls}`}>
           <div className="card-top-row">
             <div className="service-title-wrap">
-              <span className="service-card-icon">⚡</span>
+              <span className="service-card-icon"><FontAwesomeIcon icon={faBolt} /></span>
               <div>
                 <h4 className="service-card-title">7. BACKEND API</h4>
                 <span className="service-card-sub">FastAPI Orchestration & Fusion Engine</span>

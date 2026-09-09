@@ -74,6 +74,10 @@ def analyze_asset_exposure(
             dist_km = 2.5
 
         dist_km = round(dist_km, 2)
+        # Strict 5 km cutoff: features beyond 5.0 km must not be included
+        if dist_km > 5.0:
+            continue
+
         asset_cat = categorize_asset_type(name, feat_type, category_raw)
 
         # Determine Zone & Exposure Level

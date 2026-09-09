@@ -1,3 +1,8 @@
+import {
+  faFileLines,
+  faMagnifyingGlass,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useState } from 'react';
 import { ThermalAlert } from '../types/hotspot';
 
@@ -24,7 +29,7 @@ export const AlertHistory: React.FC<AlertHistoryProps> = ({
     <div className="alert-dashboard-card history-card">
       <div className="table-card-header">
         <div>
-          <h3 className="table-card-title">📜 Resolved & Dismissed Incident Audit History</h3>
+          <h3 className="table-card-title"><FontAwesomeIcon icon={faFileLines} /> Resolved & Dismissed Incident Audit History</h3>
           <p className="table-card-subtitle">Archived historical alert records with resolution notes</p>
         </div>
 
@@ -83,7 +88,7 @@ export const AlertHistory: React.FC<AlertHistoryProps> = ({
                     <td className="notes-cell">{alt.resolution_notes || 'None'}</td>
                     <td onClick={(e) => e.stopPropagation()}>
                       <button className="btn btn-secondary btn-sm" onClick={() => onSelectAlert(alt)}>
-                        🔍 View Audit
+                        <FontAwesomeIcon icon={faMagnifyingGlass} /> View Audit
                       </button>
                     </td>
                   </tr>

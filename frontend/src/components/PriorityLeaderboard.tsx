@@ -1,3 +1,8 @@
+import {
+  faMagnifyingGlass,
+  faTriangleExclamation,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useState } from 'react';
 import { PriorityIncidentItem } from '../types/hotspot';
 
@@ -32,7 +37,7 @@ export const PriorityLeaderboard: React.FC<PriorityLeaderboardProps> = ({
     <div className="priority-leaderboard-container">
       <div className="leaderboard-header-bar">
         <div>
-          <h3 className="leaderboard-title">🚨 Emergency Dispatch Priority Index Leaderboard (P1 - P4)</h3>
+          <h3 className="leaderboard-title"><FontAwesomeIcon icon={faTriangleExclamation} /> Emergency Dispatch Priority Index Leaderboard (P1 - P4)</h3>
           <p className="leaderboard-sub">
             Ranks thermal incidents combining Investigation Risk Score, Dynamic Impact Score, and Exposed Infrastructure.
           </p>
@@ -140,7 +145,7 @@ export const PriorityLeaderboard: React.FC<PriorityLeaderboardProps> = ({
                         onSelectIncident(item);
                       }}
                     >
-                      ⚡ Inspect
+                      <FontAwesomeIcon icon={faMagnifyingGlass} /> Inspect
                     </button>
                   </td>
                 </tr>

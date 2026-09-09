@@ -1,3 +1,8 @@
+import {
+  faCircleInfo,
+  faCube,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React from 'react';
 
 interface ProjectionLegendProps {
@@ -12,12 +17,12 @@ export const ProjectionLegend: React.FC<ProjectionLegendProps> = ({
   return (
     <div className="projection-legend-card">
       <div className="legend-header">
-        <span className="legend-title">🧊 3D THREAT VISUALIZATION LEGEND</span>
+        <span className="legend-title"><FontAwesomeIcon icon={faCube} /> 3D THREAT VISUALIZATION LEGEND</span>
       </div>
 
       {/* 3D Vertical Height Elevation Disclaimer */}
       <div className="legend-disclaimer-banner">
-        ℹ️ <em>Vertical 3D Height represents <strong>Relative Model Intensity</strong>, NOT actual flame height.</em>
+        <FontAwesomeIcon icon={faCircleInfo} /> <em>Vertical 3D Height represents <strong>Relative Model Intensity</strong>, NOT actual flame height.</em>
       </div>
 
       <div className="legend-sections-grid">

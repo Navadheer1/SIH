@@ -1,3 +1,8 @@
+import {
+  faChartSimple,
+  faCircleCheck,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React from 'react';
 import { Hotspot, ThermalAlert } from '../types/hotspot';
 
@@ -22,7 +27,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ hotspots, alerts }
     <div className="analytics-view">
       <div className="view-header-bar">
         <div>
-          <h2 className="view-title">📊 Operational Disaster Analytics & Severity Distribution</h2>
+          <h2 className="view-title"><FontAwesomeIcon icon={faChartSimple} /> Operational Disaster Analytics & Severity Distribution</h2>
           <p className="view-subtitle">
             Sensor Telemetry Aggregates • Severity Stratification • Incident Resolution Performance
           </p>
@@ -110,21 +115,21 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ hotspots, alerts }
           <h4>Data Provenance & Pipeline Integrity</h4>
           <div className="integrity-items-list">
             <div className="integrity-item">
-              <span className="int-check">✓</span>
+              <span className="int-check"><FontAwesomeIcon icon={faCircleCheck} style={{ color: "#2F8F46", marginRight: "6px" }} /></span>
               <div>
                 <strong>NASA FIRMS Satellite Telemetry:</strong>
                 <p>NRT VIIRS 375m & MODIS 1km sensor ingest active. Zero synthetic records injected.</p>
               </div>
             </div>
             <div className="integrity-item">
-              <span className="int-check">✓</span>
+              <span className="int-check"><FontAwesomeIcon icon={faCircleCheck} style={{ color: "#2F8F46", marginRight: "6px" }} /></span>
               <div>
                 <strong>OpenStreetMap Infrastructure Graph:</strong>
                 <p>Overpass API geodesic queries active with 5.0 km dynamic radius and Haversine distance.</p>
               </div>
             </div>
             <div className="integrity-item">
-              <span className="int-check">✓</span>
+              <span className="int-check"><FontAwesomeIcon icon={faCircleCheck} style={{ color: "#2F8F46", marginRight: "6px" }} /></span>
               <div>
                 <strong>PyTorch Sentinel-2 CV Model:</strong>
                 <p>ResNet-18 vision model active with Grad-CAM spatial explainability heatmaps.</p>

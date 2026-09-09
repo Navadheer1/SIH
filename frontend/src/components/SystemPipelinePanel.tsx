@@ -1,3 +1,8 @@
+import {
+  faSatellite,
+  faTriangleExclamation,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React from 'react';
 import { SystemPipelineEvent } from '../types/hotspot';
 
@@ -23,8 +28,8 @@ export const SystemPipelinePanel: React.FC<SystemPipelinePanelProps> = ({
           <span className="pipeline-sub">Real-Time Ingestion • Multi-Modal Processing • Incident Creation</span>
         </div>
         <div className="header-right">
-          <span className="telemetry-badge">📡 {hotspotCount} Telemetry Feeds</span>
-          <span className="telemetry-badge alert-badge">🚨 {alertCount} Active Incidents</span>
+          <span className="telemetry-badge"><FontAwesomeIcon icon={faSatellite} /> {hotspotCount} Telemetry Feeds</span>
+          <span className="telemetry-badge alert-badge"><FontAwesomeIcon icon={faTriangleExclamation} /> {alertCount} Active Incidents</span>
           <button
             type="button"
             className="btn-refresh-pipeline"

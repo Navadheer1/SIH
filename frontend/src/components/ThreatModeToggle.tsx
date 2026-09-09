@@ -1,3 +1,8 @@
+import {
+  faCube,
+  faMap,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React from 'react';
 
 interface ThreatModeToggleProps {
@@ -15,14 +20,14 @@ export const ThreatModeToggle: React.FC<ThreatModeToggleProps> = ({ mode, onMode
           className={`btn-mode ${mode === '2D' ? 'active' : ''}`}
           onClick={() => onModeChange('2D')}
         >
-          🗺️ 2D MAP
+          <FontAwesomeIcon icon={faMap} /> 2D MAP
         </button>
         <button
           type="button"
           className={`btn-mode ${mode === '3D' ? 'active' : ''}`}
           onClick={() => onModeChange('3D')}
         >
-          🧊 3D THREAT VIEW
+          <FontAwesomeIcon icon={faCube} /> 3D THREAT VIEW
         </button>
       </div>
     </div>

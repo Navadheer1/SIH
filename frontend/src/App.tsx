@@ -34,6 +34,8 @@ export function App() {
 
   const [priorityItems, setPriorityItems] = useState<PriorityRankingItem[]>([]);
   const [loadingPriority, setLoadingPriority] = useState<boolean>(false);
+  const [selectedPriorityIncident, setSelectedPriorityIncident] = useState<PriorityRankingItem | null>(null);
+  const [basemap, setBasemap] = useState<'standard' | 'satellite'>('standard');
 
   const [alerts, setAlerts] = useState<ThermalAlert[]>([]);
   const [_latestFirms, setLatestFirms] = useState<LatestFirmsResponse | null>(null);
@@ -124,19 +126,66 @@ export function App() {
     }
   }, []);
 
-  // 3. Fetch Priority Rankings
+  // 3. Fetch Priority Rankings (Non-blocking with strict client timeout)
   const loadPriority = useCallback(async (selectedRegion: string) => {
     setLoadingPriority(true);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
     try {
-      const response = await fetch(getApiUrl(`/api/hotspots/priority-ranking?region=${selectedRegion}`));
+      const response = await fetch(getApiUrl(`/api/hotspots/priority-ranking?region=${selectedRegion}`), {
+        signal: controller.signal,
+      });
       if (response.ok) {
         const data = await response.json();
-        setPriorityItems(data.rankings || []);
+        const items: PriorityRankingItem[] = data.rankings || data.priority_events || [];
+        setPriorityItems(items);
       }
-    } catch (err) {
-      console.error('Failed to load priority rankings:', err);
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        console.error('Failed to load priority rankings:', err);
+      }
     } finally {
+      clearTimeout(timeoutId);
       setLoadingPriority(false);
+    }
+  }, []);
+
+  const handleEnrichHotspot = useCallback(async (hotspotId: string, lat: number, lon: number) => {
+    try {
+      const res = await fetch(getApiUrl(`/api/hotspots/${encodeURIComponent(hotspotId)}/enrich-osm?lat=${lat}&lon=${lon}&radius_km=5.0`));
+      if (res.ok) {
+        const enriched = await res.json();
+        setPriorityItems((prev) =>
+          prev.map((item) => {
+            if (item.cluster_id === hotspotId || item.hotspot_id === hotspotId) {
+              return {
+                ...item,
+                data_status: enriched.data_status,
+                nearby_features: enriched.nearby_features,
+                closest_critical_asset: enriched.closest_critical_asset,
+                exposed_assets_count: enriched.facility_count,
+                exposure_summary: enriched.category_summary,
+              };
+            }
+            return item;
+          })
+        );
+        setSelectedPriorityIncident((prev) => {
+          if (prev && (prev.cluster_id === hotspotId || prev.hotspot_id === hotspotId)) {
+            return {
+              ...prev,
+              data_status: enriched.data_status,
+              nearby_features: enriched.nearby_features,
+              closest_critical_asset: enriched.closest_critical_asset,
+              exposed_assets_count: enriched.facility_count,
+              exposure_summary: enriched.category_summary,
+            };
+          }
+          return prev;
+        });
+      }
+    } catch (e) {
+      console.error('Failed to enrich hotspot OSM:', e);
     }
   }, []);
 
@@ -222,6 +271,20 @@ export function App() {
     loadDecisionSupportForMap(obsId, a.latitude, a.longitude);
   };
 
+  const handleSelectPriorityIncident = useCallback((p: PriorityRankingItem) => {
+    setSelectedPriorityIncident(p);
+    setSelectedHotspot(null);
+    setSelectedCluster(null);
+    setSelectedAlert(null);
+    setShowDetailPanel(true);
+    if (p.latitude && p.longitude) {
+      setMapCenterCoords([p.latitude, p.longitude]);
+      setMapZoomLevel(12);
+    }
+    const obsId = p.hotspot_id || p.cluster_id;
+    loadDecisionSupportForMap(obsId, p.latitude, p.longitude);
+  }, [loadDecisionSupportForMap]);
+
   // Demo Scenario Handler (SIH Judge Benchmark Cases)
   const handleSelectDemoScenario = (scenarioId: string) => {
     const scenario = DEMO_SCENARIO_PRESETS.find(
@@ -258,9 +321,6 @@ export function App() {
 
   const handleCloseDetailPanel = () => {
     setShowDetailPanel(false);
-    setSelectedHotspot(null);
-    setSelectedCluster(null);
-    setSelectedAlert(null);
   };
 
   const handleAlertStatusChange = async (alertId: string, newStatus: ThermalAlert['status'], notes?: string) => {
@@ -317,10 +377,6 @@ export function App() {
       <TopBar
         currentView={currentView}
         onViewChange={setCurrentView}
-        lastUpdated={lastUpdated}
-        onRefresh={handleRefreshAll}
-        refreshing={refreshing}
-        onSelectDemoScenario={handleSelectDemoScenario}
       />
 
       {/* 2. MAIN VIEW CONTAINER */}
@@ -335,10 +391,18 @@ export function App() {
             loadingHotspots={loadingHotspots}
             loadingClusters={loadingClusters}
             loadingPriority={loadingPriority}
+            lastUpdated={lastUpdated}
             onSelectHotspot={handleSelectHotspot}
             onSelectCluster={handleSelectCluster}
             onSelectAlert={handleSelectAlert}
             onRefreshAll={handleRefreshAll}
+            refreshing={refreshing}
+            onNavigateView={setCurrentView}
+            selectedPriorityIncident={selectedPriorityIncident}
+            onSelectPriorityIncident={handleSelectPriorityIncident}
+            onEnrichHotspot={handleEnrichHotspot}
+            basemap={basemap}
+            onBasemapChange={setBasemap}
           />
         )}
 
@@ -366,6 +430,7 @@ export function App() {
               selectedHotspot={selectedHotspot}
               selectedCluster={selectedCluster}
               selectedAlert={selectedAlert}
+              selectedPriorityIncident={selectedPriorityIncident}
               onSelectHotspot={handleSelectHotspot}
               onSelectCluster={handleSelectCluster}
               onSelectAlert={handleSelectAlert}
@@ -375,6 +440,8 @@ export function App() {
               mapZoom={mapZoomLevel}
               center={[20.5937, 78.9629]}
               zoom={5}
+              basemap={basemap}
+              onBasemapChange={setBasemap}
             />
           </div>
         )}
@@ -392,6 +459,7 @@ export function App() {
               onCustomBboxChange={setCustomBbox}
               onApplyCustomBbox={handleRefreshAll}
               onRefresh={handleRefreshAll}
+              onSelectDemoScenario={handleSelectDemoScenario}
             />
           </div>
         )}
