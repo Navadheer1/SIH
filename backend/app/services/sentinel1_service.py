@@ -248,7 +248,7 @@ class Sentinel1ImageProvider:
 
         should_close = False
         if client is None:
-            client = httpx.AsyncClient(timeout=30.0)
+            client = httpx.AsyncClient(timeout=60.0)
             should_close = True
 
         try:

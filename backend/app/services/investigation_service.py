@@ -53,6 +53,9 @@ class InvestigationService:
         return None
 
     def _save_to_cache(self, observation_id: str, response: InvestigationResponse) -> None:
+        # Do not cache timeouts to allow immediate retries
+        if "timed out" in str(response.satellite_fallback_reason).lower():
+            return
         if len(_investigation_cache) > MAX_CACHE_ENTRIES:
             # Evict oldest entry
             oldest_key = min(_investigation_cache.keys(), key=lambda k: _investigation_cache[k][0])
@@ -123,7 +126,7 @@ class InvestigationService:
                         observation_id=clean_id,
                         force_refresh=force_refresh
                     ),
-                    timeout=20.0
+                    timeout=75.0
                 )
             except asyncio.TimeoutError:
                 logger.warning(f"Satellite retrieval timed out for observation {clean_id}")
@@ -312,6 +315,7 @@ class InvestigationService:
 
         sentinel_model = Sentinel2Evidence(
             available=bool(sat_data.get("available")),
+            image_available=bool(sat_data.get("available") or sat_data.get("image_available")),
             state=sat_data.get("status") or ("ACQUISITION_AVAILABLE" if sat_data.get("available") else "NO_ACQUISITION"),
             class_name=fusion_out["sentinel2"].get("class", "UNKNOWN"),
             confidence=fusion_out["sentinel2"].get("confidence", 0.0),
@@ -328,6 +332,7 @@ class InvestigationService:
 
         sentinel1_model = Sentinel1Evidence(
             available=bool(s1_data.get("available")),
+            image_available=bool(s1_data.get("available") or s1_data.get("image_available")),
             state=s1_data.get("status") or s1_data.get("state") or ("S1_FALLBACK_AVAILABLE" if s1_data.get("available") else "S1_NOT_QUERIED"),
             role="BACKUP",
             product_id=s1_data.get("product_id"),

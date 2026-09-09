@@ -793,5 +793,80 @@
         }
       }
     ]
+  },
+  "audit_test_2b67d993": {
+    "state": {
+      "observation_id": "audit_test_2b67d993",
+      "status": "DISPATCHED",
+      "priority_level": "CRITICAL",
+      "priority_index": "P1",
+      "assigned_agency": "Foam Tender Unit 1",
+      "last_updated_at": "2026-09-09T08:44:05.987420+00:00",
+      "last_updated_by": "On-Scene Commander",
+      "total_actions_count": 4
+    },
+    "audit_trail": [
+      {
+        "id": "AUDIT-INIT-726B7971",
+        "observation_id": "audit_test_2b67d993",
+        "timestamp": "2026-09-09T08:44:05.977967+00:00",
+        "actor": "System Pipeline",
+        "actor_type": "AUTOMATED_PIPELINE",
+        "action": "HOTSPOT_DETECTED",
+        "previous_status": null,
+        "new_status": "NEW",
+        "target_agency": null,
+        "notes": "Radiometric thermal anomaly ingested from NASA FIRMS sensor stream.",
+        "metadata": {
+          "source": "NASA FIRMS",
+          "lifecycle_stage": "DETECT"
+        }
+      },
+      {
+        "id": "AUDIT-1788943445981-8BFC40",
+        "observation_id": "audit_test_2b67d993",
+        "timestamp": "2026-09-09T08:44:05.981048+00:00",
+        "actor": "Test Duty Officer",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "ACKNOWLEDGE",
+        "previous_status": "NEW",
+        "new_status": "ACKNOWLEDGED",
+        "target_agency": null,
+        "notes": "Acknowledged alert for SIH validation.",
+        "metadata": {
+          "priority_override": null
+        }
+      },
+      {
+        "id": "AUDIT-1788943445984-540331",
+        "observation_id": "audit_test_2b67d993",
+        "timestamp": "2026-09-09T08:44:05.984353+00:00",
+        "actor": "Chief Dispatcher",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "DISPATCH",
+        "previous_status": "ACKNOWLEDGED",
+        "new_status": "DISPATCHED",
+        "target_agency": "Foam Tender Unit 1",
+        "notes": "Deploying industrial foam tender.",
+        "metadata": {
+          "priority_override": "CRITICAL"
+        }
+      },
+      {
+        "id": "AUDIT-1788943445987-238A96",
+        "observation_id": "audit_test_2b67d993",
+        "timestamp": "2026-09-09T08:44:05.987420+00:00",
+        "actor": "On-Scene Commander",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "ADD_NOTE",
+        "previous_status": "DISPATCHED",
+        "new_status": "DISPATCHED",
+        "target_agency": null,
+        "notes": "Units arrived on scene. Perimeter secured.",
+        "metadata": {
+          "priority_override": null
+        }
+      }
+    ]
   }
 }

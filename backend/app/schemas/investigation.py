@@ -35,6 +35,7 @@ class IndustrialContextEvidence(BaseModel):
 
 class Sentinel2Evidence(BaseModel):
     available: bool = Field(..., description="Whether genuine Sentinel-2 optical imagery is available")
+    image_available: bool = Field(False, description="Whether genuine Sentinel-2 optical imagery is available")
     state: str = Field(..., description="Acquisition state (e.g., ACQUISITION_AVAILABLE, NO_ACQUISITION, HIGH_CLOUD)")
     class_name: str = Field("UNKNOWN", alias="class", description="AI Vision classification: WILDFIRE, INDUSTRIAL_FIRE, NON_FIRE, UNKNOWN")
     confidence: float = Field(0.0, description="Softmax confidence score in [0.0, 1.0]")
@@ -59,6 +60,7 @@ MANDATORY_SAR_DISCLAIMER = (
 
 class Sentinel1Evidence(BaseModel):
     available: bool = Field(False, description="Whether genuine Sentinel-1 SAR backup imagery is available")
+    image_available: bool = Field(False, description="Whether genuine Sentinel-1 SAR raster image is available")
     state: str = Field("S1_NOT_QUERIED", description="S1 state: S1_NOT_QUERIED, S1_FALLBACK_AVAILABLE, S1_FALLBACK_UNAVAILABLE, S1_PROCESSING_FAILED, S1_AUTH_FAILED")
     role: str = Field("BACKUP", description="Satellite role: always BACKUP")
     product_id: Optional[str] = Field(None, description="Copernicus Sentinel-1 product ID")
