@@ -617,18 +617,21 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
               </div>
 
               {/* ========================================================================= */}
-              {/* CARD 5: SENTINEL-2 OPTICAL EVIDENCE (COPERNICUS) */}
+              {/* CARD 5: SATELLITE EVIDENCE & ORCHESTRATION (COPERNICUS S2 + S1) */}
               {/* ========================================================================= */}
               <div className="investigation-section">
                 <div className="section-header">
                   <span className="section-number">4</span>
                   <span className="section-icon"><FontAwesomeIcon icon={faSatellite} /></span>
-                  <h3 className="section-title">SENTINEL-2 MULTISPECTRAL OPTICAL EVIDENCE</h3>
-                  <span className="section-tag tag-copernicus">Copernicus Sentinel-2</span>
+                  <h3 className="section-title">SATELLITE EVIDENCE & ORCHESTRATION</h3>
+                  <span className="section-tag tag-copernicus">Copernicus Earth Observation</span>
                 </div>
 
                 <SatelliteEvidenceCard
                   satelliteData={data.sentinel2 as any}
+                  sentinel1Data={data.sentinel1}
+                  selectedSatellite={data.selected_satellite}
+                  fallbackReason={data.satellite_fallback_reason}
                   observationId={data.observation_id}
                   coordinates={{ lat: data.detection.latitude, lon: data.detection.longitude }}
                   loading={false}
@@ -707,8 +710,26 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
                           <td>{formatUtcDate(data.provenance.firms_acquired_at)}</td>
                         </tr>
                         <tr>
+                          <th>Active Satellite Source</th>
+                          <td>
+                            <strong style={{ color: data.selected_satellite === 'SENTINEL_1' ? '#c084fc' : (data.selected_satellite === 'SENTINEL_2' ? '#34d399' : '#94a3b8') }}>
+                              {data.selected_satellite === 'SENTINEL_1'
+                                ? 'Sentinel-1 SAR Radar (Backup)'
+                                : (data.selected_satellite === 'SENTINEL_2' ? 'Sentinel-2 Optical (Primary)' : 'None (Thermal + Context Only)')}
+                            </strong>
+                          </td>
+                        </tr>
+                        <tr>
                           <th>Sentinel-2 Acquisition Time</th>
                           <td>{data.provenance.sentinel2_acquired_at ? formatUtcDate(data.provenance.sentinel2_acquired_at) : 'Unavailable'}</td>
+                        </tr>
+                        <tr>
+                          <th>Sentinel-1 Acquisition Time</th>
+                          <td>
+                            {data.provenance.sentinel1_acquired_at
+                              ? formatUtcDate(data.provenance.sentinel1_acquired_at)
+                              : (data.sentinel1?.state === 'S1_NOT_QUERIED' ? 'Not Queried (S2 Usable)' : 'Unavailable')}
+                          </td>
                         </tr>
                         <tr>
                           <th>Temporal Offset from FIRMS</th>

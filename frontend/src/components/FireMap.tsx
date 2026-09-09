@@ -97,12 +97,7 @@ export const FireMap: React.FC<FireMapProps> = ({
   const mapboxToken = (import.meta as any).env?.VITE_MAPBOX_ACCESS_TOKEN || '';
 
   // Layer Toggles
-  const [showThreatZones, setShowThreatZones] = useState<boolean>(true);
-  const [showCriticalAssets, setShowCriticalAssets] = useState<boolean>(true);
-  const [showIndustrial, setShowIndustrial] = useState<boolean>(true);
-  const [showHealthcare, setShowHealthcare] = useState<boolean>(true);
-  const [showTransport, setShowTransport] = useState<boolean>(true);
-  const [showEducation, setShowEducation] = useState<boolean>(true);
+  const [showThreatZones] = useState<boolean>(true);
   const [showLegend, setShowLegend] = useState<boolean>(true);
 
   const getSeverity = (frp: number): 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW' => {

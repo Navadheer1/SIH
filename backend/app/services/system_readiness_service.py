@@ -153,10 +153,12 @@ class SystemReadinessService:
             "usable": sat_status in ("HEALTHY", "DEGRADED"),
             "provider": "Copernicus Data Space Ecosystem (CDSE)",
             "product": "Sentinel-2 L2A Multispectral",
+            "backup_product": "Sentinel-1 GRD SAR",
             "catalog_api": "sh.dataspace.copernicus.eu/catalog/v1/search",
             "processing_api": "sh.dataspace.copernicus.eu/process/v1",
             "latency_ms": sat_latency,
             "optical_evidence_ready": True,
+            "backup_sar_ready": config.SENTINEL1_BACKUP_ENABLED,
         }
 
         # 5. OpenStreetMap & Overpass Context Service

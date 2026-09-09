@@ -3,6 +3,7 @@ from app.schemas.investigation import (
     PersistenceEvidence,
     IndustrialContextEvidence,
     Sentinel2Evidence,
+    Sentinel1Evidence,
     FusionResult,
     RiskResult,
     InvestigationResponse
