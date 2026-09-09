@@ -519,7 +519,23 @@ export interface SimulationResultResponse {
   disclaimer: string;
 }
 
-export type AppView = 'dashboard' | 'incidents' | 'map' | 'status' | 'settings';
+export type AppView = 'landing' | 'dashboard' | 'incidents' | 'map' | 'status' | 'settings';
+
+export interface HotspotTelemetryItem {
+  id: string;
+  latitude: number;
+  longitude: number;
+  brightness: number;
+  confidence: number | string;
+  timestamp: string;
+  riskScore: number;
+  classification: string;
+  clusterName: string;
+  state: string;
+  frp: number;
+  satellite: string;
+  instrument: string;
+}
 
 export interface ServiceDetail {
   configured?: boolean;

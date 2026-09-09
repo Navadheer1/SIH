@@ -33,8 +33,18 @@ export const TopBar: React.FC<TopBarProps> = ({
         </div>
       </div>
 
-      {/* 2. PRIMARY 5-TAB NAVIGATION */}
+      {/* 2. PRIMARY NAVIGATION */}
       <nav className="topbar-nav" aria-label="Main Navigation">
+        <button
+          type="button"
+          className={`nav-tab cinematic-tab ${currentView === 'landing' ? 'active' : ''}`}
+          onClick={() => onViewChange('landing')}
+          title="Switch to 3D Cinematic Observation Experience"
+        >
+          <span className="nav-icon">🪐</span>
+          <span className="nav-label">CINEMATIC VIEW</span>
+        </button>
+
         <button
           type="button"
           className={`nav-tab ${currentView === 'dashboard' ? 'active' : ''}`}
