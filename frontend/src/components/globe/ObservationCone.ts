@@ -6,6 +6,7 @@ export interface ObservationConeSystem {
   coneMesh: THREE.Mesh;
   footprintMesh: THREE.Mesh;
   scanRingMesh: THREE.Mesh;
+  setTargetGroundPos: (pos: THREE.Vector3 | null) => void;
   update: (orbitState: OrbitState, timeSec: number) => void;
   dispose: () => void;
 }
@@ -14,9 +15,9 @@ export function createObservationCone(): ObservationConeSystem {
   const group = new THREE.Group();
   group.name = 'observation-swath-system';
 
+  let targetedGroundPos: THREE.Vector3 | null = null;
+
   // 1. Observation Cone Geometry (Apex at Satellite, Base at Earth Surface)
-  // Height is distance from satellite orbit radius (22.6) to Earth radius (20.0) = ~2.6 units.
-  // Base radius corresponds to VIIRS swath (~3040 km / 6371 km * 20.0 rad ~ 4.7 units).
   const coneHeight = 2.6;
   const swathBaseRadius = 3.6;
 
@@ -50,10 +51,7 @@ export function createObservationCone(): ObservationConeSystem {
       varying vec2 vUv;
 
       void main() {
-        // Vertical gradient: transparent at apex, subtle at ground
         float vertFade = smoothstep(0.0, -2.6, vPosition.y);
-
-        // Rotating scan pulse
         float pulse = sin((vPosition.y * 8.0) + (time * 4.0)) * 0.5 + 0.5;
 
         vec3 color = mix(baseColor, activeColor, isActive);
@@ -97,38 +95,45 @@ export function createObservationCone(): ObservationConeSystem {
   const scanRingMesh = new THREE.Mesh(scanRingGeom, scanRingMat);
   group.add(scanRingMesh);
 
+  const setTargetGroundPos = (pos: THREE.Vector3 | null) => {
+    targetedGroundPos = pos;
+  };
+
   const update = (orbitState: OrbitState, timeSec: number) => {
+    const isTargeted = targetedGroundPos !== null;
+    const isPass = orbitState.isOverIndia || isTargeted;
+
     coneMat.uniforms.time.value = timeSec;
-    coneMat.uniforms.isActive.value = orbitState.isOverIndia ? 1.0 : 0.2;
+    coneMat.uniforms.isActive.value = isPass ? 1.0 : 0.2;
 
     const satPos = orbitState.orbitPosition;
-    const groundPos = orbitState.subSatellitePoint;
+    const groundPos = targetedGroundPos || orbitState.subSatellitePoint;
 
     // Position cone apex at satellite
     coneMesh.position.copy(satPos);
 
-    // Orient cone along vector from satellite to Earth ground coordinate
+    // Orient cone along vector from satellite to ground target
     const dir = new THREE.Vector3().subVectors(groundPos, satPos).normalize();
     const up = new THREE.Vector3(0, 1, 0);
     const quat = new THREE.Quaternion().setFromUnitVectors(up.clone().negate(), dir);
     coneMesh.setRotationFromQuaternion(quat);
 
-    // Align length to actual distance
+    // Scale length to actual distance
     const distance = satPos.distanceTo(groundPos);
     coneMesh.scale.set(1, distance / coneHeight, 1);
 
     // Position footprint ring on ground surface
     footprintMesh.position.copy(groundPos);
-    footprintMesh.lookAt(new THREE.Vector3(0, 0, 0)); // Normal to sphere
-    footprintMat.color.setHex(orbitState.isOverIndia ? 0x10b981 : 0x06b6d4);
-    footprintMat.opacity = orbitState.isOverIndia ? 0.6 : 0.2;
+    footprintMesh.lookAt(new THREE.Vector3(0, 0, 0));
+    footprintMat.color.setHex(isPass ? 0x10b981 : 0x06b6d4);
+    footprintMat.opacity = isPass ? 0.6 : 0.2;
 
     // Animate scan ring pulse
     scanRingMesh.position.copy(groundPos);
     scanRingMesh.lookAt(new THREE.Vector3(0, 0, 0));
     const scanScale = (timeSec * 1.5) % 3.0 + 0.5;
     scanRingMesh.scale.set(scanScale, scanScale, 1);
-    scanRingMat.opacity = (1.0 - (scanScale / 3.5)) * (orbitState.isOverIndia ? 0.8 : 0.25);
+    scanRingMat.opacity = (1.0 - (scanScale / 3.5)) * (isPass ? 0.8 : 0.25);
   };
 
   return {
@@ -136,6 +141,7 @@ export function createObservationCone(): ObservationConeSystem {
     coneMesh,
     footprintMesh,
     scanRingMesh,
+    setTargetGroundPos,
     update,
     dispose: () => {
       coneGeom.dispose();

@@ -5,7 +5,11 @@ import { GLOBE_RADIUS, latLonToGlobeVector3 } from './EarthGlobe';
 export interface FirmsLayerSystem {
   group: THREE.Group;
   interactiveMeshes: THREE.Mesh[];
-  setHotspots: (hotspots: Hotspot[], selectedId: string | null) => void;
+  setHotspots: (
+    hotspots: Hotspot[],
+    selectedId: string | null,
+    viewMode?: 'risk_field' | 'heatmap'
+  ) => void;
   update: (timeSec: number) => void;
   dispose: () => void;
 }
@@ -25,14 +29,14 @@ export function createFirmsLayer(): FirmsLayerSystem {
   let interactiveMeshes: THREE.Mesh[] = [];
   let animatedMarkers: {
     mesh: THREE.Mesh;
-    pulseRing: THREE.Mesh;
     baseScale: number;
     isSelected: boolean;
   }[] = [];
+  let densityMeshes: THREE.Mesh[] = [];
 
-  const markerGeometry = new THREE.SphereGeometry(0.12, 12, 12);
+  const markerGeometry = new THREE.SphereGeometry(0.09, 12, 12);
   const hitGeometry = new THREE.SphereGeometry(0.35, 8, 8);
-  const ringGeometry = new THREE.RingGeometry(0.15, 0.28, 24);
+  const densityGeometry = new THREE.CircleGeometry(1.0, 32);
 
   const clear = () => {
     while (group.children.length > 0) {
@@ -41,9 +45,14 @@ export function createFirmsLayer(): FirmsLayerSystem {
     }
     interactiveMeshes = [];
     animatedMarkers = [];
+    densityMeshes = [];
   };
 
-  const setHotspots = (hotspots: Hotspot[], selectedId: string | null) => {
+  const setHotspots = (
+    hotspots: Hotspot[],
+    selectedId: string | null,
+    viewMode: 'risk_field' | 'heatmap' = 'risk_field'
+  ) => {
     clear();
 
     hotspots.forEach((h) => {
@@ -53,32 +62,20 @@ export function createFirmsLayer(): FirmsLayerSystem {
 
       // Radiometric scaling factor based on FRP
       const frpVal = Math.max(5, Math.min(250, h.frp || 20));
-      const scaleFactor = 0.7 + (Math.log1p(frpVal) / 5.5) * 1.2;
+      const scaleFactor = 0.75 + (Math.log1p(frpVal) / 5.5) * 0.9;
 
-      // 1. Core Thermal Marker Mesh
+      // 1. Precise Radiometric Point Observation (Small, clean, no circle clutter)
       const markerMat = new THREE.MeshBasicMaterial({
         color: isSelected ? 0xffffff : color,
+        transparent: true,
+        opacity: isSelected ? 1.0 : 0.75,
       });
       const markerMesh = new THREE.Mesh(markerGeometry, markerMat);
       markerMesh.position.copy(pos);
-      markerMesh.scale.setScalar(scaleFactor);
+      markerMesh.scale.setScalar(isSelected ? scaleFactor * 1.5 : scaleFactor);
       group.add(markerMesh);
 
-      // 2. Pulsing Ground Ring
-      const ringMat = new THREE.MeshBasicMaterial({
-        color: color,
-        transparent: true,
-        opacity: isSelected ? 0.9 : 0.6,
-        side: THREE.DoubleSide,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-      });
-      const ringMesh = new THREE.Mesh(ringGeometry, ringMat);
-      ringMesh.position.copy(pos);
-      ringMesh.lookAt(new THREE.Vector3(0, 0, 0)); // Align flush to sphere surface
-      group.add(ringMesh);
-
-      // 3. Invisible Hit Target for Raycasting
+      // 2. Invisible Hit Target for Raycasting
       const hitMat = new THREE.MeshBasicMaterial({ visible: false });
       const hitMesh = new THREE.Mesh(hitGeometry, hitMat);
       hitMesh.position.copy(pos);
@@ -86,9 +83,27 @@ export function createFirmsLayer(): FirmsLayerSystem {
       group.add(hitMesh);
       interactiveMeshes.push(hitMesh);
 
+      // 3. Thermal Field Mode: Aggregated Soft Density Footprint
+      if (viewMode === 'heatmap') {
+        const densityRadius = 0.5 + (Math.log1p(frpVal) / 4.0) * 0.8;
+        const densityMat = new THREE.MeshBasicMaterial({
+          color: color,
+          transparent: true,
+          opacity: 0.28,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+        });
+        const dMesh = new THREE.Mesh(densityGeometry, densityMat);
+        dMesh.position.copy(pos);
+        dMesh.scale.set(densityRadius, densityRadius, 1);
+        dMesh.lookAt(new THREE.Vector3(0, 0, 0));
+        group.add(dMesh);
+        densityMeshes.push(dMesh);
+      }
+
       animatedMarkers.push({
         mesh: markerMesh,
-        pulseRing: ringMesh,
         baseScale: scaleFactor,
         isSelected,
       });
@@ -96,22 +111,18 @@ export function createFirmsLayer(): FirmsLayerSystem {
   };
 
   const update = (timeSec: number) => {
-    animatedMarkers.forEach((item, idx) => {
-      // Staggered pulsation based on index
-      const phase = (timeSec * 3.0) + (idx * 0.4);
-      const pulse = Math.sin(phase) * 0.2 + 1.0;
-
+    animatedMarkers.forEach((item) => {
       if (item.isSelected) {
-        item.mesh.scale.setScalar(item.baseScale * (1.2 + Math.sin(timeSec * 6) * 0.25));
-        const ringScale = (timeSec * 2.0) % 2.5 + 1.0;
-        item.pulseRing.scale.set(ringScale, ringScale, 1);
-        (item.pulseRing.material as THREE.MeshBasicMaterial).opacity = 1.0 - (ringScale / 3.5);
-      } else {
+        // High-intensity radiant pulsation on selected core
+        const pulse = 1.2 + Math.sin(timeSec * 7.0) * 0.25;
         item.mesh.scale.setScalar(item.baseScale * pulse);
-        const ringScale = (timeSec * 1.2 + idx * 0.3) % 2.0 + 0.8;
-        item.pulseRing.scale.set(ringScale, ringScale, 1);
-        (item.pulseRing.material as THREE.MeshBasicMaterial).opacity = (1.0 - (ringScale / 2.8)) * 0.6;
       }
+    });
+
+    densityMeshes.forEach((dMesh, idx) => {
+      // Gentle thermal heat distortion pulse in heatmap mode
+      const dPulse = 1.0 + Math.sin(timeSec * 2.0 + idx) * 0.06;
+      dMesh.scale.set(dPulse, dPulse, 1);
     });
   };
 
@@ -126,7 +137,7 @@ export function createFirmsLayer(): FirmsLayerSystem {
       clear();
       markerGeometry.dispose();
       hitGeometry.dispose();
-      ringGeometry.dispose();
+      densityGeometry.dispose();
     },
   };
 }

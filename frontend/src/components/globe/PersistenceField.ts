@@ -14,9 +14,8 @@ export function createPersistenceField(): PersistenceFieldSystem {
   group.name = 'persistence-clusters-field';
 
   let animatedRings: {
-    ringMesh: THREE.Mesh;
+    ringMesh?: THREE.Mesh;
     historicalMarkers: THREE.Mesh[];
-    baseRadius: number;
     isSelected: boolean;
   }[] = [];
 
@@ -39,60 +38,46 @@ export function createPersistenceField(): PersistenceFieldSystem {
         GLOBE_RADIUS * 1.005
       );
 
-      // Persistence score (0 - 100) scales the concentric orbit rings
       const persistenceScore = cluster.persistence_score || 50;
       const obsCount = Math.max(1, cluster.observation_count || 1);
-      const ringRadius = 0.4 + (persistenceScore / 100) * 0.6;
+      const ringRadius = 0.35 + (persistenceScore / 100) * 0.45;
 
-      // 1. Concentric Temporal Persistence Ring
-      const ringGeom = new THREE.RingGeometry(ringRadius * 0.9, ringRadius, 32);
-      const ringMat = new THREE.MeshBasicMaterial({
-        color: isSelected ? 0x38bdf8 : 0x0284c7, // Scientific telemetry cyan
-        transparent: true,
-        opacity: isSelected ? 0.9 : 0.5,
-        side: THREE.DoubleSide,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-      });
-      const ringMesh = new THREE.Mesh(ringGeom, ringMat);
-      ringMesh.position.copy(centerPos);
-      ringMesh.lookAt(new THREE.Vector3(0, 0, 0));
-      group.add(ringMesh);
+      let ringMesh: THREE.Mesh | undefined;
 
-      // 2. Secondary Historical Orbit Pass Ring for High Persistence
-      if (obsCount >= 3) {
-        const outerRingGeom = new THREE.RingGeometry(ringRadius * 1.35, ringRadius * 1.42, 32);
-        const outerRingMat = new THREE.MeshBasicMaterial({
-          color: 0x60a5fa,
+      // Only render concentric persistence ring if selected (Clutter Reduction Rule)
+      if (isSelected) {
+        const ringGeom = new THREE.RingGeometry(ringRadius * 0.94, ringRadius, 32);
+        const ringMat = new THREE.MeshBasicMaterial({
+          color: 0x38bdf8,
           transparent: true,
-          opacity: 0.35,
+          opacity: 0.85,
           side: THREE.DoubleSide,
           depthWrite: false,
           blending: THREE.AdditiveBlending,
         });
-        const outerRingMesh = new THREE.Mesh(outerRingGeom, outerRingMat);
-        outerRingMesh.position.copy(centerPos);
-        outerRingMesh.lookAt(new THREE.Vector3(0, 0, 0));
-        group.add(outerRingMesh);
+        ringMesh = new THREE.Mesh(ringGeom, ringMat);
+        ringMesh.position.copy(centerPos);
+        ringMesh.lookAt(new THREE.Vector3(0, 0, 0));
+        group.add(ringMesh);
       }
 
-      // 3. Historical Detection Orbit Satellite Pass Nodes (○  ●  ○)
+      // Small Historical Detection Orbit Satellite Pass Nodes (○  ●  ○)
       const historicalNodes: THREE.Mesh[] = [];
-      const nodeCount = Math.min(6, obsCount);
-      const nodeGeom = new THREE.RingGeometry(0.04, 0.08, 16);
+      const nodeCount = Math.min(4, obsCount);
+      const nodeGeom = new THREE.CircleGeometry(0.04, 12);
       const nodeMat = new THREE.MeshBasicMaterial({
-        color: 0x93c5fd,
+        color: isSelected ? 0x38bdf8 : 0x0284c7,
         transparent: true,
-        opacity: 0.8,
+        opacity: isSelected ? 0.85 : 0.4,
         side: THREE.DoubleSide,
         depthWrite: false,
       });
 
       for (let i = 0; i < nodeCount; i++) {
         const angle = (i / nodeCount) * Math.PI * 2;
-        const offsetLat = cluster.center_latitude + Math.sin(angle) * 0.25;
-        const offsetLon = cluster.center_longitude + Math.cos(angle) * 0.25;
-        const nodePos = latLonToGlobeVector3(offsetLat, offsetLon, GLOBE_RADIUS * 1.006);
+        const offsetLat = cluster.center_latitude + Math.sin(angle) * 0.16;
+        const offsetLon = cluster.center_longitude + Math.cos(angle) * 0.16;
+        const nodePos = latLonToGlobeVector3(offsetLat, offsetLon, GLOBE_RADIUS * 1.005);
 
         const nodeMesh = new THREE.Mesh(nodeGeom, nodeMat);
         nodeMesh.position.copy(nodePos);
@@ -104,20 +89,20 @@ export function createPersistenceField(): PersistenceFieldSystem {
       animatedRings.push({
         ringMesh,
         historicalMarkers: historicalNodes,
-        baseRadius: ringRadius,
         isSelected,
       });
     });
   };
 
   const update = (timeSec: number) => {
-    animatedRings.forEach((item, idx) => {
-      // Rotation & subtle breathing pulse for persistence visualization
-      const pulse = Math.sin(timeSec * 2.0 + idx * 0.5) * 0.08 + 1.0;
-      item.ringMesh.scale.set(pulse, pulse, 1);
+    animatedRings.forEach((item) => {
+      if (item.isSelected && item.ringMesh) {
+        const pulse = Math.sin(timeSec * 2.5) * 0.05 + 1.0;
+        item.ringMesh.scale.set(pulse, pulse, 1);
+      }
 
       item.historicalMarkers.forEach((node, nodeIdx) => {
-        const nodePulse = Math.sin(timeSec * 3.5 + nodeIdx) * 0.3 + 0.7;
+        const nodePulse = Math.sin(timeSec * 3.0 + nodeIdx) * 0.2 + 0.8;
         node.scale.setScalar(nodePulse);
       });
     });

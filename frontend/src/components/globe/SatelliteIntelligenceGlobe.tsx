@@ -9,13 +9,13 @@ import {
   ExposedAsset,
   OsmFeature,
 } from '../../types/hotspot';
-import { createEarthGlobe, EarthGlobeSystem } from './EarthGlobe';
+import { createEarthGlobe, EarthGlobeSystem, GLOBE_RADIUS, latLonToGlobeVector3 } from './EarthGlobe';
 import { createSatelliteOrbitSystem, SatelliteOrbitSystem } from './SatelliteOrbit';
 import { createSatelliteModel, SatelliteModelSystem } from './SatelliteModel';
 import { createObservationCone, ObservationConeSystem } from './ObservationCone';
 import { createFirmsLayer, FirmsLayerSystem } from './FirmsLayer';
 import { createPersistenceField, PersistenceFieldSystem } from './PersistenceField';
-import { createThermalRiskField, ThermalRiskFieldSystem } from './ThermalRiskField';
+import { createThermalRiskField, ThermalRiskFieldSystem, ExpansionStage } from './ThermalRiskField';
 import { createIndustrialLayer, IndustrialLayerSystem } from './IndustrialLayer';
 import { createGlobeControls, GlobeCameraControls } from './GlobeControls';
 import { createStarfield } from '../landing/Starfield';
@@ -57,9 +57,19 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
   const [timeFilter, setTimeFilter] = useState<'NOW' | '-1h' | '-3h' | '-6h'>('NOW');
   const [hoveredHotspot, setHoveredHotspot] = useState<Hotspot | null>(null);
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
-  const [expansionState, setExpansionState] = useState<{ phase: string; label: string }>({
-    phase: 'T4',
-    label: 'OPERATIONAL MONITORING',
+  const [isDemoRunning, setIsDemoRunning] = useState<boolean>(false);
+
+  // 6-Stage State Machine Indicator
+  const [expansionState, setExpansionState] = useState<{
+    stage: ExpansionStage;
+    stageNumber: number;
+    label: string;
+    radiiKm: { inner: number; secondary: number; monitoring: number };
+  }>({
+    stage: 'STATE 5: RISK FIELD STABILIZED',
+    stageNumber: 5,
+    label: 'OPERATIONAL MONITORING ACTIVE',
+    radiiKm: { inner: 1.2, secondary: 2.8, monitoring: 5.2 },
   });
 
   // Orbital Telemetry State
@@ -74,12 +84,24 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
     utcTime: new Date().toISOString().slice(11, 19) + ' UTC',
   });
 
+  // Target Anomaly Enrichment Telemetry Block
+  const [activeTargetTelemetry, setActiveTargetTelemetry] = useState<{
+    targetCoords: string;
+    signal: string;
+    persistence: string;
+    classification: string;
+    riskScore: string;
+    riskFieldKm: string;
+    facilityName?: string | null;
+  } | null>(null);
+
   // System References
   const controlsRef = useRef<GlobeCameraControls | null>(null);
   const firmsLayerRef = useRef<FirmsLayerSystem | null>(null);
   const persistenceFieldRef = useRef<PersistenceFieldSystem | null>(null);
   const thermalRiskRef = useRef<ThermalRiskFieldSystem | null>(null);
   const industrialLayerRef = useRef<IndustrialLayerSystem | null>(null);
+  const observationConeRef = useRef<ObservationConeSystem | null>(null);
   const orbitSystemRef = useRef<SatelliteOrbitSystem | null>(null);
 
   // Filter hotspots based on temporal slider
@@ -94,24 +116,33 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
     });
   }, [hotspots, timeFilter]);
 
-  // Handle Hotspot Selection & Camera Focus
+  // Handle Hotspot Selection & Scientific Investigation Sequence
   const handleHotspotClick = (h: Hotspot) => {
     onSelectHotspot(h);
+
+    // 1. Smooth Camera Fly-To Easing
     if (controlsRef.current) {
       controlsRef.current.flyTo(h.latitude, h.longitude, 25.5, 1.4);
     }
 
-    // Match priority ranking or cluster for enhanced enrichment
+    // 2. Direct Observation Beam from Satellite to Ground Coordinate
+    const targetGround = latLonToGlobeVector3(h.latitude, h.longitude, GLOBE_RADIUS * 1.002);
+    observationConeRef.current?.setTargetGroundPos(targetGround);
+
+    // 3. Match Priority Ranking & Calculate Data-Driven Risk
     const matchPriority = priorityItems.find(
       (p) => p.hotspot_id === h.observation_id || p.cluster_id === h.observation_id
     );
     const riskScore = matchPriority ? matchPriority.risk_score * 100 : (h.frp || 25) > 60 ? 82 : 55;
-    const classification = matchPriority?.classification || 'INDUSTRIAL_FIRE';
+    const classification = matchPriority?.classification || 'INDUSTRIAL CANDIDATE';
+    const persistenceScore = matchPriority?.persistence_score || 75;
 
+    // 4. Activate 5-Layer 3D Volumetric Thermal Risk Field (Rising Plume)
     if (thermalRiskRef.current) {
-      thermalRiskRef.current.setActiveTarget(h, threatZones, riskScore, classification);
+      thermalRiskRef.current.setActiveTarget(h, threatZones, riskScore, classification, persistenceScore);
     }
 
+    // 5. Connect Real OSM Industrial Facilities
     if (industrialLayerRef.current) {
       industrialLayerRef.current.setFeatures(
         h,
@@ -120,6 +151,18 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
         matchPriority?.industrial_distance_km
       );
     }
+
+    // 6. Populate Mission Control Target Telemetry
+    const estRadius = threatZones?.zones?.secondary_zone?.radius_km || (2.5 + (riskScore / 100) * 1.2);
+    setActiveTargetTelemetry({
+      targetCoords: `${h.latitude.toFixed(4)}°N, ${h.longitude.toFixed(4)}°E`,
+      signal: `ACQUIRED (${(h.frp || 25.0).toFixed(1)} MW / ${(h.brightness || 342.0).toFixed(1)} K)`,
+      persistence: persistenceScore >= 70 ? `CONFIRMED (${persistenceScore.toFixed(0)}%)` : `LOW (${persistenceScore.toFixed(0)}%)`,
+      classification: classification.toUpperCase(),
+      riskScore: `${Math.round(riskScore)} / 100`,
+      riskFieldKm: `${estRadius.toFixed(1)} KM EST.`,
+      facilityName: matchPriority?.industrial_facility,
+    });
   };
 
   // Sync when selectedHotspot prop changes from parent
@@ -128,6 +171,45 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
       handleHotspotClick(selectedHotspot);
     }
   }, [selectedHotspot]);
+
+  // Automated 6-8s SIH Demo Pipeline Sequence (Requirement 20)
+  const runDemoPipeline = () => {
+    if (isDemoRunning) return;
+    setIsDemoRunning(true);
+
+    // STEP 1: Global View & Orbit Patrol (0.0s)
+    controlsRef.current?.flyToGlobal();
+    observationConeRef.current?.setTargetGroundPos(null);
+
+    // STEP 2: Satellite Approaches India & Detects Pass (1.8s)
+    setTimeout(() => {
+      controlsRef.current?.flyToIndia();
+    }, 1800);
+
+    // STEP 3: Lock Highest Value Thermal Anomaly & Fly-To Ground (3.6s)
+    setTimeout(() => {
+      const bestTarget =
+        [...hotspots].sort((a, b) => (b.frp || 0) - (a.frp || 0))[0] || {
+          observation_id: 'sih_demo_target_01',
+          latitude: 16.31,
+          longitude: 80.42,
+          frp: 88.5,
+          brightness: 358.4,
+          confidence: 'nominal',
+          acquired_at: new Date().toISOString(),
+          satellite: 'NOAA-21',
+          instrument: 'VIIRS',
+          source: 'NASA FIRMS',
+        };
+
+      handleHotspotClick(bestTarget);
+    }, 3600);
+
+    // STEP 4: Conclude Demo Sequence (7.2s)
+    setTimeout(() => {
+      setIsDemoRunning(false);
+    }, 7200);
+  };
 
   // Main Three.js Lifecycle
   useEffect(() => {
@@ -176,6 +258,7 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
 
     const observationCone: ObservationConeSystem = createObservationCone();
     scene.add(observationCone.group);
+    observationConeRef.current = observationCone;
 
     const firmsLayer: FirmsLayerSystem = createFirmsLayer();
     scene.add(firmsLayer.group);
@@ -251,11 +334,11 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
       const delta = clock.getDelta();
       const elapsed = clock.getElapsedTime();
 
-      // Advance satellite orbit (deterministic rate: ~1 orbit every 90s in simulation time)
+      // Advance satellite orbit (deterministic: ~1 orbit every 90s in simulation)
       orbitProgress = (orbitProgress + delta * 0.012) % 1.0;
       const orbitState = orbitSystem.calculateState(orbitProgress);
 
-      // Update Systems
+      // Update Subsystems
       earthSystem.update(delta);
       satelliteModel.update(orbitState);
       observationCone.update(orbitState, elapsed);
@@ -265,7 +348,7 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
       industrialLayer.update(elapsed);
       controls.update(delta);
 
-      // Update UI Telemetry at throttled intervals
+      // Update UI Telemetry throttled to 4Hz
       if (Math.floor(elapsed * 4) % 4 === 0) {
         setSatelliteTelemetry({
           satellite: 'NOAA-21 (JPSS-2)',
@@ -277,7 +360,7 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
           isOverIndia: orbitState.isOverIndia,
           utcTime: new Date().toISOString().slice(11, 19) + ' UTC',
         });
-        setExpansionState(thermalRisk.getExpansionPhase());
+        setExpansionState(thermalRisk.getExpansionState());
       }
 
       renderer.render(scene, camera);
@@ -320,12 +403,16 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
     };
   }, []);
 
-  // Update Hotspot Points on filteredHotspots change
+  // Update Hotspot Points on filteredHotspots or viewMode change
   useEffect(() => {
     if (firmsLayerRef.current) {
-      firmsLayerRef.current.setHotspots(filteredHotspots, selectedHotspot?.observation_id || null);
+      firmsLayerRef.current.setHotspots(
+        filteredHotspots,
+        selectedHotspot?.observation_id || null,
+        viewMode
+      );
     }
-  }, [filteredHotspots, selectedHotspot]);
+  }, [filteredHotspots, selectedHotspot, viewMode]);
 
   // Update Persistent Clusters on clusters change
   useEffect(() => {
@@ -374,6 +461,48 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
           </div>
         </div>
 
+        {/* ACTIVE TARGET TELEMETRY ENRICHMENT (Requirement 16) */}
+        {activeTargetTelemetry && (
+          <div className="hud-target-block">
+            <div className="target-block-header">
+              <span className="target-dot" />
+              <span>ACTIVE OBSERVATION TARGET</span>
+            </div>
+            <div className="target-grid">
+              <div className="target-item">
+                <span className="target-label">COORDINATES</span>
+                <span className="target-val font-mono">{activeTargetTelemetry.targetCoords}</span>
+              </div>
+              <div className="target-item">
+                <span className="target-label">THERMAL SIGNAL</span>
+                <span className="target-val text-orange">{activeTargetTelemetry.signal}</span>
+              </div>
+              <div className="target-item">
+                <span className="target-label">PERSISTENCE</span>
+                <span className="target-val text-cyan">{activeTargetTelemetry.persistence}</span>
+              </div>
+              <div className="target-item">
+                <span className="target-label">AI CLASSIFICATION</span>
+                <span className="target-val text-emerald">{activeTargetTelemetry.classification}</span>
+              </div>
+              <div className="target-item">
+                <span className="target-label">RISK SCORE</span>
+                <span className="target-val text-red font-mono">{activeTargetTelemetry.riskScore}</span>
+              </div>
+              <div className="target-item">
+                <span className="target-label">AI RISK FIELD</span>
+                <span className="target-val text-amber font-mono">{activeTargetTelemetry.riskFieldKm}</span>
+              </div>
+            </div>
+            {activeTargetTelemetry.facilityName && (
+              <div className="target-facility-row">
+                <span className="facility-icon">🏭</span>
+                <span className="facility-name">{activeTargetTelemetry.facilityName}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ACTIVE PASS NOTICE */}
         {satelliteTelemetry.isOverIndia && (
           <div className="hud-pass-badge">
@@ -390,7 +519,7 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
             type="button"
             className={`btn-globe-pill ${viewMode === 'risk_field' ? 'active' : ''}`}
             onClick={() => setViewMode('risk_field')}
-            title="5-Layer 3D Volumetric Thermal Risk Propagation"
+            title="3D Volumetric Thermal Risk Propagation Volume (AI Estimated)"
           >
             🔥 3D Risk Field
           </button>
@@ -398,13 +527,23 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
             type="button"
             className={`btn-globe-pill ${viewMode === 'heatmap' ? 'active' : ''}`}
             onClick={() => setViewMode('heatmap')}
-            title="Aggregated Thermal Density Field"
+            title="Aggregated Thermal Density Heatmap Field"
           >
             🌡️ Thermal Field
           </button>
         </div>
 
         <div className="globe-nav-buttons">
+          {/* SIH DEMO SEQUENCE TRIGGER (Requirement 20) */}
+          <button
+            type="button"
+            className={`btn-globe-demo ${isDemoRunning ? 'running' : ''}`}
+            onClick={runDemoPipeline}
+            title="Run Automated 6-8s End-to-End Satellite Intelligence Demo Pipeline"
+            disabled={isDemoRunning}
+          >
+            {isDemoRunning ? '🛰️ RUNNING DEMO...' : '▶ SIH PIPELINE DEMO'}
+          </button>
           <button
             type="button"
             className="btn-globe-nav"
@@ -424,14 +563,15 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
         </div>
       </div>
 
-      {/* 3. BOTTOM-LEFT EXPANSION SEQUENCE PHASE INDICATOR */}
+      {/* 3. BOTTOM-LEFT 6-STAGE EXPANSION PHASE INDICATOR */}
       <div className="globe-phase-indicator">
         <div className="phase-row">
-          <span className="phase-pill">{expansionState.phase}</span>
-          <span className="phase-label">{expansionState.label}</span>
+          <span className="phase-pill">STAGE {expansionState.stageNumber}</span>
+          <span className="phase-label">{expansionState.stage}</span>
         </div>
+        <div className="phase-sublabel">{expansionState.label}</div>
         <div className="phase-disclaimer">
-          AI ESTIMATED THERMAL INFLUENCE ZONE — Calculated risk propagation, not physical fire boundary.
+          AI ESTIMATED THERMAL INFLUENCE ZONE — Calculated atmospheric risk propagation, not physical fire boundary.
         </div>
       </div>
 
@@ -455,7 +595,7 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
         </span>
       </div>
 
-      {/* 5. SCIENTIFIC HOVER CARD (Requirement 18) */}
+      {/* 5. SCIENTIFIC HOVER CARD */}
       {hoveredHotspot && hoverPos && (
         <div
           className="globe-scientific-tooltip"
@@ -463,7 +603,7 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
         >
           <div className="tooltip-header">
             <span className="tooltip-icon">🔥</span>
-            <span className="tooltip-title">THERMAL RISK FIELD</span>
+            <span className="tooltip-title">AI THERMAL RISK FIELD</span>
           </div>
           <div className="tooltip-body">
             <div className="tooltip-row">
@@ -491,7 +631,7 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
               <span className="tt-val font-mono">{hoveredHotspot.latitude.toFixed(4)}°N, {hoveredHotspot.longitude.toFixed(4)}°E</span>
             </div>
           </div>
-          <div className="tooltip-footer">Click anomaly to lock camera & activate 3D risk expansion</div>
+          <div className="tooltip-footer">Click anomaly to lock camera & activate 3D risk volume</div>
         </div>
       )}
     </div>

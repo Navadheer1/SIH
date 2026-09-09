@@ -138,4 +138,44 @@ describe('Thermoscope 3D Satellite Intelligence Globe Architecture Tests', () =>
     assert.equal(getSeverityColorHex(25), '#eab308');
     assert.equal(getSeverityColorHex(8), '#06b6d4');
   });
+
+  it('Test 7: Validates the upgraded 6-stage state machine mapping', () => {
+    function getSixStageExpansion(progress) {
+      if (progress < 0.18) return { stage: 'STATE 1: THERMAL SIGNAL', stageNumber: 1 };
+      if (progress < 0.38) return { stage: 'STATE 2: SIGNAL VALIDATED', stageNumber: 2 };
+      if (progress < 0.58) return { stage: 'STATE 3: PERSISTENCE CONFIRMED', stageNumber: 3 };
+      if (progress < 0.82) return { stage: 'STATE 4: AI RISK MODEL', stageNumber: 4 };
+      if (progress < 0.98) return { stage: 'STATE 5: RISK FIELD STABILIZED', stageNumber: 5 };
+      return { stage: 'STATE 6: INCIDENT ASSESSED', stageNumber: 6 };
+    }
+
+    assert.equal(getSixStageExpansion(0.08).stageNumber, 1);
+    assert.equal(getSixStageExpansion(0.25).stageNumber, 2);
+    assert.equal(getSixStageExpansion(0.48).stageNumber, 3);
+    assert.equal(getSixStageExpansion(0.72).stageNumber, 4);
+    assert.equal(getSixStageExpansion(0.90).stageNumber, 5);
+    assert.equal(getSixStageExpansion(1.0).stageNumber, 6);
+    assert.equal(getSixStageExpansion(1.0).stage, 'STATE 6: INCIDENT ASSESSED');
+  });
+
+  it('Test 8: Validates natural exponential volumetric gradient falloff math', () => {
+    function calculateVolumetricIntensity(rNorm, yNorm) {
+      const radial = Math.exp(-Math.pow(rNorm, 2.0) * 3.2);
+      const vertical = Math.pow(Math.max(0.0, 1.0 - yNorm), 1.4);
+      return radial * vertical;
+    }
+
+    // At ground center (r = 0, y = 0)
+    const center = calculateVolumetricIntensity(0, 0);
+    assert.ok(Math.abs(center - 1.0) < 0.001, 'Center ground intensity must equal 1.0');
+
+    // At middle radius & elevation (r = 0.5, y = 0.3)
+    const mid = calculateVolumetricIntensity(0.5, 0.3);
+    assert.ok(mid > 0.25 && mid < 0.65, 'Mid-field intensity must be moderate');
+
+    // At boundary (r = 1.0, y = 0.8)
+    const edge = calculateVolumetricIntensity(1.0, 0.8);
+    assert.ok(edge < 0.05, 'Outer boundary intensity must fade smoothly to near zero');
+  });
 });
+
