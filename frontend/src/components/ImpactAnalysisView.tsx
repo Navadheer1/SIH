@@ -1,3 +1,9 @@
+import {
+  faBolt,
+  faBullseye,
+  faIndustry,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React from 'react';
 import { ThermalAlert, PriorityIncidentItem } from '../types/hotspot';
 import { PriorityLeaderboard } from './PriorityLeaderboard';
@@ -25,7 +31,7 @@ export const ImpactAnalysisView: React.FC<ImpactAnalysisViewProps> = ({
     <div className="impact-analysis-view">
       <div className="view-header-bar">
         <div>
-          <h2 className="view-title">🏭 Critical Infrastructure & Population Impact Intelligence</h2>
+          <h2 className="view-title"><FontAwesomeIcon icon={faIndustry} /> Critical Infrastructure & Population Impact Intelligence</h2>
           <p className="view-subtitle">
             Dynamic Threat Assessment • 7 Asset Exposure Classes • AI-Generated Threat Zones & Priority Index (P1–P4)
           </p>
@@ -53,7 +59,7 @@ export const ImpactAnalysisView: React.FC<ImpactAnalysisViewProps> = ({
         {/* Dynamic Threat Zone Definitions Card */}
         <div className="impact-card">
           <div className="card-header">
-            <span className="card-icon">🎯</span>
+            <span className="card-icon"><FontAwesomeIcon icon={faBullseye} /></span>
             <h4>AI-Generated Threat Assessment Zones (Disclaimer: Risk Zones Only)</h4>
           </div>
           <div className="buffer-standards-list">
@@ -75,7 +81,7 @@ export const ImpactAnalysisView: React.FC<ImpactAnalysisViewProps> = ({
         {/* Critical Asset Vulnerability List */}
         <div className="impact-card">
           <div className="card-header">
-            <span className="card-icon">⚡</span>
+            <span className="card-icon"><FontAwesomeIcon icon={faBolt} /></span>
             <h4>High-Priority Infrastructure Intersections ({criticalAndHigh.length})</h4>
           </div>
           {criticalAndHigh.length === 0 ? (

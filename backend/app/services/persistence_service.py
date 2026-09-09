@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
 
 from app.services.firms_service import fetch_firms_hotspots
-from app.services.osm_service import fetch_hotspot_osm_context, haversine_distance_km
+from app.services.osm_service import fetch_hotspot_osm_context, get_cached_osm_context, haversine_distance_km
 
 logger = logging.getLogger(__name__)
 
@@ -62,11 +62,12 @@ async def detect_persistent_clusters(
     custom_bbox: Optional[List[float]] = None,
     min_score: float = 0.0,
     cluster_radius_km: float = DEFAULT_CLUSTER_RADIUS_KM,
-    fetch_context_for_top: int = 5
+    fetch_context_for_top: int = 0
 ) -> Dict[str, Any]:
     """
     Process real NASA FIRMS observations to group thermal hotspots into spatial-temporal clusters.
     Calculates first/last detected times, duration, spatial radius, persistence score, and industrial context.
+    NON-BLOCKING: Clustering never blocks on external network calls.
     """
     now = time.time()
     
@@ -88,55 +89,43 @@ async def detect_persistent_clusters(
         }
 
     # 2. Perform Spatial Clustering using Haversine Geodesic Distance
-    clusters_raw: List[Dict[str, Any]] = []
+    clusters: List[Dict[str, Any]] = []
 
-    for spot in raw_hotspots:
-        lat, lon = spot["latitude"], spot["longitude"]
+    for hotspot in raw_hotspots:
+        h_lat = hotspot["latitude"]
+        h_lon = hotspot["longitude"]
+
         assigned = False
-
-        for cl in clusters_raw:
-            c_lat, c_lon = cl["center_lat"], cl["center_lon"]
-            dist = haversine_distance_km(lat, lon, c_lat, c_lon)
-
+        for cl in clusters:
+            dist = haversine_distance_km(h_lat, h_lon, cl["center_lat"], cl["center_lon"])
             if dist <= cluster_radius_km:
-                cl["observations"].append(spot)
-                # Recalculate centroid (mean latitude & longitude)
-                n = len(cl["observations"])
-                cl["center_lat"] = round(sum(o["latitude"] for o in cl["observations"]) / n, 5)
-                cl["center_lon"] = round(sum(o["longitude"] for o in cl["observations"]) / n, 5)
+                cl["observations"].append(hotspot)
+                # Recalculate center
+                cl["center_lat"] = sum(o["latitude"] for o in cl["observations"]) / len(cl["observations"])
+                cl["center_lon"] = sum(o["longitude"] for o in cl["observations"]) / len(cl["observations"])
                 assigned = True
                 break
 
         if not assigned:
-            clusters_raw.append({
-                "center_lat": lat,
-                "center_lon": lon,
-                "observations": [spot]
+            clusters.append({
+                "center_lat": h_lat,
+                "center_lon": h_lon,
+                "observations": [hotspot]
             })
 
-    # 3. Temporal Analysis & Persistence Scoring
+    # 3. Compute Metrics for each Cluster
     processed_clusters: List[Dict[str, Any]] = []
 
-    for cl in clusters_raw:
-        obs_list = cl["observations"]
-        
-        parsed_obs = []
-        for o in obs_list:
-            dt = _parse_utc_timestamp(o.get("acquired_at", ""))
-            parsed_obs.append((dt, o))
-
-        parsed_obs.sort(key=lambda x: x[0] if x[0] else datetime.min)
-        sorted_obs = [item[1] for item in parsed_obs]
-
+    for cl in clusters:
+        sorted_obs = sorted(cl["observations"], key=lambda o: o.get("acquired_at", ""))
         first_obs = sorted_obs[0]
         last_obs = sorted_obs[-1]
 
-        first_dt = parsed_obs[0][0]
-        last_dt = parsed_obs[-1][0]
+        dt_first = _parse_utc_timestamp(first_obs.get("acquired_at", ""))
+        dt_last = _parse_utc_timestamp(last_obs.get("acquired_at", ""))
 
-        if first_dt and last_dt:
-            duration_seconds = max(0.0, (last_dt - first_dt).total_seconds())
-            duration_hours = round(duration_seconds / 3600.0, 2)
+        if dt_first and dt_last and dt_last > dt_first:
+            duration_hours = round((dt_last - dt_first).total_seconds() / 3600.0, 2)
         else:
             duration_hours = 0.0
 
@@ -171,28 +160,20 @@ async def detect_persistent_clusters(
     # Sort clusters by persistence score descending
     processed_clusters.sort(key=lambda x: x["persistence_score"], reverse=True)
 
-    # 4. On-demand OSM context enrichment for top N clusters to maintain high performance
-    for cl in processed_clusters[:fetch_context_for_top]:
-        c_lat, c_lon = cl["center_latitude"], cl["center_longitude"]
-        osm_context = await fetch_hotspot_osm_context(c_lat, c_lon, radius_km=5.0)
-        
-        if osm_context and osm_context.get("nearby_features"):
-            closest_facility = osm_context["nearby_features"][0]
-            cl["industrial_context"] = {
-                "context_classification": osm_context.get("context_classification", "UNKNOWN"),
-                "nearby_facility": closest_facility.get("name"),
-                "facility_type": closest_facility.get("type"),
-                "facility_category": closest_facility.get("category"),
-                "distance_km": closest_facility.get("distance_km")
-            }
-        else:
-            cl["industrial_context"] = {
-                "context_classification": osm_context.get("context_classification", "UNKNOWN"),
-                "nearby_facility": None,
-                "facility_type": None,
-                "facility_category": None,
-                "distance_km": None
-            }
+    # 4. Use cached OSM context if available
+    if fetch_context_for_top > 0:
+        for cl in processed_clusters[:fetch_context_for_top]:
+            c_lat, c_lon = cl["center_latitude"], cl["center_longitude"]
+            osm_context = get_cached_osm_context(c_lat, c_lon, radius_km=5.0)
+            if osm_context and osm_context.get("nearby_features"):
+                closest_facility = osm_context["nearby_features"][0]
+                cl["industrial_context"] = {
+                    "context_classification": osm_context.get("context_classification", "UNKNOWN"),
+                    "nearby_facility": closest_facility.get("name"),
+                    "facility_type": closest_facility.get("type"),
+                    "facility_category": closest_facility.get("category"),
+                    "distance_km": closest_facility.get("distance_km")
+                }
 
     persistent_count = sum(1 for c in processed_clusters if c["classification"] in ["PERSISTENT", "HIGHLY PERSISTENT"])
 

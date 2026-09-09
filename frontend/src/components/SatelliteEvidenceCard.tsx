@@ -1,3 +1,14 @@
+import {
+  faCheck,
+  faEye,
+  faFire,
+  faInfoCircle,
+  faMagnifyingGlass,
+  faSatellite,
+  faTriangleExclamation,
+  faXmark,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useState } from 'react';
 import { FusedEvidenceResponse, SatelliteEvidence, Sentinel1Evidence } from '../types/hotspot';
 import { getAssetUrl } from '../config/api';
@@ -32,6 +43,7 @@ export const SatelliteEvidenceCard: React.FC<SatelliteEvidenceCardProps> = ({
 
   const isS2Available = Boolean(sat?.image_available || sat?.available);
   const isS1Available = Boolean(s1?.available);
+  const isSynthetic = Boolean((sat as any)?.synthetic || (sat as any)?.is_synthetic);
 
   const activeSat = selectedSatellite || (isS2Available ? 'SENTINEL_2' : (isS1Available ? 'SENTINEL_1' : 'NONE'));
 
@@ -59,7 +71,7 @@ export const SatelliteEvidenceCard: React.FC<SatelliteEvidenceCardProps> = ({
     return (
       <div className="satellite-evidence-card loading-skeleton">
         <div className="skeleton-title">
-          <span>🛰️</span> Querying Copernicus STAC Catalog (Sentinel-2 & Sentinel-1)...
+          <FontAwesomeIcon icon={faSatellite} spin className="mr-2" /> Querying Copernicus STAC Catalog (Sentinel-2 & Sentinel-1)...
         </div>
       </div>
     );
@@ -129,7 +141,7 @@ export const SatelliteEvidenceCard: React.FC<SatelliteEvidenceCardProps> = ({
         {/* CARD TOP BAR & ORCHESTRATION HEADER */}
         <div className="sat-card-header">
           <div className="sat-title-group">
-            <span className="sat-icon">🛰️</span>
+            <span className="sat-icon"><FontAwesomeIcon icon={faSatellite} /></span>
             <div className="sat-title-column">
               <h4 className="sat-title-text">SATELLITE EVIDENCE ORCHESTRATION</h4>
               <span className="sat-provenance-sub">
@@ -141,15 +153,19 @@ export const SatelliteEvidenceCard: React.FC<SatelliteEvidenceCardProps> = ({
           <div className="sat-status-badge-container">
             {activeSat === 'SENTINEL_2' && isS2Available ? (
               <span className="sat-badge-available">
-                ✓ PRIMARY: SENTINEL-2 OPTICAL
+                <FontAwesomeIcon icon={faCheck} className="mr-1" /> PRIMARY: SENTINEL-2 OPTICAL
               </span>
             ) : activeSat === 'SENTINEL_1' && isS1Available ? (
               <span className="sat-badge-synthetic" style={{ background: '#2e1065', color: '#c084fc', border: '1px solid #7e22ce' }}>
-                📡 BACKUP: SENTINEL-1 SAR ACTIVE
+                <FontAwesomeIcon icon={faSatellite} className="mr-1" /> BACKUP: SENTINEL-1 SAR ACTIVE
+              </span>
+            ) : isSynthetic ? (
+              <span className="sat-badge-synthetic">
+                <FontAwesomeIcon icon={faTriangleExclamation} className="mr-1" /> SYNTHETIC TEST DATA
               </span>
             ) : (
               <span className="sat-badge-unavailable">
-                ✖ SATELLITE EVIDENCE UNAVAILABLE
+                <FontAwesomeIcon icon={faXmark} className="mr-1" /> SATELLITE EVIDENCE UNAVAILABLE
               </span>
             )}
           </div>
@@ -173,19 +189,20 @@ export const SatelliteEvidenceCard: React.FC<SatelliteEvidenceCardProps> = ({
         {/* ===================================================================== */}
         {/* SECTION 1: SENTINEL-2 MULTISPECTRAL OPTICAL (PRIMARY) */}
         {/* ===================================================================== */}
-        <div style={{ marginTop: '0.5rem', marginBottom: '1rem', border: '1px solid #334155', borderRadius: '8px', padding: '0.75rem', background: 'rgba(15, 23, 42, 0.6)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+        <div style={{ marginTop: '0.75rem', marginBottom: '1rem', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.85rem', background: '#FAFCFA' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <span style={{ fontSize: '1rem' }}>👁️</span>
-              <strong style={{ fontSize: '0.9rem', color: '#f8fafc' }}>SENTINEL-2 OPTICAL EVIDENCE (PRIMARY)</strong>
+              <strong style={{ fontSize: '0.88rem', color: '#172019' }}>SENTINEL-2 OPTICAL EVIDENCE (PRIMARY)</strong>
             </div>
             <span style={{
-              fontSize: '0.75rem',
+              fontSize: '0.72rem',
               padding: '2px 8px',
               borderRadius: '4px',
-              background: isS2Available ? '#065f46' : '#7f1d1d',
-              color: isS2Available ? '#34d399' : '#fca5a5',
-              fontWeight: 600
+              background: isS2Available ? '#EAF7ED' : '#FEE2E2',
+              color: isS2Available ? '#166534' : '#991B1B',
+              fontWeight: 700,
+              border: isS2Available ? '1px solid #BBF7D0' : '1px solid #FECACA'
             }}>
               {isS2Available ? 'OPTICAL AVAILABLE' : ((sat as any)?.state || sat?.status || 'NO ACQUISITION')}
             </span>
@@ -256,7 +273,7 @@ export const SatelliteEvidenceCard: React.FC<SatelliteEvidenceCardProps> = ({
                   className="btn-open-full-image"
                   onClick={() => { setModalImageType('s2'); setIsModalOpen(true); }}
                 >
-                  🔍 View Optical Fullscreen
+                  <FontAwesomeIcon icon={faMagnifyingGlass} className="mr-1" /> View Optical Fullscreen
                 </button>
                 {sat?.gradcam_overlay_path && (
                   <button
@@ -264,15 +281,16 @@ export const SatelliteEvidenceCard: React.FC<SatelliteEvidenceCardProps> = ({
                     className="btn-toggle-gradcam"
                     onClick={() => setShowGradCam(!showGradCam)}
                   >
-                    {showGradCam ? '👁️ Raw Optical' : '🔥 Focus Heatmap'}
+                    <FontAwesomeIcon icon={showGradCam ? faEye : faFire} className="mr-1" /> {showGradCam ? 'Raw Optical' : 'Focus Heatmap'}
                   </button>
                 )}
               </div>
             </div>
           ) : (
-            <div className="sat-unavailable-presentation-box" style={{ marginTop: '0.5rem', padding: '0.75rem' }}>
+            <div className="sat-unavailable-presentation-box" style={{ marginTop: '0.65rem', padding: '1rem' }}>
+              <div className="unavail-icon"><FontAwesomeIcon icon={faSatellite} /></div>
               <div className="unavail-title" style={{ fontSize: '0.85rem' }}>OPTICAL IMAGERY UNAVAILABLE</div>
-              <p className="unavail-message" style={{ fontSize: '0.8rem' }}>
+              <p className="unavail-message" style={{ fontSize: '0.78rem' }}>
                 {sat?.error_message || sat?.visual_evidence || 'No suitable Sentinel-2 acquisition was found for this observation.'}
               </p>
             </div>
@@ -386,7 +404,7 @@ export const SatelliteEvidenceCard: React.FC<SatelliteEvidenceCardProps> = ({
             <span className="distinction-pill pill-not-thermal">Neither measures fire temperature</span>
           </div>
           <div className="distinction-expl-text" style={{ lineHeight: '1.45', marginTop: '0.4rem' }}>
-            ℹ️ <strong>NASA FIRMS</strong> provides thermal anomaly detection. <strong>Sentinel-2</strong> provides optical multispectral evidence. <strong>Sentinel-1</strong> is SAR radar evidence that provides cloud-independent surface information; it does not measure fire temperature.
+            <FontAwesomeIcon icon={faInfoCircle} className="mr-1 text-green" /> <strong>NASA FIRMS</strong> provides thermal anomaly detection. <strong>Sentinel-2</strong> provides optical multispectral evidence. <strong>Sentinel-1</strong> is SAR radar evidence that provides cloud-independent surface information; it does not measure fire temperature.
           </div>
         </div>
       </div>
@@ -397,7 +415,7 @@ export const SatelliteEvidenceCard: React.FC<SatelliteEvidenceCardProps> = ({
           <div className="sat-lightbox-modal" onClick={(e) => e.stopPropagation()}>
             <div className="lightbox-header">
               <div className="lightbox-title-group">
-                <span className="lightbox-icon">{modalImageType === 's1' ? '📡' : '🛰️'}</span>
+                <span className="lightbox-icon"><FontAwesomeIcon icon={faSatellite} /></span>
                 <div>
                   <h3 className="lightbox-title">
                     {modalImageType === 's1' ? 'SENTINEL-1 SAR RADAR BACKUP EVIDENCE' : 'SENTINEL-2 OPTICAL EVIDENCE'}
@@ -413,7 +431,7 @@ export const SatelliteEvidenceCard: React.FC<SatelliteEvidenceCardProps> = ({
                 onClick={() => setIsModalOpen(false)}
                 aria-label="Close modal"
               >
-                ✕
+                <FontAwesomeIcon icon={faXmark} />
               </button>
             </div>
 
@@ -453,8 +471,14 @@ export const SatelliteEvidenceCard: React.FC<SatelliteEvidenceCardProps> = ({
                   </div>
                 </div>
 
+                {modalImageType === 's2' && cloudStatus && cloudStatus.level === 'HIGH' && (
+                  <div className="lightbox-cloud-alert">
+                    <FontAwesomeIcon icon={faTriangleExclamation} /> <strong>HIGH CLOUD COVER ({cloudCover?.toFixed(1)}%):</strong> {cloudStatus.warning} Visual optical features may be obscured.
+                  </div>
+                )}
+
                 <div className="lightbox-disclaimer-box" style={{ marginTop: '1rem' }}>
-                  <strong>ℹ️ Critical Sensor Distinction:</strong>
+                  <strong><FontAwesomeIcon icon={faInfoCircle} className="mr-1 text-green" /> Critical Sensor Distinction:</strong>
                   <p>
                     {modalImageType === 's1'
                       ? 'Sentinel-1 transmits active C-band microwaves that penetrate clouds, haze, and smoke to measure surface roughness and structural backscatter. It does NOT detect radiant thermal heat or fire temperature. Thermal detection is measured independently by NASA FIRMS.'

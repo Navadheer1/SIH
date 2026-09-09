@@ -1,3 +1,11 @@
+import {
+  faCheck,
+  faCircleCheck,
+  faFileLines,
+  faMagnifyingGlass,
+  faTriangleExclamation,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React from 'react';
 import { ThermalAlert } from '../types/hotspot';
 
@@ -46,7 +54,7 @@ export const AlertDashboard: React.FC<AlertDashboardProps> = ({
     <div className="alert-dashboard-card">
       <div className="table-card-header">
         <div>
-          <h3 className="table-card-title">🚨 Active Thermal Event Incident Queue</h3>
+          <h3 className="table-card-title"><FontAwesomeIcon icon={faTriangleExclamation} /> Active Thermal Event Incident Queue</h3>
           <p className="table-card-subtitle">Auto-triggered alerts sorted by priority (CRITICAL first, highest risk score first)</p>
         </div>
         <span className="event-count-badge">{alerts.length} Unresolved Incidents</span>
@@ -103,21 +111,21 @@ export const AlertDashboard: React.FC<AlertDashboardProps> = ({
                       <div className="table-btn-row">
                         {alt.status === 'NEW' && (
                           <button className="btn btn-primary btn-sm" onClick={() => onStatusChange(alt.alert_id, 'acknowledge')}>
-                            ✓ Ack
+                            <FontAwesomeIcon icon={faCheck} /> Ack
                           </button>
                         )}
                         {alt.status === 'ACKNOWLEDGED' && (
                           <button className="btn btn-primary btn-sm" onClick={() => onStatusChange(alt.alert_id, 'investigate')}>
-                            🔍 Investigate
+                            <FontAwesomeIcon icon={faMagnifyingGlass} /> Investigate
                           </button>
                         )}
                         {alt.status === 'INVESTIGATING' && (
                           <button className="btn btn-secondary btn-sm" onClick={() => onStatusChange(alt.alert_id, 'resolve')}>
-                            ✅ Resolve
+                            <FontAwesomeIcon icon={faCircleCheck} /> Resolve
                           </button>
                         )}
                         <button className="btn btn-secondary btn-sm" onClick={() => onSelectAlert(alt)}>
-                          📋 Details
+                          <FontAwesomeIcon icon={faFileLines} /> Details
                         </button>
                       </div>
                     </td>

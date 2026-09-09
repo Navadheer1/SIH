@@ -1,3 +1,13 @@
+import {
+  faBolt,
+  faCircleQuestion,
+  faHouse,
+  faIndustry,
+  faTriangleExclamation,
+  faWheatAwn,
+  faXmark,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useEffect, useState } from 'react';
 import { Hotspot, HotspotContextResponse, AiClassificationResponse, RiskScoreResponse, FusedEvidenceResponse } from '../types/hotspot';
 import { getApiUrl } from '../config/api';
@@ -72,28 +82,28 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
   const getClassificationBadge = (classification: string) => {
     switch (classification) {
       case 'INDUSTRIAL':
-        return <span className="ctx-badge badge-industrial">🏭 INDUSTRIAL ZONE</span>;
+        return <span className="ctx-badge badge-industrial"><FontAwesomeIcon icon={faIndustry} /> INDUSTRIAL ZONE</span>;
       case 'URBAN':
-        return <span className="ctx-badge badge-urban">🏠 URBAN AREA</span>;
+        return <span className="ctx-badge badge-urban"><FontAwesomeIcon icon={faHouse} /> URBAN AREA</span>;
       case 'RURAL_OR_AGRICULTURAL':
-        return <span className="ctx-badge badge-rural">🌾 RURAL / AGRICULTURAL</span>;
+        return <span className="ctx-badge badge-rural"><FontAwesomeIcon icon={faWheatAwn} /> RURAL / AGRICULTURAL</span>;
       default:
-        return <span className="ctx-badge badge-unknown">❓ UNKNOWN CONTEXT</span>;
+        return <span className="ctx-badge badge-unknown"><FontAwesomeIcon icon={faCircleQuestion} /> UNKNOWN CONTEXT</span>;
     }
   };
 
   const getFeatureIcon = (type: string) => {
     switch (type) {
       case 'industrial':
-        return '🏭';
+        return 'Industrial';
       case 'power':
-        return '⚡';
+        return 'Substation';
       case 'urban':
-        return '🏠';
+        return 'Residential';
       case 'road':
-        return '🛣';
+        return 'Highway';
       default:
-        return '📍';
+        return 'Infrastructure';
     }
   };
 
@@ -105,7 +115,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
           <p className="panel-subtitle">OpenStreetMap Proximity & Satellite Intelligence</p>
         </div>
         <button className="panel-close-btn" onClick={onClose}>
-          ✕
+          <FontAwesomeIcon icon={faXmark} />
         </button>
       </div>
 
@@ -137,7 +147,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
             className="btn-open-workspace"
             onClick={() => onOpenInvestigation(selectedHotspot)}
           >
-            ⚡ Open Full Investigation Workspace
+            <FontAwesomeIcon icon={faBolt} /> Open Full Investigation Workspace
           </button>
         )}
 
@@ -172,7 +182,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
         {/* Error State */}
         {error && (
           <div className="panel-error">
-            <span>⚠️ {error}</span>
+            <span><FontAwesomeIcon icon={faTriangleExclamation} /> {error}</span>
           </div>
         )}
 

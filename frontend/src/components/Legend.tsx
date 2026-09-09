@@ -1,3 +1,7 @@
+import {
+  faCircle,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React from 'react';
 
 interface LegendProps {
@@ -52,19 +56,19 @@ export const Legend: React.FC<LegendProps> = ({ viewMode }) => {
         <div className="legend-title">Investigation Risk Level</div>
         <div className="legend-item">
           <span className="legend-color high-persistent" />
-          <span>🔴 CRITICAL (75 - 100)</span>
+          <span><FontAwesomeIcon icon={faCircle} style={{ color: "#dc2626", marginRight: "6px" }} /> CRITICAL (75 - 100)</span>
         </div>
         <div className="legend-item">
           <span className="legend-color suspicious" />
-          <span>🟠 HIGH (50 - 74)</span>
+          <span><FontAwesomeIcon icon={faCircle} style={{ color: "#ea580c", marginRight: "6px" }} /> HIGH (50 - 74)</span>
         </div>
         <div className="legend-item">
           <span className="legend-color temporary" />
-          <span>🟡 MODERATE (25 - 49)</span>
+          <span><FontAwesomeIcon icon={faCircle} style={{ color: "#d97706", marginRight: "6px" }} /> MODERATE (25 - 49)</span>
         </div>
         <div className="legend-item">
           <span className="legend-color" style={{ backgroundColor: '#22c55e' }} />
-          <span>🟢 LOW (0 - 24)</span>
+          <span><FontAwesomeIcon icon={faCircle} style={{ color: "#2F8F46", marginRight: "6px" }} /> LOW (0 - 24)</span>
         </div>
       </div>
 

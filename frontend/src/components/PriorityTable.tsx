@@ -1,3 +1,7 @@
+import {
+  faMagnifyingGlass,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React from 'react';
 import { PriorityRankingItem } from '../types/hotspot';
 
@@ -81,7 +85,7 @@ export const PriorityTable: React.FC<PriorityTableProps> = ({
                     <td>{item.persistence_score} / 100</td>
                     <td>
                       <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); onSelectEvent(item); }}>
-                        🔍 Inspect
+                        <FontAwesomeIcon icon={faMagnifyingGlass} /> Inspect
                       </button>
                     </td>
                   </tr>

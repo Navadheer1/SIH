@@ -1,3 +1,23 @@
+import {
+  faArrowsRotate,
+  faBrain,
+  faBullseye,
+  faCheck,
+  faCircleCheck,
+  faCube,
+  faFire,
+  faFlask,
+  faHourglassHalf,
+  faLocationDot,
+  faMagnifyingGlass,
+  faRobot,
+  faSatellite,
+  faScaleBalanced,
+  faTriangleExclamation,
+  faTruckMedical,
+  faXmark,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useState, useEffect } from 'react';
 import {
   Hotspot,
@@ -193,7 +213,7 @@ export const IncidentIntelligencePanel: React.FC<IncidentIntelligencePanelProps>
             <h3 className="intel-incident-id">{incidentId}</h3>
           </div>
           <button type="button" className="btn-panel-close" onClick={onClose} title="Close Panel">
-            ✕
+            <FontAwesomeIcon icon={faXmark} />
           </button>
         </div>
 
@@ -209,7 +229,7 @@ export const IncidentIntelligencePanel: React.FC<IncidentIntelligencePanelProps>
             STATUS: {lifecycleStatus.replace(/_/g, ' ')}
           </span>
           <span className="intel-provenance-pill" title="NASA FIRMS Near-Real-Time Direct Readout Telemetry">
-            🛰️ NRT SATELLITE OBS
+            <FontAwesomeIcon icon={faSatellite} /> NRT SATELLITE OBS
           </span>
         </div>
       </div>
@@ -218,7 +238,7 @@ export const IncidentIntelligencePanel: React.FC<IncidentIntelligencePanelProps>
       <div className="intel-panel-body">
         {/* SECTION 1: INCIDENT INTELLIGENCE (Where, What, Telemetry) */}
         <div className="intel-card intel-core-answers">
-          <h4 className="intel-section-title">📍 Incident Location & Telemetry</h4>
+          <h4 className="intel-section-title"><FontAwesomeIcon icon={faLocationDot} /> Incident Location & Telemetry</h4>
           <div className="core-answers-grid">
             <div className="core-answer-item">
               <span className="ca-label">COORDINATES:</span>
@@ -252,7 +272,7 @@ export const IncidentIntelligencePanel: React.FC<IncidentIntelligencePanelProps>
         {/* AI Incident Classification */}
         <div className="intel-card intel-classification-card">
           <div className="intel-card-header">
-            <span className="card-icon">🤖</span>
+            <span className="card-icon"><FontAwesomeIcon icon={faRobot} /></span>
             <h4 className="intel-section-title">AI Incident Classification</h4>
             <span className="confidence-pill">{confidencePct}% Confidence</span>
           </div>
@@ -269,7 +289,7 @@ export const IncidentIntelligencePanel: React.FC<IncidentIntelligencePanelProps>
         {/* SECTION 2: IMPACT INTELLIGENCE (Phase 2 Core) */}
         <div className="intel-card intel-impact-summary-card">
           <div className="intel-card-header">
-            <span className="card-icon">🎯</span>
+            <span className="card-icon"><FontAwesomeIcon icon={faBullseye} /></span>
             <h4 className="intel-section-title">Geospatial Impact Assessment</h4>
             <span className={`impact-score-badge level-${impactLevel.toLowerCase()}`}>
               IMPACT: {impactScore} / 100 ({impactLevel})
@@ -343,7 +363,7 @@ export const IncidentIntelligencePanel: React.FC<IncidentIntelligencePanelProps>
         {/* SECTION 2.5: FIRE SPREAD INTELLIGENCE & 3D THREAT (Phase 3 Core) */}
         <div className="intel-card intel-spread-summary-card">
           <div className="intel-card-header">
-            <span className="card-icon">🔥</span>
+            <span className="card-icon"><FontAwesomeIcon icon={faFire} /></span>
             <h4 className="intel-section-title">Fire Spread Intelligence & Projections</h4>
             <span className="model-badge">MODEL PROJECTION</span>
           </div>
@@ -374,7 +394,7 @@ export const IncidentIntelligencePanel: React.FC<IncidentIntelligencePanelProps>
           {/* Escalation Warning Banner if Escalation Detected */}
           {futureForecast?.escalation?.detected && (
             <div className="escalation-alert-banner">
-              ⚠️ <strong>THREAT ESCALATION DETECTED:</strong> {futureForecast.escalation.reasons[0]}
+              <FontAwesomeIcon icon={faTriangleExclamation} /> <strong>THREAT ESCALATION DETECTED:</strong> {futureForecast.escalation.reasons[0]}
             </div>
           )}
 
@@ -382,12 +402,12 @@ export const IncidentIntelligencePanel: React.FC<IncidentIntelligencePanelProps>
           <div className="spread-actions-row">
             {onOpen3DView && (
               <button type="button" className="btn-launch-3d" onClick={onOpen3DView}>
-                🧊 OPEN 3D THREAT VIEW
+                <FontAwesomeIcon icon={faCube} /> OPEN 3D THREAT VIEW
               </button>
             )}
             {onOpenWhatIf && (
               <button type="button" className="btn-launch-whatif" onClick={onOpenWhatIf}>
-                🧪 RUN WHAT-IF SIMULATION
+                <FontAwesomeIcon icon={faFlask} /> RUN WHAT-IF SIMULATION
               </button>
             )}
           </div>
@@ -396,17 +416,17 @@ export const IncidentIntelligencePanel: React.FC<IncidentIntelligencePanelProps>
         {/* SECTION 3: EXPLAINABLE IMPACT ("Why This Incident Matters") */}
         <div className="intel-card intel-explainable-card">
           <div className="intel-card-header">
-            <span className="card-icon">🧠</span>
+            <span className="card-icon"><FontAwesomeIcon icon={faBrain} /></span>
             <h4 className="intel-section-title">Why This Incident Matters (Explainability)</h4>
             <span className="model-badge">AI Impact Reasons</span>
           </div>
           <p className="xai-disclaimer-note">
-            ⚠️ <em>Synthesized model signals — not physical damage confirmation:</em>
+            <FontAwesomeIcon icon={faTriangleExclamation} /> <em>Synthesized model signals — not physical damage confirmation:</em>
           </p>
           <ul className="reasoning-checklist">
             {impactReasons.map((reason, rIdx) => (
               <li key={rIdx} className="reasoning-item">
-                <span className="check-icon">✓</span>
+                <span className="check-icon"><FontAwesomeIcon icon={faCheck} /></span>
                 <span className="signal-text">{reason}</span>
               </li>
             ))}
@@ -416,7 +436,7 @@ export const IncidentIntelligencePanel: React.FC<IncidentIntelligencePanelProps>
         {/* SECTION 4: HISTORICAL PERSISTENCE CONTEXT */}
         <div className="intel-card intel-persistence-card">
           <div className="intel-card-header">
-            <span className="card-icon">⏳</span>
+            <span className="card-icon"><FontAwesomeIcon icon={faHourglassHalf} /></span>
             <h4 className="intel-section-title">Historical Persistence Context</h4>
             <span className="persistence-badge">{persistenceScore.toFixed(0)} / 100 Score</span>
           </div>
@@ -443,7 +463,7 @@ export const IncidentIntelligencePanel: React.FC<IncidentIntelligencePanelProps>
         {/* SECTION 5: RISK SCORE BREAKDOWN */}
         <div className="intel-card intel-risk-breakdown-card">
           <div className="intel-card-header">
-            <span className="card-icon">⚖️</span>
+            <span className="card-icon"><FontAwesomeIcon icon={faScaleBalanced} /></span>
             <h4 className="intel-section-title">Investigation Risk Score Breakdown</h4>
             <span className="score-badge">{riskScore} / 100</span>
           </div>
@@ -492,7 +512,7 @@ export const IncidentIntelligencePanel: React.FC<IncidentIntelligencePanelProps>
         {/* SECTION 6: INCIDENT LIFECYCLE WORKFLOW */}
         <div className="intel-card intel-lifecycle-card">
           <div className="intel-card-header">
-            <span className="card-icon">🔄</span>
+            <span className="card-icon"><FontAwesomeIcon icon={faArrowsRotate} /></span>
             <h4 className="intel-section-title">Incident Lifecycle Status</h4>
           </div>
 
@@ -506,7 +526,7 @@ export const IncidentIntelligencePanel: React.FC<IncidentIntelligencePanelProps>
                   className={`stepper-step ${isPast ? 'completed' : ''} ${isCurrent ? 'active' : ''}`}
                 >
                   <div className="step-circle">
-                    {isPast ? '✓' : idx + 1}
+                    {isPast ? 'Done' : idx + 1}
                   </div>
                   <span className="step-label">{step.label}</span>
                 </div>
@@ -524,14 +544,14 @@ export const IncidentIntelligencePanel: React.FC<IncidentIntelligencePanelProps>
                     className="btn-action-ack"
                     onClick={() => handleAction('acknowledge')}
                   >
-                    ✓ Acknowledge & Verify Incident
+                    <FontAwesomeIcon icon={faCheck} /> Acknowledge & Verify Incident
                   </button>
                   <button
                     type="button"
                     className="btn-action-dismiss"
                     onClick={() => handleAction('dismiss')}
                   >
-                    ✕ Dismiss False Positive
+                    <FontAwesomeIcon icon={faXmark} /> Dismiss False Positive
                   </button>
                 </>
               )}
@@ -543,14 +563,14 @@ export const IncidentIntelligencePanel: React.FC<IncidentIntelligencePanelProps>
                     className="btn-action-investigate"
                     onClick={() => handleAction('investigate')}
                   >
-                    🚒 Initiate Response Operations
+                    <FontAwesomeIcon icon={faTruckMedical} /> Initiate Response Operations
                   </button>
                   <button
                     type="button"
                     className="btn-action-resolve"
                     onClick={() => handleAction('resolve')}
                   >
-                    ✓ Mark Resolved
+                    <FontAwesomeIcon icon={faCircleCheck} /> Mark Resolved
                   </button>
                 </>
               )}
@@ -561,7 +581,7 @@ export const IncidentIntelligencePanel: React.FC<IncidentIntelligencePanelProps>
                   className="btn-action-resolve"
                   onClick={() => handleAction('resolve')}
                 >
-                  ✓ Mark Incident Resolved
+                  <FontAwesomeIcon icon={faCircleCheck} /> Mark Incident Resolved
                 </button>
               )}
             </div>
@@ -574,7 +594,7 @@ export const IncidentIntelligencePanel: React.FC<IncidentIntelligencePanelProps>
               className="btn-open-deep-workspace"
               onClick={onOpenFullInvestigation}
             >
-              🔍 Launch Full Multi-Modal Investigation Workspace (Grad-CAM & Timeline)
+              <FontAwesomeIcon icon={faMagnifyingGlass} /> Launch Full Multi-Modal Investigation Workspace (Grad-CAM & Timeline)
             </button>
           )}
         </div>
@@ -593,7 +613,7 @@ export const IncidentIntelligencePanel: React.FC<IncidentIntelligencePanelProps>
         <div className="notes-modal-backdrop">
           <div className="notes-modal-content">
             <h4 className="notes-modal-title">
-              {pendingAction === 'resolve' ? '✓ Mark Incident Resolved' : '✕ Dismiss Incident'}
+              {pendingAction === 'resolve' ? '<FontAwesomeIcon icon={faCircleCheck} /> Mark Incident Resolved' : 'Dismiss Incident'}
             </h4>
             <p className="notes-modal-desc">
               Please enter mandatory operational audit notes for the official record:

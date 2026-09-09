@@ -1,3 +1,10 @@
+import {
+  faIndustry,
+  faShieldHalved,
+  faTriangleExclamation,
+  faTruckMedical,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useState } from 'react';
 
 export const ResponseOperationsView: React.FC = () => {
@@ -7,7 +14,7 @@ export const ResponseOperationsView: React.FC = () => {
     <div className="response-operations-view">
       <div className="view-header-bar">
         <div>
-          <h2 className="view-title">🚒 Authority Response Operations & Tactical SOPs</h2>
+          <h2 className="view-title"><FontAwesomeIcon icon={faTruckMedical} /> Authority Response Operations & Tactical SOPs</h2>
           <p className="view-subtitle">
             Inter-Agency Coordination Guidelines • Standard Operating Procedures • Emergency Resource Triage
           </p>
@@ -23,21 +30,21 @@ export const ResponseOperationsView: React.FC = () => {
           className={`sop-tab-btn ${activeTab === 'industrial' ? 'active' : ''}`}
           onClick={() => setActiveTab('industrial')}
         >
-          🏭 Industrial Fire Tactical SOP
+          <FontAwesomeIcon icon={faIndustry} /> Industrial Fire Tactical SOP
         </button>
         <button
           type="button"
           className={`sop-tab-btn ${activeTab === 'hazmat' ? 'active' : ''}`}
           onClick={() => setActiveTab('hazmat')}
         >
-          ☣️ Chemical & Hazmat Containment
+          <FontAwesomeIcon icon={faTriangleExclamation} /> Chemical & Hazmat Containment
         </button>
         <button
           type="button"
           className={`sop-tab-btn ${activeTab === 'evacuation' ? 'active' : ''}`}
           onClick={() => setActiveTab('evacuation')}
         >
-          🛡️ Public Perimeter & Evacuation
+          <FontAwesomeIcon icon={faShieldHalved} /> Public Perimeter & Evacuation
         </button>
       </div>
 

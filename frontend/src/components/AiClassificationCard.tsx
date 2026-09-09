@@ -1,3 +1,11 @@
+import {
+  faAngleDown,
+  faAngleRight,
+  faCheck,
+  faRobot,
+  faTriangleExclamation,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useState } from 'react';
 import { AiClassificationResponse } from '../types/hotspot';
 
@@ -26,7 +34,7 @@ export const AiClassificationCard: React.FC<AiClassificationCardProps> = ({
   if (error) {
     return (
       <div className="ai-card error-card">
-        <span>⚠️ AI Classification Error: {error}</span>
+        <span><FontAwesomeIcon icon={faTriangleExclamation} /> AI Classification Error: {error}</span>
       </div>
     );
   }
@@ -62,24 +70,24 @@ export const AiClassificationCard: React.FC<AiClassificationCardProps> = ({
   const formatCategoryName = (cat: string) => {
     switch (cat) {
       case 'INDUSTRIAL_FIRE_CANDIDATE':
-        return '🏭 Industrial Fire Candidate';
+        return 'Industrial Fire Candidate';
       case 'PERSISTENT_THERMAL_SOURCE':
-        return '🔴 Persistent Thermal Source';
+        return 'Persistent Thermal Source';
       case 'AGRICULTURAL_BURNING_CANDIDATE':
-        return '🌾 Agricultural Burning Candidate';
+        return 'Agricultural Burning Candidate';
       case 'WILDFIRE_CANDIDATE':
-        return '🔥 Wildfire Candidate';
+        return 'Wildfire Candidate';
       case 'GAS_FLARE_CANDIDATE':
-        return '⚡ Gas Flare Candidate';
+        return 'Gas Flare Candidate';
       default:
-        return '❓ Uncertain Classification';
+        return 'Uncertain Classification';
     }
   };
 
   return (
     <div className="ai-card">
       <div className="ai-card-header">
-        <span className="ai-title">🤖 Explainable AI Classification</span>
+        <span className="ai-title"><FontAwesomeIcon icon={faRobot} /> Explainable AI Classification</span>
         <span className="model-version">v{classificationData.model_version}</span>
       </div>
 
@@ -88,11 +96,11 @@ export const AiClassificationCard: React.FC<AiClassificationCardProps> = ({
         <div className="model-status-pill">
           {model_source === 'PROTOTYPE_RULE_ENGINE' ? (
             <span className="pill-warning">
-              ⚠️ Prototype Rule Engine ({model_status === 'not_trained' ? 'ML model not trained' : 'Fallback'})
+              <FontAwesomeIcon icon={faTriangleExclamation} /> Prototype Rule Engine ({model_status === 'not_trained' ? 'ML model not trained' : 'Fallback'})
             </span>
           ) : (
             <span className="pill-success">
-              🤖 Trained Random Forest ML Model
+              <FontAwesomeIcon icon={faRobot} /> Trained Random Forest ML Model
             </span>
           )}
         </div>
@@ -122,7 +130,7 @@ export const AiClassificationCard: React.FC<AiClassificationCardProps> = ({
           <ul className="indicators-list">
             {supporting_indicators.map((ind, idx) => (
               <li key={`ind-${idx}`} className="indicator-item">
-                ✓ {ind}
+                <FontAwesomeIcon icon={faCheck} className="mr-1" /> {ind}
               </li>
             ))}
           </ul>
@@ -134,7 +142,15 @@ export const AiClassificationCard: React.FC<AiClassificationCardProps> = ({
             className="drawer-toggle-btn"
             onClick={() => setShowFeatures(!showFeatures)}
           >
-            {showFeatures ? '▼ Hide Input Features' : '▶ View Input Features (9)'}
+            {showFeatures ? (
+              <>
+                <FontAwesomeIcon icon={faAngleDown} /> Hide Input Features
+              </>
+            ) : (
+              <>
+                <FontAwesomeIcon icon={faAngleRight} /> View Input Features (9)
+              </>
+            )}
           </button>
 
           {showFeatures && (

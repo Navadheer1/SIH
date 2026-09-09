@@ -1,3 +1,12 @@
+import {
+  faArrowsRotate,
+  faBullseye,
+  faCompass,
+  faFire,
+  faIndustry,
+  faXmark,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { SpreadProjectionResponse, TimeHorizonKey, ExposedAsset } from '../types/hotspot';
@@ -304,19 +313,19 @@ export const Threat3DView: React.FC<Threat3DViewProps> = ({
       <div className="camera-presets-bar">
         <span className="camera-bar-title">3D CAMERA VIEWS:</span>
         <button type="button" className="btn-cam" onClick={() => handleCameraPreset('RESET')}>
-          🔄 RESET VIEW
+          <FontAwesomeIcon icon={faArrowsRotate} /> RESET VIEW
         </button>
         <button type="button" className="btn-cam" onClick={() => handleCameraPreset('TOP')}>
           ⬇ TOP VIEW (2D-ISO)
         </button>
         <button type="button" className="btn-cam" onClick={() => handleCameraPreset('INCIDENT')}>
-          🔥 INCIDENT CORE
+          <FontAwesomeIcon icon={faFire} /> INCIDENT CORE
         </button>
         <button type="button" className="btn-cam" onClick={() => handleCameraPreset('FIT')}>
-          🎯 FIT THREAT ZONE
+          <FontAwesomeIcon icon={faBullseye} /> FIT THREAT ZONE
         </button>
         <button type="button" className="btn-cam" onClick={() => handleCameraPreset('FOLLOW')}>
-          🧭 FOLLOW SPREAD
+          <FontAwesomeIcon icon={faCompass} /> FOLLOW SPREAD
         </button>
       </div>
 
@@ -330,7 +339,7 @@ export const Threat3DView: React.FC<Threat3DViewProps> = ({
       {selectedAssetIn3D && (
         <div className="asset-3d-info-drawer">
           <div className="drawer-header">
-            <span>🏭 {selectedAssetIn3D.asset_name}</span>
+            <span><FontAwesomeIcon icon={faIndustry} /> {selectedAssetIn3D.asset_name}</span>
             <button
               type="button"
               className="btn-close-sm"
@@ -339,7 +348,7 @@ export const Threat3DView: React.FC<Threat3DViewProps> = ({
                 setSelectedAssetIn3D(null);
               }}
             >
-              ✕ Inspect Details
+              <FontAwesomeIcon icon={faXmark} /> Inspect Details
             </button>
           </div>
           <div className="drawer-body">
