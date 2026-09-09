@@ -13,7 +13,6 @@ import type { IncidentDrawerData } from './IncidentEvidenceDrawer';
 import { RecentActivitySection } from './RecentActivitySection';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faMap,
   faSatellite,
   faFire,
   faArrowsRotate,
@@ -21,6 +20,7 @@ import {
   faTriangleExclamation,
   faFilter,
   faLocationDot,
+  faGlobe,
 } from '@fortawesome/free-solid-svg-icons';
 
 interface DashboardViewProps {
@@ -61,7 +61,7 @@ export function DashboardView({
   selectedPriorityIncident,
   onSelectPriorityIncident,
   onEnrichHotspot,
-  basemap = 'standard',
+  basemap = 'satellite',
   onBasemapChange,
 }: DashboardViewProps) {
   const [metricFilter, setMetricFilter] = useState<'all' | 'persistent' | 'industrial' | 'high_risk'>('all');
@@ -70,7 +70,7 @@ export function DashboardView({
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
   const [activeMapCoords, setActiveMapCoords] = useState<[number, number] | null>(null);
   const [activeMapZoom, setActiveMapZoom] = useState<number>(5);
-  const [displayMode, setDisplayMode] = useState<'3d_globe' | '2d_map'>('3d_globe');
+  const [displayMode, setDisplayMode] = useState<'3d_globe' | '2d_map'>('2d_map');
   const [activeTargetHotspot, setActiveTargetHotspot] = useState<Hotspot | null>(null);
 
   // Filtered Decision Counts
@@ -260,31 +260,31 @@ export function DashboardView({
         <div className="dashboard-map-panel card-white">
           <div className="panel-header-bar">
             <div className="panel-title-group">
-              <FontAwesomeIcon icon={displayMode === '3d_globe' ? faSatellite : faMap} className="panel-header-icon text-green" />
+              <FontAwesomeIcon icon={displayMode === '2d_map' ? faSatellite : faGlobe} className="panel-header-icon text-green" />
               <h3 className="panel-title">
-                {displayMode === '3d_globe' ? 'Satellite Observation & 3D Thermal Risk Platform' : 'Tactical GIS Map'}
+                {displayMode === '2d_map' ? '2D Satellite Intelligence & AI Risk Platform' : '3D Orbital Earth Perspective'}
               </h3>
             </div>
 
-            {/* PRIMARY VIEW MODE SWITCHER: 3D GLOBE VS 2D MAP */}
+            {/* PRIMARY VIEW MODE SWITCHER: 2D SATELLITE (PRIMARY) VS 3D GLOBE */}
             <div className="map-view-switcher-group">
-              <button
-                type="button"
-                className={`btn-mode-switcher ${displayMode === '3d_globe' ? 'active' : ''}`}
-                onClick={() => setDisplayMode('3d_globe')}
-                title="Cinematic 3D Satellite Observation & Thermal Risk Propagation Globe"
-              >
-                <FontAwesomeIcon icon={faSatellite} className="mr-1 text-cyan" />
-                <span>3D Satellite Globe</span>
-              </button>
               <button
                 type="button"
                 className={`btn-mode-switcher ${displayMode === '2d_map' ? 'active' : ''}`}
                 onClick={() => setDisplayMode('2d_map')}
-                title="Tactical 2D Leaflet GIS Map with Street & Satellite Layers"
+                title="Primary 2D Top-Down Earth Observation Satellite Map with AI Risk Field & NASA FIRMS"
               >
-                <FontAwesomeIcon icon={faMap} className="mr-1 text-emerald" />
-                <span>2D Tactical Map</span>
+                <FontAwesomeIcon icon={faSatellite} className="mr-1 text-emerald" />
+                <span>🛰️ 2D Satellite Map</span>
+              </button>
+              <button
+                type="button"
+                className={`btn-mode-switcher ${displayMode === '3d_globe' ? 'active' : ''}`}
+                onClick={() => setDisplayMode('3d_globe')}
+                title="Secondary 3D Orbital Perspective"
+              >
+                <FontAwesomeIcon icon={faGlobe} className="mr-1 text-cyan" />
+                <span>🌍 3D Globe View</span>
               </button>
             </div>
 
@@ -347,6 +347,7 @@ export function DashboardView({
                 hotspots={hotspots}
                 clusters={clusters}
                 activeAlerts={alerts}
+                priorityItems={priorityItems}
                 selectedHotspot={activeTargetHotspot}
                 selectedCluster={null}
                 selectedPriorityIncident={selectedPriorityIncident}

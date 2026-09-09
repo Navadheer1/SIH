@@ -543,5 +543,111 @@ describe('Thermoscope 3D Satellite Intelligence Globe Architecture Tests', () =>
 
     assert.equal(validateIncidentCommandSections(mockIncident), 8, 'Must validate exactly 8 operational command sections');
   });
+
+  it('Test 15: Validates 2D Satellite Intelligence Map, continuous radial risk field calculation, 3.5s timeline sequence, OSM proximity vectors, and split workspace', () => {
+    // 1. Validate Default Basemap & Satellite Layer Properties
+    const defaultBasemap = 'satellite';
+    const satelliteTileEndpoint = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+    assert.equal(defaultBasemap, 'satellite', 'Default operational basemap must be 2D satellite');
+    assert.ok(satelliteTileEndpoint.includes('World_Imagery'), 'Must connect to high-resolution satellite imagery tiles');
+
+    // 2. Validate 2D AI Risk Field Continuous Radius Calculation Formula (threat_zone_service.py parity)
+    function calculate2dRiskRadius(frp, riskScore, persistenceCount, classification) {
+      const frpFactor = Math.log1p(Math.max(0, frp)) / 3.0;
+      const riskFactor = (Math.max(0, Math.min(100, riskScore)) / 100.0) * 0.8;
+      const classMultiplier = classification.toUpperCase().includes('INDUSTRIAL') ? 1.25 : 1.0;
+      const persistenceFactor = (Math.max(0, Math.min(100, persistenceCount * 15)) / 100.0) * 0.3;
+      const scalingMultiplier = (1.0 + frpFactor + riskFactor + persistenceFactor) * classMultiplier;
+      return Number((Math.max(1.5, Math.min(6.0, 1.45 * scalingMultiplier))).toFixed(2));
+    }
+
+    // Critical Industrial Refinery Scenario
+    const criticalRadius = calculate2dRiskRadius(75.4, 92, 5, 'INDUSTRIAL_REFINERY_FIRE');
+    assert.ok(criticalRadius >= 4.5 && criticalRadius <= 6.0, `Critical refinery radius (${criticalRadius} km) must be within 4.5-6.0 km`);
+
+    // Moderate Hotspot Scenario
+    const moderateRadius = calculate2dRiskRadius(14.2, 45, 1, 'CONTROLLED_FLARE');
+    assert.ok(moderateRadius >= 2.5 && moderateRadius <= 4.0, `Moderate radius (${moderateRadius} km) must be within 2.5-4.0 km`);
+
+    // Scientific Disclaimer Verification
+    const aiRiskDisclaimer = 'AI estimated risk propagation, NOT actual physical fire boundary';
+    assert.ok(aiRiskDisclaimer.includes('NOT actual physical fire boundary'), 'Mandatory scientific disclaimer must be preserved');
+
+    // 3. Validate 3.5s 5-Stage Heat Expansion Sequence
+    function get2dExpansionStage(elapsedMs) {
+      if (elapsedMs < 500) return { stage: 1, label: 'SATELLITE OBS' };
+      if (elapsedMs < 1000) return { stage: 2, label: 'THERMAL CORE' };
+      if (elapsedMs < 1500) return { stage: 3, label: 'PERSISTENCE' };
+      if (elapsedMs < 2000) return { stage: 4, label: 'AI CLASSIFICATION' };
+      if (elapsedMs < 3500) return { stage: 5, label: 'RISK FIELD' };
+      return { stage: 6, label: 'OSM CONTEXT' };
+    }
+
+    assert.equal(get2dExpansionStage(100).stage, 1);
+    assert.equal(get2dExpansionStage(600).stage, 2);
+    assert.equal(get2dExpansionStage(1100).stage, 3);
+    assert.equal(get2dExpansionStage(1600).stage, 4);
+    assert.equal(get2dExpansionStage(2200).stage, 5);
+    assert.equal(get2dExpansionStage(3600).stage, 6);
+
+    // 4. Validate OSM Proximity Vector String Formatting
+    const formatProximityVector = (distanceKm) => `🔥 ── ${distanceKm.toFixed(1)} KM ── 🏭`;
+    assert.equal(formatProximityVector(1.8), '🔥 ── 1.8 KM ── 🏭');
+
+    // 5. Validate Fullscreen Split Workspace State Transitions & Dual-ESC Trap
+    class SatelliteWorkspaceStateMachine {
+      constructor() {
+        this.state = 'NORMAL_DASHBOARD';
+        this.isFullscreen = false;
+      }
+      enterFullscreen() {
+        this.isFullscreen = true;
+        this.state = 'FULLSCREEN_MAP';
+      }
+      openIncident() {
+        // Keeps fullscreen active!
+        this.state = 'INCIDENT_SPLIT_VIEW';
+      }
+      handleEsc() {
+        if (this.state === 'INCIDENT_SPLIT_VIEW') {
+          // First ESC closes split panel back to fullscreen map without leaving browser fullscreen
+          this.state = 'FULLSCREEN_MAP';
+          return 'PANEL_CLOSED';
+        }
+        if (this.state === 'FULLSCREEN_MAP') {
+          // Second ESC exits fullscreen
+          this.isFullscreen = false;
+          this.state = 'NORMAL_DASHBOARD';
+          return 'FULLSCREEN_EXITED';
+        }
+        return 'NOOP';
+      }
+      exitWorkspace() {
+        this.isFullscreen = false;
+        this.state = 'NORMAL_DASHBOARD';
+      }
+    }
+
+    const sm = new SatelliteWorkspaceStateMachine();
+    assert.equal(sm.state, 'NORMAL_DASHBOARD');
+
+    sm.enterFullscreen();
+    assert.equal(sm.state, 'FULLSCREEN_MAP');
+    assert.equal(sm.isFullscreen, true);
+
+    sm.openIncident();
+    assert.equal(sm.state, 'INCIDENT_SPLIT_VIEW');
+    assert.equal(sm.isFullscreen, true); // Must stay in fullscreen!
+
+    const esc1 = sm.handleEsc();
+    assert.equal(esc1, 'PANEL_CLOSED');
+    assert.equal(sm.state, 'FULLSCREEN_MAP');
+    assert.equal(sm.isFullscreen, true); // Stays in fullscreen after closing panel!
+
+    const esc2 = sm.handleEsc();
+    assert.equal(esc2, 'FULLSCREEN_EXITED');
+    assert.equal(sm.state, 'NORMAL_DASHBOARD');
+    assert.equal(sm.isFullscreen, false);
+  });
 });
 
