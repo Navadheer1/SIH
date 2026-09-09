@@ -108,7 +108,7 @@ export const InvestigationTimeline: React.FC<InvestigationTimelineProps> = ({
       status: satEvidence.image_available ? 'completed' : 'pending',
       icon: '📡',
       description: satEvidence.image_available
-        ? `Optical patch analyzed with PyTorch vision model (${satEvidence.model || 'ResNet-18'}). Predicted visual signature: ${satEvidence.classification.replace(/_/g, ' ')} (${Math.round((satEvidence.confidence || 0) * 100)}% confidence). Grad-CAM visual explanation generated.`
+        ? `Optical patch analyzed with PyTorch vision model (${satEvidence.model || 'ResNet-18'}). Predicted visual signature: ${(satEvidence.classification || 'UNKNOWN').replace(/_/g, ' ')} (${Math.round((satEvidence.confidence || 0) * 100)}% confidence). Grad-CAM visual explanation generated.`
         : 'Optical imagery retrieval not configured or unavailable for this coordinate.',
       badge: satEvidence.model || 'CV Model',
     });

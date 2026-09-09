@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { PersistentCluster, AiClassificationResponse, RiskScoreResponse } from '../types/hotspot';
+import { getApiUrl } from '../config/api';
 import { AiClassificationCard } from './AiClassificationCard';
 import { RiskScoreCard } from './RiskScoreCard';
 
@@ -27,8 +28,8 @@ export const PersistencePanel: React.FC<PersistencePanelProps> = ({ cluster, onC
         const queryParams = `lat=${cluster.center_latitude}&lon=${cluster.center_longitude}&frp=${topObs.frp || 0}&brightness=${topObs.brightness || 320}&confidence=${topObs.confidence || 'nominal'}&observation_count=${cluster.observation_count}&duration_hours=${cluster.duration_hours}&spatial_radius_km=${cluster.spatial_radius_km}&persistence_score=${cluster.persistence_score}`;
 
         const [aiRes, riskRes] = await Promise.all([
-          fetch(`http://127.0.0.1:8000/api/hotspots/classify?${queryParams}`),
-          fetch(`http://127.0.0.1:8000/api/hotspots/risk?${queryParams}`)
+          fetch(getApiUrl(`/api/hotspots/classify?${queryParams}`)),
+          fetch(getApiUrl(`/api/hotspots/risk?${queryParams}`))
         ]);
 
         if (!aiRes.ok || !riskRes.ok) {

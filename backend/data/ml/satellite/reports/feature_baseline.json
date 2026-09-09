@@ -1,0 +1,148 @@
+{
+  "feature_count": 22,
+  "features_used": [
+    "b02_mean",
+    "b02_std",
+    "b03_mean",
+    "b03_std",
+    "b04_mean",
+    "b04_std",
+    "b08_mean",
+    "b08_std",
+    "b11_mean",
+    "b11_std",
+    "b11_max",
+    "b12_mean",
+    "b12_std",
+    "b12_max",
+    "ndvi_mean",
+    "ndvi_max",
+    "nbr_mean",
+    "nbr_min",
+    "swir_ratio_mean",
+    "swir_ratio_max",
+    "swir_contrast_mean",
+    "swir_contrast_max"
+  ],
+  "random_forest_baseline": {
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "macro_f1": 1.0,
+    "confusion_matrix": [
+      [
+        53,
+        0,
+        0
+      ],
+      [
+        0,
+        40,
+        0
+      ],
+      [
+        0,
+        0,
+        60
+      ]
+    ],
+    "classification_report": {
+      "WILDFIRE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 53.0
+      },
+      "INDUSTRIAL_FIRE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 40.0
+      },
+      "NON_FIRE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 60.0
+      },
+      "accuracy": 1.0,
+      "macro avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 153.0
+      },
+      "weighted avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 153.0
+      }
+    },
+    "top_features": {
+      "nbr_min": 0.16298779173192773,
+      "ndvi_mean": 0.13316328552312037,
+      "ndvi_max": 0.1279858112200752,
+      "nbr_mean": 0.08340878640427896,
+      "b11_mean": 0.07151270190816744,
+      "b11_max": 0.04979282024805595,
+      "swir_contrast_max": 0.04758020345183073,
+      "swir_ratio_mean": 0.04659728130435714
+    }
+  },
+  "logistic_regression_baseline": {
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "macro_f1": 1.0,
+    "confusion_matrix": [
+      [
+        53,
+        0,
+        0
+      ],
+      [
+        0,
+        40,
+        0
+      ],
+      [
+        0,
+        0,
+        60
+      ]
+    ],
+    "classification_report": {
+      "WILDFIRE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 53.0
+      },
+      "INDUSTRIAL_FIRE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 40.0
+      },
+      "NON_FIRE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 60.0
+      },
+      "accuracy": 1.0,
+      "macro avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 153.0
+      },
+      "weighted avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 153.0
+      }
+    }
+  },
+  "analysis": "Spectral features (especially NBR min, SWIR max, and NDVI) contain very strong discriminant information for fire vs non-fire detection. However, spatial pattern distinction between diffuse wildfire and compact industrial facilities benefits from spatial convolutions provided by the CNN."
+}

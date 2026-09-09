@@ -1,0 +1,68 @@
+{
+  "model_name": "Sentinel-2 6-Band Multispectral CNN Baseline",
+  "model_version": "phase6c-v1.0",
+  "architecture": "MultispectralCNN",
+  "input_bands": [
+    "B02",
+    "B03",
+    "B04",
+    "B08",
+    "B11",
+    "B12"
+  ],
+  "input_channels": 6,
+  "image_size": [
+    128,
+    128
+  ],
+  "class_names": [
+    "WILDFIRE",
+    "INDUSTRIAL_FIRE",
+    "NON_FIRE"
+  ],
+  "classes": {
+    "WILDFIRE": 0,
+    "INDUSTRIAL_FIRE": 1,
+    "NON_FIRE": 2
+  },
+  "normalization": {
+    "bands": [
+      "B02",
+      "B03",
+      "B04",
+      "B08",
+      "B11",
+      "B12"
+    ],
+    "mean": [
+      0.172274,
+      0.187144,
+      0.203979,
+      0.26511,
+      0.611693,
+      0.646741
+    ],
+    "std": [
+      0.066798,
+      0.070839,
+      0.07979,
+      0.173451,
+      0.373578,
+      0.417473
+    ],
+    "samples_analyzed": 743,
+    "total_pixels_per_band": 12173312
+  },
+  "training_configuration": {
+    "epochs": 10,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "seed": 42,
+    "device": "mps"
+  },
+  "best_epoch": 1,
+  "validation_macro_f1": 1.0,
+  "validation_accuracy": 1.0,
+  "trained_at": "2026-09-08T10:52:56.541148+00:00"
+}

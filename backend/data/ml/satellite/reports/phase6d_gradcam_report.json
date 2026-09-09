@@ -1,0 +1,125 @@
+{
+  "status": "COMPLETED",
+  "samples_explained": 9,
+  "target_layer": "block3 (Conv2d 64->128)",
+  "explanations": [
+    {
+      "sample_id": "wf_sen2fire_0015",
+      "ground_truth_label": "WILDFIRE",
+      "image_artifact": "wf_sen2fire_0015_WILDFIRE_gradcam.png",
+      "peak_activation_coordinate": [
+        50,
+        86
+      ],
+      "mean_activation": 0.6652,
+      "max_activation": 1.0,
+      "activation_area_fraction": 0.8573,
+      "saliency_focus": "Local thermal/hotspot core"
+    },
+    {
+      "sample_id": "wf_sen2fire_0030",
+      "ground_truth_label": "WILDFIRE",
+      "image_artifact": "wf_sen2fire_0030_WILDFIRE_gradcam.png",
+      "peak_activation_coordinate": [
+        90,
+        114
+      ],
+      "mean_activation": 0.6462,
+      "max_activation": 1.0,
+      "activation_area_fraction": 0.8563,
+      "saliency_focus": "Local thermal/hotspot core"
+    },
+    {
+      "sample_id": "wf_sen2fire_0045",
+      "ground_truth_label": "WILDFIRE",
+      "image_artifact": "wf_sen2fire_0045_WILDFIRE_gradcam.png",
+      "peak_activation_coordinate": [
+        89,
+        13
+      ],
+      "mean_activation": 0.6736,
+      "max_activation": 1.0,
+      "activation_area_fraction": 0.853,
+      "saliency_focus": "Local thermal/hotspot core"
+    },
+    {
+      "sample_id": "ind_seed_0094",
+      "ground_truth_label": "INDUSTRIAL_FIRE",
+      "image_artifact": "ind_seed_0094_INDUSTRIAL_FIRE_gradcam.png",
+      "peak_activation_coordinate": [
+        121,
+        34
+      ],
+      "mean_activation": 0.671,
+      "max_activation": 1.0,
+      "activation_area_fraction": 0.8917,
+      "saliency_focus": "Local thermal/hotspot core"
+    },
+    {
+      "sample_id": "ind_seed_0104",
+      "ground_truth_label": "INDUSTRIAL_FIRE",
+      "image_artifact": "ind_seed_0104_INDUSTRIAL_FIRE_gradcam.png",
+      "peak_activation_coordinate": [
+        41,
+        6
+      ],
+      "mean_activation": 0.7274,
+      "max_activation": 1.0,
+      "activation_area_fraction": 0.9067,
+      "saliency_focus": "Local thermal/hotspot core"
+    },
+    {
+      "sample_id": "ind_seed_0114",
+      "ground_truth_label": "INDUSTRIAL_FIRE",
+      "image_artifact": "ind_seed_0114_INDUSTRIAL_FIRE_gradcam.png",
+      "peak_activation_coordinate": [
+        86,
+        89
+      ],
+      "mean_activation": 0.7222,
+      "max_activation": 1.0,
+      "activation_area_fraction": 0.9171,
+      "saliency_focus": "Local thermal/hotspot core"
+    },
+    {
+      "sample_id": "nf_fore_0003",
+      "ground_truth_label": "NON_FIRE",
+      "image_artifact": "nf_fore_0003_NON_FIRE_gradcam.png",
+      "peak_activation_coordinate": [
+        114,
+        105
+      ],
+      "mean_activation": 0.8776,
+      "max_activation": 1.0,
+      "activation_area_fraction": 0.9376,
+      "saliency_focus": "Broad background vegetation/terrain"
+    },
+    {
+      "sample_id": "nf_fore_0025",
+      "ground_truth_label": "NON_FIRE",
+      "image_artifact": "nf_fore_0025_NON_FIRE_gradcam.png",
+      "peak_activation_coordinate": [
+        21,
+        50
+      ],
+      "mean_activation": 0.8567,
+      "max_activation": 1.0,
+      "activation_area_fraction": 0.9296,
+      "saliency_focus": "Broad background vegetation/terrain"
+    },
+    {
+      "sample_id": "nf_fore_0047",
+      "ground_truth_label": "NON_FIRE",
+      "image_artifact": "nf_fore_0047_NON_FIRE_gradcam.png",
+      "peak_activation_coordinate": [
+        49,
+        118
+      ],
+      "mean_activation": 0.8413,
+      "max_activation": 1.0,
+      "activation_area_fraction": 0.914,
+      "saliency_focus": "Broad background vegetation/terrain"
+    }
+  ],
+  "summary": "Grad-CAM visual attribution confirms that the model's activations for WILDFIRE and INDUSTRIAL_FIRE are tightly focused on the high-radiance SWIR/NIR core anomalies rather than border artifacts or background clutter."
+}

@@ -1,0 +1,64 @@
+{
+  "audit_status": "PASSED",
+  "total_samples": 1050,
+  "samples_per_class": {
+    "WILDFIRE": 400,
+    "INDUSTRIAL_FIRE": 250,
+    "NON_FIRE": 400
+  },
+  "samples_per_source": {
+    "SEN2FIRE": 240,
+    "TS_SATFIRE": 160,
+    "FIRMS_OSM_INDUSTRIAL_WEAK": 250,
+    "DIVERSE_GEOGRAPHIC_BACKGROUND": 400
+  },
+  "samples_per_label_type": {
+    "SOURCE_LABEL": 400,
+    "WEAK_LABEL": 539,
+    "GROUND_TRUTH": 111
+  },
+  "samples_per_quality": {
+    "GOOD": 742,
+    "ACCEPTABLE": 308
+  },
+  "samples_per_split": {
+    "train": 743,
+    "validation": 154,
+    "test": 153
+  },
+  "missing_files_count": 0,
+  "invalid_files_count": 0,
+  "nan_inf_files_count": 0,
+  "duplicate_samples_count": 0,
+  "leakage_audit": {
+    "sample_id_overlap": 0,
+    "spatial_cluster_overlap": 0,
+    "status": "PASSED"
+  },
+  "cloud_distribution": {
+    "0-10%": 185,
+    "10-30%": 557,
+    "30-60%": 308,
+    ">60%": 0
+  },
+  "band_availability": {
+    "required_bands": [
+      "B02",
+      "B03",
+      "B04",
+      "B08",
+      "B11",
+      "B12"
+    ],
+    "all_6_bands_present_in_all_patches": true
+  },
+  "label_provenance_summary": {
+    "GROUND_TRUTH": 111,
+    "SOURCE_LABEL": 400,
+    "WEAK_LABEL": 539,
+    "MANUAL_REVIEW": 0,
+    "notes": "Wildfire candidate seeds labeled SOURCE_LABEL; FIRMS+OSM pairings labeled WEAK_LABEL."
+  },
+  "errors": [],
+  "warnings": []
+}

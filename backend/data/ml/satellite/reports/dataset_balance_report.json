@@ -1,0 +1,36 @@
+{
+  "total_samples": 1050,
+  "class_breakdown": {
+    "WILDFIRE": {
+      "GROUND_TRUTH": 400,
+      "WEAK_LABEL": 0,
+      "MANUAL_REVIEW": 0
+    },
+    "INDUSTRIAL_FIRE": {
+      "GROUND_TRUTH": 0,
+      "WEAK_LABEL": 248,
+      "MANUAL_REVIEW": 2
+    },
+    "NON_FIRE": {
+      "GROUND_TRUTH": 111,
+      "WEAK_LABEL": 289,
+      "MANUAL_REVIEW": 0
+    }
+  },
+  "sources": {
+    "SEN2FIRE": 240,
+    "TS_SATFIRE": 160,
+    "INDUSTRIAL_BENCHMARK_CORPUS": 250,
+    "DIVERSE_GEOGRAPHIC_BACKGROUND": 400
+  },
+  "cloud_distribution": {
+    "0-10%": 185,
+    "10-30%": 557,
+    "30-60%": 308,
+    ">60%": 0
+  },
+  "quality_distribution": {
+    "GOOD": 742,
+    "ACCEPTABLE": 308
+  }
+}

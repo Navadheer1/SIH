@@ -1,0 +1,11 @@
+{
+  "clean_test_errors": 0,
+  "clean_test_accuracy": 1.0,
+  "stress_test_vulnerabilities": {
+    "noise_sigma_0.35_macro_f1": 1.0,
+    "cloud_opacity_60_macro_f1": 0.213,
+    "zeroed_b12_macro_f1": 1.0
+  },
+  "spatial_cv_macro_f1_mean": 1.0,
+  "spatial_cv_macro_f1_std": 0.0
+}

@@ -122,4 +122,3 @@ class SatellitePatchDataset(Dataset):
         sanitized_meta = {k: (v if v is not None else "") for k, v in meta.items()}
 
         return image_tensor, label_id, sanitized_meta
-

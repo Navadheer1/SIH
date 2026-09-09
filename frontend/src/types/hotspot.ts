@@ -1,4 +1,5 @@
 export interface Hotspot {
+  observation_id?: string;
   latitude: number;
   longitude: number;
   brightness: number;
@@ -10,6 +11,26 @@ export interface Hotspot {
   satellite: string;
   instrument: string;
   source: string;
+  ingested_at?: string;
+}
+
+export interface LatestFirmsResponse {
+  available: boolean;
+  observation_id?: string;
+  latitude?: number;
+  longitude?: number;
+  brightness?: number;
+  confidence?: string | number;
+  frp?: number;
+  satellite?: string;
+  instrument?: string;
+  acquired_at?: string;
+  ingested_at?: string;
+  age_minutes?: number;
+  freshness: 'FRESH' | 'RECENT' | 'STALE' | 'NO_DATA';
+  source?: string;
+  message?: string;
+  observation?: Hotspot | null;
 }
 
 export interface HotspotsApiResponse {
@@ -175,15 +196,34 @@ export interface AlertStats {
 
 export interface SatelliteEvidence {
   image_available: boolean;
-  classification: 'INDUSTRIAL_FIRE' | 'NATURAL_FIRE' | 'PERSISTENT_THERMAL_SOURCE' | 'NON_FIRE' | 'UNKNOWN';
-  confidence: number;
+  available?: boolean;
+  is_synthetic?: boolean;
+  classification?: 'INDUSTRIAL_FIRE' | 'NATURAL_FIRE' | 'PERSISTENT_THERMAL_SOURCE' | 'NON_FIRE' | 'UNKNOWN' | string;
+  confidence?: number;
   source: string;
+  product?: string;
   model?: string;
   model_type?: string;
   model_version?: string;
   captured_at?: string;
+  satellite_acquired_at?: string;
+  firms_acquired_at?: string;
+  retrieved_at?: string;
+  cloud_percentage?: number | null;
+  cloud_cover?: number | null;
+  class?: string;
+  quality?: string;
+  is_calibrated?: boolean;
+  time_difference_hours?: number | null;
   image_url?: string;
-  visual_evidence: string;
+  image_path?: string;
+  bounding_box?: number[];
+  observation_id?: string;
+  latitude?: number;
+  longitude?: number;
+  visual_evidence?: string;
+  status?: string;
+  error_message?: string;
   class_probabilities?: Record<string, number>;
   gradcam_overlay_path?: string;
   gradcam_region?: string;
@@ -479,5 +519,370 @@ export interface SimulationResultResponse {
   disclaimer: string;
 }
 
+export type AppView = 'dashboard' | 'incidents' | 'map' | 'status' | 'settings';
+
+export interface ServiceDetail {
+  configured?: boolean;
+  status: string;
+  connectivity_tested?: boolean;
+  latency_ms?: number | null;
+  http_status?: number | null;
+  dialect?: string | null;
+  provider?: string;
+  product?: string;
+  bands?: string;
+  endpoint?: string;
+  auth_status?: string;
+  ingestion_status?: string;
+  latest_observation_time?: string | null;
+  observation_count?: number;
+  stored_observations?: number;
+  error_category?: string | null;
+  service?: string;
+  version?: string;
+  environment?: string;
+  search_radius_km?: number;
+}
+
+export interface SystemStatusResponse {
+  status: 'OPERATIONAL' | 'DEGRADED' | 'DOWN';
+  services: {
+    backend: string;
+    firms: string;
+    database: string;
+    satellite: string;
+    satellite_hub?: string;
+    sentinel_catalog?: string;
+    sentinel_processing?: string;
+    osm?: string;
+  };
+  details: {
+    backend?: ServiceDetail;
+    firms: ServiceDetail;
+    database: ServiceDetail;
+    satellite: ServiceDetail;
+    satellite_hub?: ServiceDetail;
+    sentinel_catalog?: ServiceDetail;
+    sentinel_processing?: ServiceDetail;
+    osm?: ServiceDetail;
+    storage: 'SUPABASE_POSTGRESQL' | 'FILE_LOCAL';
+  };
+  timestamp: string;
+  environment: string;
+}
+
+export interface FirmsWorkerStatus {
+  service: string;
+  state: 'NOT_STARTED' | 'RUNNING' | 'HEALTHY' | 'STALE' | 'ERROR';
+  poll_interval_seconds: number;
+  last_run_time: string | null;
+  last_success_time: string | null;
+  last_error: string | null;
+  last_error_time: string | null;
+  last_count: number;
+  total_ingested: number;
+  total_deduplicated: number;
+  total_runs: number;
+  current_storage_count: number;
+  storage_backend: string;
+  storage_path: string;
+}
+
+// ============================================================================
+// PHASE 6F / 6G — CANONICAL INVESTIGATION SCHEMA INTERFACES
+// ============================================================================
+
+export interface DetectionEvidence {
+  source: string;
+  latitude: number;
+  longitude: number;
+  brightness: number;
+  frp: number;
+  confidence: string;
+  satellite?: string | null;
+  acquired_at?: string | null;
+  freshness?: string | null;
+}
+
+export interface PersistenceEvidence {
+  available: boolean;
+  score?: number | null;
+  observation_count: number;
+  duration_hours: number;
+  time_window_hours: number;
+  classification?: string | null;
+}
+
+export interface IndustrialContextEvidence {
+  available: boolean;
+  score?: number | null;
+  nearest_distance_m?: number | null;
+  nearest_distance_km?: number | null;
+  nearest_facility?: string | null;
+  features: Array<{
+    name?: string;
+    type?: string;
+    category?: string;
+    distance_km?: number;
+    latitude?: number;
+    longitude?: number;
+    osm_id?: string | number;
+    [key: string]: any;
+  }>;
+  source: string;
+}
+
+export interface Sentinel2Evidence {
+  available: boolean;
+  state: string;
+  class: 'WILDFIRE' | 'INDUSTRIAL_FIRE' | 'NON_FIRE' | 'UNKNOWN' | string;
+  confidence: number;
+  cloud_cover?: number | null;
+  quality: 'GOOD' | 'MODERATE' | 'HIGH_CLOUD' | 'VERY_HIGH_CLOUD' | 'UNAVAILABLE' | string;
+  is_synthetic: boolean;
+  is_calibrated: boolean;
+  satellite_acquired_at?: string | null;
+  time_difference_hours?: number | null;
+  image_url?: string | null;
+  model?: string | null;
+  class_probabilities: Record<string, number>;
+}
+
+export interface FusionResult {
+  candidate_class: 'WILDFIRE' | 'INDUSTRIAL_FIRE' | 'NON_FIRE' | 'UNKNOWN' | string;
+  candidate_score: number;
+  evidence_strength: 'STRONG' | 'MODERATE' | 'WEAK' | 'INSUFFICIENT' | string;
+  confidence_label: 'HIGH' | 'MEDIUM' | 'LOW' | 'INCONCLUSIVE' | string;
+  reasoning: string[];
+  conflict_detected: boolean;
+  contributing_factors: Record<string, number>;
+}
+
+export interface RiskResult {
+  risk_score: number;
+  risk_level: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW' | string;
+  primary_driver?: string | null;
+  factors: Record<string, number>;
+}
+
+export interface Provenance {
+  observation_id: string;
+  firms_acquired_at?: string | null;
+  sentinel2_acquired_at?: string | null;
+  temporal_offset_hours?: number | null;
+  osm_queried_at?: string | null;
+  investigated_at: string;
+}
+
+export interface InvestigationResponse {
+  observation_id: string;
+  detection: DetectionEvidence;
+  persistence: PersistenceEvidence;
+  industrial_context: IndustrialContextEvidence;
+  sentinel2: Sentinel2Evidence;
+  fusion: FusionResult;
+  risk: RiskResult;
+  provenance: Provenance;
+  warnings: string[];
+  disclaimers: string[];
+}
+
+export interface PriorityResult {
+  priority_score: number;
+  priority_level: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | string;
+  priority_index: 'P1' | 'P2' | 'P3' | 'P4' | string;
+  scoring_breakdown: Record<string, number>;
+  factors: Record<string, any>;
+  explainability_summary: string;
+  ranking_reasons: string[];
+}
+
+export interface ThreatZoneDetails {
+  radius_meters: number;
+  description: string;
+  key_actions: string[];
+}
+
+export interface ThreatZoneResult {
+  available: boolean;
+  threat_radius_meters: number;
+  estimated_spread_rate_m_min?: number | null;
+  high_hazard_zone?: ThreatZoneDetails | null;
+  moderate_hazard_zone?: ThreatZoneDetails | null;
+  precautionary_zone?: ThreatZoneDetails | null;
+  zones?: Record<string, any>;
+  spread_scenario?: Record<string, any>;
+}
+
+export interface AssetExposureItem {
+  name: string;
+  type: string;
+  category: string;
+  distance_km: number;
+  latitude?: number;
+  longitude?: number;
+  osm_id?: string | number;
+  is_critical?: boolean;
+}
+
+export interface AssetExposureResult {
+  available: boolean;
+  total_exposed_assets: number;
+  critical_infrastructure_count: number;
+  high_vulnerability_count: number;
+  moderate_count: number;
+  facilities: AssetExposureItem[];
+}
+
+export interface ImpactResult {
+  available: boolean;
+  impact_score: number;
+  impact_level: string;
+  breakdown: Record<string, number>;
+}
+
+export interface FutureImpactItem {
+  projection_window_hours: number;
+  threat_level: string;
+  risk_summary: string;
+  radius_meters?: number;
+  scenario_spread_rate?: number;
+  forecasted_time?: string;
+}
+
+export interface FutureImpactResult {
+  available: boolean;
+  scenarios_evaluated: number;
+  projections: FutureImpactItem[];
+  advisory_notes: string[];
+}
+
+export interface RecommendedAction {
+  priority: string;
+  title: string;
+  action_type: string;
+  recommended_stakeholders: string[];
+  rationale: string;
+}
+
+export interface DecisionProvenance {
+  observation_id: string;
+  investigated_at?: string | null;
+  threat_zone_calculated_at?: string | null;
+  asset_query_at?: string | null;
+  priority_evaluated_at?: string | null;
+  decision_support_generated_at: string;
+}
+
+export interface IncidentSummary {
+  candidate_class: string;
+  evidence_strength: string;
+  risk_level: string;
+  priority_level: string;
+  priority_index: string;
+  persistence_interpretation: string;
+  industrial_context_summary: string;
+  optical_evidence_quality: string;
+  asset_exposure_summary: string;
+  recommended_action: string;
+}
+
+export interface DecisionSupportResponse {
+  observation_id: string;
+  status: 'SUCCESS' | 'PARTIAL_EVIDENCE' | 'DEGRADED' | string;
+  summary: IncidentSummary;
+  investigation: InvestigationResponse;
+  priority: PriorityResult;
+  threat_zones: ThreatZoneResult;
+  asset_exposure: AssetExposureResult;
+  impact: ImpactResult;
+  future_impact: FutureImpactResult;
+  recommended_actions: RecommendedAction[];
+  provenance: DecisionProvenance;
+  safety_flags: {
+    is_calibrated: boolean;
+    is_synthetic: boolean;
+    is_simulation_only: boolean;
+  };
+  disclaimers: string[];
+  warnings: string[];
+  created_at: string;
+}
+
+export interface IncidentActionRequest {
+  action: 'ACKNOWLEDGE' | 'DISPATCH' | 'INVESTIGATE' | 'ESCALATE' | 'RESOLVE' | 'DISMISS' | 'ADD_NOTE' | string;
+  user?: string;
+  target_agency?: string | null;
+  notes?: string | null;
+  priority_override?: string | null;
+}
+
+export interface IncidentAuditItem {
+  id: string;
+  observation_id: string;
+  timestamp: string;
+  actor: string;
+  actor_type: 'HUMAN_DISPATCHER' | 'AUTOMATED_PIPELINE' | 'SYSTEM_SUPERVISOR' | string;
+  action: string;
+  previous_status?: string | null;
+  new_status: string;
+  target_agency?: string | null;
+  notes?: string | null;
+  metadata?: Record<string, any>;
+}
+
+export interface IncidentStateSummary {
+  observation_id: string;
+  status: 'NEW' | 'ACKNOWLEDGED' | 'DISPATCHED' | 'INVESTIGATING' | 'RESOLVED' | 'DISMISSED' | string;
+  priority_level: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | string;
+  priority_index: 'P1' | 'P2' | 'P3' | 'P4' | string;
+  assigned_agency?: string | null;
+  last_updated_at: string;
+  last_updated_by: string;
+  total_actions_count: number;
+}
+
+export interface IncidentActionResponse {
+  success: boolean;
+  observation_id: string;
+  action_recorded: string;
+  current_state: IncidentStateSummary;
+  audit_entry: IncidentAuditItem;
+  message: string;
+}
+
+export interface IncidentAuditTrailResponse {
+  observation_id: string;
+  state: IncidentStateSummary;
+  audit_trail: IncidentAuditItem[];
+  disclaimers: string[];
+  retrieved_at: string;
+}
+
+export interface IncidentOperationalSummary {
+  total_incidents: number;
+  new_count: number;
+  acknowledged_count: number;
+  dispatched_count: number;
+  investigating_count: number;
+  resolved_count: number;
+  dismissed_count: number;
+  p1_critical_active_count: number;
+  p2_high_active_count: number;
+  generated_at: string;
+}
+
+export interface DemoScenarioPreset {
+  id: string;
+  name: string;
+  description: string;
+  observation_id: string;
+  priority: 'P1' | 'P2' | 'P3' | 'P4';
+  priority_label: string;
+  candidate_class: string;
+  coordinates: [number, number];
+  location_name: string;
+  badge: string;
+}
 
 

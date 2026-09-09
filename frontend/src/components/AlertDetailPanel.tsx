@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ThermalAlert, FusedEvidenceResponse } from '../types/hotspot';
+import { getApiUrl } from '../config/api';
 import { SatelliteEvidenceCard } from './SatelliteEvidenceCard';
 
 interface AlertDetailPanelProps {
@@ -29,9 +30,9 @@ export const AlertDetailPanel: React.FC<AlertDetailPanelProps> = ({
       setLoadingSatellite(true);
       const frp = Number(alert.features?.frp || 0);
       const brightness = Number(alert.features?.brightness || 320);
-      const url = `http://127.0.0.1:8000/api/satellite/evidence?lat=${alert.latitude}&lon=${alert.longitude}&frp=${frp}&brightness=${brightness}&persistence_score=${alert.persistence_score}`;
+      const endpoint = `/api/satellite/evidence?lat=${alert.latitude}&lon=${alert.longitude}&frp=${frp}&brightness=${brightness}&persistence_score=${alert.persistence_score}`;
 
-      fetch(url)
+      fetch(getApiUrl(endpoint))
         .then((res) => res.json())
         .then((data) => {
           setFusedEvidence(data);

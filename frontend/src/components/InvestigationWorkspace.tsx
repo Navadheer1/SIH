@@ -8,6 +8,7 @@ import {
   AiClassificationResponse,
   RiskScoreResponse,
 } from '../types/hotspot';
+import { getApiUrl, getAssetUrl } from '../config/api';
 import { InvestigationTimeline } from './InvestigationTimeline';
 
 export interface InvestigationWorkspaceProps {
@@ -66,12 +67,12 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
 
     const fetchAllEvidence = async () => {
       try {
-        const evidenceUrl = `http://127.0.0.1:8000/api/satellite/evidence?lat=${latitude}&lon=${longitude}&frp=${frp}&brightness=${brightness}&persistence_score=${persistenceScore}`;
-        const osmUrl = `http://127.0.0.1:8000/api/hotspots/context?lat=${latitude}&lon=${longitude}&radius_km=5.0`;
+        const evidenceEndpoint = `/api/satellite/evidence?lat=${latitude}&lon=${longitude}&frp=${frp}&brightness=${brightness}&persistence_score=${persistenceScore}`;
+        const osmEndpoint = `/api/hotspots/context?lat=${latitude}&lon=${longitude}&radius_km=5.0`;
 
         const [evRes, osmRes] = await Promise.allSettled([
-          fetch(evidenceUrl).then((r) => (r.ok ? r.json() : null)),
-          fetch(osmUrl).then((r) => (r.ok ? r.json() : null)),
+          fetch(getApiUrl(evidenceEndpoint)).then((r) => (r.ok ? r.json() : null)),
+          fetch(getApiUrl(osmEndpoint)).then((r) => (r.ok ? r.json() : null)),
         ]);
 
         if (!isMounted) return;
@@ -92,8 +93,8 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
         const queryParams = `lat=${latitude}&lon=${longitude}&frp=${frp}&brightness=${brightness}&confidence=${hotspot?.confidence || 'nominal'}&persistence_score=${persistenceScore}&observation_count=${observationCount}&duration_hours=${durationHours}`;
 
         const [aiRes, riskRes] = await Promise.allSettled([
-          fetch(`http://127.0.0.1:8000/api/hotspots/classify?${queryParams}`).then((r) => (r.ok ? r.json() : null)),
-          fetch(`http://127.0.0.1:8000/api/hotspots/risk?${queryParams}`).then((r) => (r.ok ? r.json() : null)),
+          fetch(getApiUrl(`/api/hotspots/classify?${queryParams}`)).then((r) => (r.ok ? r.json() : null)),
+          fetch(getApiUrl(`/api/hotspots/risk?${queryParams}`)).then((r) => (r.ok ? r.json() : null)),
         ]);
 
 
@@ -173,12 +174,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
 
   // Satellite Image resolution
   const satEvidence = fusedEvidence?.evidence?.satellite;
-  const API_BASE = 'http://127.0.0.1:8000';
-  const imageUrl = satEvidence?.image_url
-    ? satEvidence.image_url.startsWith('http')
-      ? satEvidence.image_url
-      : `${API_BASE}${satEvidence.image_url}`
-    : null;
+  const imageUrl = getAssetUrl(satEvidence?.image_url);
 
   return (
     <div className="investigation-workspace-modal-overlay">

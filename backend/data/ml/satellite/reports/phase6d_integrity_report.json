@@ -1,0 +1,25 @@
+{
+  "integrity_status": "PASSED",
+  "test_sample_count": 153,
+  "train_sample_count": 743,
+  "val_sample_count": 154,
+  "test_class_distribution": {
+    "WILDFIRE": 53,
+    "INDUSTRIAL_FIRE": 40,
+    "NON_FIRE": 60
+  },
+  "id_duplicates_in_test": 0,
+  "id_overlap": {
+    "train_test": 0,
+    "val_test": 0,
+    "train_val": 0
+  },
+  "spatial_cluster_overlap": {
+    "train_test": 0,
+    "val_test": 0,
+    "train_val": 0
+  },
+  "leakage_verdict": "ZERO_LEAKAGE",
+  "errors": [],
+  "warnings": []
+}

@@ -60,8 +60,7 @@ class TestPhase3FireSpread(unittest.TestCase):
 
     def test_03_future_impact_forecast(self):
         """Verify time-series future asset exposure and dynamic priority index forecast."""
-        loop = asyncio.get_event_loop()
-        forecast = loop.run_until_complete(
+        forecast = asyncio.run(
             calculate_future_impact_forecast(
                 lat=self.test_lat,
                 lon=self.test_lon,
@@ -78,8 +77,7 @@ class TestPhase3FireSpread(unittest.TestCase):
 
     def test_04_what_if_simulation_isolation(self):
         """Verify What-If simulation isolation (does not mutate live data)."""
-        loop = asyncio.get_event_loop()
-        sim_res = loop.run_until_complete(
+        sim_res = asyncio.run(
             run_what_if_simulation(
                 lat=self.test_lat,
                 lon=self.test_lon,

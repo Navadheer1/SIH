@@ -1,0 +1,175 @@
+{
+  "global_confidence_metrics": {
+    "mean_confidence": 0.9812,
+    "median_confidence": 0.9863,
+    "min_confidence": 0.9638,
+    "max_confidence": 0.9909,
+    "total_samples": 153
+  },
+  "accuracy_and_calibration": {
+    "accuracy": 1.0,
+    "expected_calibration_error_ece": 0.0188,
+    "is_calibrated": false,
+    "calibration_commentary": "Low ECE on this test set is driven by high certainty predictions; temperature scaling is recommended for open-world deployments."
+  },
+  "correct_vs_incorrect_confidence": {
+    "correct_predictions_count": 153,
+    "correct_mean_confidence": 0.9812,
+    "incorrect_predictions_count": 0,
+    "incorrect_mean_confidence": null
+  },
+  "per_class_confidence": {
+    "WILDFIRE": {
+      "mean": 0.9708,
+      "median": 0.9695,
+      "min": 0.9638,
+      "max": 0.982,
+      "count": 53
+    },
+    "INDUSTRIAL_FIRE": {
+      "mean": 0.9869,
+      "median": 0.9885,
+      "min": 0.9792,
+      "max": 0.9909,
+      "count": 40
+    },
+    "NON_FIRE": {
+      "mean": 0.9868,
+      "median": 0.987,
+      "min": 0.9847,
+      "max": 0.9877,
+      "count": 60
+    }
+  },
+  "calibration_bins": [
+    {
+      "bin_range": "0.90-1.00",
+      "count": 153,
+      "avg_confidence": 0.9812,
+      "accuracy": 1.0,
+      "calibration_gap": 0.0188
+    }
+  ],
+  "sample_predictions_sample": [
+    {
+      "sample_id": "wf_sen2fire_0015",
+      "true_class": "WILDFIRE",
+      "predicted_class": "WILDFIRE",
+      "confidence": 0.9695,
+      "is_correct": true,
+      "class_scores": {
+        "WILDFIRE": 0.9695,
+        "INDUSTRIAL_FIRE": 0.0206,
+        "NON_FIRE": 0.0099
+      }
+    },
+    {
+      "sample_id": "wf_sen2fire_0030",
+      "true_class": "WILDFIRE",
+      "predicted_class": "WILDFIRE",
+      "confidence": 0.9667,
+      "is_correct": true,
+      "class_scores": {
+        "WILDFIRE": 0.9667,
+        "INDUSTRIAL_FIRE": 0.0227,
+        "NON_FIRE": 0.0106
+      }
+    },
+    {
+      "sample_id": "wf_sen2fire_0045",
+      "true_class": "WILDFIRE",
+      "predicted_class": "WILDFIRE",
+      "confidence": 0.9681,
+      "is_correct": true,
+      "class_scores": {
+        "WILDFIRE": 0.9681,
+        "INDUSTRIAL_FIRE": 0.0217,
+        "NON_FIRE": 0.0103
+      }
+    },
+    {
+      "sample_id": "wf_sen2fire_0060",
+      "true_class": "WILDFIRE",
+      "predicted_class": "WILDFIRE",
+      "confidence": 0.9691,
+      "is_correct": true,
+      "class_scores": {
+        "WILDFIRE": 0.9691,
+        "INDUSTRIAL_FIRE": 0.0209,
+        "NON_FIRE": 0.01
+      }
+    },
+    {
+      "sample_id": "wf_sen2fire_0075",
+      "true_class": "WILDFIRE",
+      "predicted_class": "WILDFIRE",
+      "confidence": 0.9664,
+      "is_correct": true,
+      "class_scores": {
+        "WILDFIRE": 0.9664,
+        "INDUSTRIAL_FIRE": 0.0228,
+        "NON_FIRE": 0.0108
+      }
+    },
+    {
+      "sample_id": "wf_sen2fire_0090",
+      "true_class": "WILDFIRE",
+      "predicted_class": "WILDFIRE",
+      "confidence": 0.9693,
+      "is_correct": true,
+      "class_scores": {
+        "WILDFIRE": 0.9693,
+        "INDUSTRIAL_FIRE": 0.0206,
+        "NON_FIRE": 0.0101
+      }
+    },
+    {
+      "sample_id": "wf_sen2fire_0120",
+      "true_class": "WILDFIRE",
+      "predicted_class": "WILDFIRE",
+      "confidence": 0.9711,
+      "is_correct": true,
+      "class_scores": {
+        "WILDFIRE": 0.9711,
+        "INDUSTRIAL_FIRE": 0.0195,
+        "NON_FIRE": 0.0094
+      }
+    },
+    {
+      "sample_id": "wf_sen2fire_0150",
+      "true_class": "WILDFIRE",
+      "predicted_class": "WILDFIRE",
+      "confidence": 0.9661,
+      "is_correct": true,
+      "class_scores": {
+        "WILDFIRE": 0.9661,
+        "INDUSTRIAL_FIRE": 0.0229,
+        "NON_FIRE": 0.0109
+      }
+    },
+    {
+      "sample_id": "wf_sen2fire_0180",
+      "true_class": "WILDFIRE",
+      "predicted_class": "WILDFIRE",
+      "confidence": 0.969,
+      "is_correct": true,
+      "class_scores": {
+        "WILDFIRE": 0.969,
+        "INDUSTRIAL_FIRE": 0.021,
+        "NON_FIRE": 0.01
+      }
+    },
+    {
+      "sample_id": "wf_sen2fire_0210",
+      "true_class": "WILDFIRE",
+      "predicted_class": "WILDFIRE",
+      "confidence": 0.9709,
+      "is_correct": true,
+      "class_scores": {
+        "WILDFIRE": 0.9709,
+        "INDUSTRIAL_FIRE": 0.0196,
+        "NON_FIRE": 0.0096
+      }
+    }
+  ]
+}

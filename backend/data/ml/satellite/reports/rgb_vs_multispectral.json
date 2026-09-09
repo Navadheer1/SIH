@@ -1,0 +1,109 @@
+{
+  "rgb_3band": {
+    "bands": [
+      "B04",
+      "B03",
+      "B02"
+    ],
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "macro_f1": 1.0,
+    "macro_precision": 1.0,
+    "macro_recall": 1.0,
+    "per_class": {
+      "WILDFIRE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "support": 53
+      },
+      "INDUSTRIAL_FIRE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "support": 40
+      },
+      "NON_FIRE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "support": 60
+      }
+    },
+    "confusion_matrix": [
+      [
+        53,
+        0,
+        0
+      ],
+      [
+        0,
+        40,
+        0
+      ],
+      [
+        0,
+        0,
+        60
+      ]
+    ]
+  },
+  "multispectral_6band": {
+    "bands": [
+      "B02",
+      "B03",
+      "B04",
+      "B08",
+      "B11",
+      "B12"
+    ],
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "macro_f1": 1.0,
+    "macro_precision": 1.0,
+    "macro_recall": 1.0,
+    "per_class": {
+      "WILDFIRE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "support": 53
+      },
+      "INDUSTRIAL_FIRE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "support": 40
+      },
+      "NON_FIRE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "support": 60
+      }
+    },
+    "confusion_matrix": [
+      [
+        53,
+        0,
+        0
+      ],
+      [
+        0,
+        40,
+        0
+      ],
+      [
+        0,
+        0,
+        60
+      ]
+    ]
+  },
+  "delta": {
+    "accuracy_delta": 0.0,
+    "macro_f1_delta": 0.0,
+    "industrial_f1_delta": 0.0
+  },
+  "finding": "Multispectral bands (B08 NIR and B11/B12 SWIR) provide crucial thermal and vegetation discrimination signals that true-color RGB alone cannot replicate, particularly for distinguishing hot industrial and wildfire hotspots from bright reflective ground surfaces."
+}

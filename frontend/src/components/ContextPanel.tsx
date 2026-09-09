@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Hotspot, HotspotContextResponse, AiClassificationResponse, RiskScoreResponse, FusedEvidenceResponse } from '../types/hotspot';
+import { getApiUrl } from '../config/api';
 import { AiClassificationCard } from './AiClassificationCard';
 import { RiskScoreCard } from './RiskScoreCard';
 import { SatelliteEvidenceCard } from './SatelliteEvidenceCard';
@@ -39,9 +40,9 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
         const queryParams = `lat=${selectedHotspot.latitude}&lon=${selectedHotspot.longitude}&frp=${selectedHotspot.frp}&brightness=${selectedHotspot.brightness}&confidence=${selectedHotspot.confidence}`;
         
         const [aiRes, riskRes, satRes] = await Promise.all([
-          fetch(`http://127.0.0.1:8000/api/hotspots/classify?${queryParams}`),
-          fetch(`http://127.0.0.1:8000/api/hotspots/risk?${queryParams}`),
-          fetch(`http://127.0.0.1:8000/api/satellite/evidence?${queryParams}`)
+          fetch(getApiUrl(`/api/hotspots/classify?${queryParams}`)),
+          fetch(getApiUrl(`/api/hotspots/risk?${queryParams}`)),
+          fetch(getApiUrl(`/api/satellite/evidence?${queryParams}`))
         ]);
 
         if (!aiRes.ok || !riskRes.ok) {

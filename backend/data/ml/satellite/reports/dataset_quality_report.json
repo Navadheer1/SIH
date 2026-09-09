@@ -1,0 +1,38 @@
+{
+  "status": "PASSED",
+  "total_samples": 1050,
+  "class_distribution": {
+    "WILDFIRE": 400,
+    "INDUSTRIAL_FIRE": 250,
+    "NON_FIRE": 400
+  },
+  "label_type_distribution": {
+    "SOURCE_LABEL": 400,
+    "WEAK_LABEL": 539,
+    "GROUND_TRUTH": 111
+  },
+  "quality_distribution": {
+    "GOOD": 742,
+    "ACCEPTABLE": 308
+  },
+  "source_distribution": {
+    "SEN2FIRE": 240,
+    "TS_SATFIRE": 160,
+    "FIRMS_OSM_INDUSTRIAL_WEAK": 250,
+    "DIVERSE_GEOGRAPHIC_BACKGROUND": 400
+  },
+  "cloud_histogram": {
+    "0-10%": 185,
+    "10-30%": 557,
+    "30-60%": 308,
+    ">60%": 0
+  },
+  "split_counts": {
+    "train": 743,
+    "val": 154,
+    "test": 153
+  },
+  "leakage_check": "PASSED",
+  "errors": [],
+  "warnings": []
+}

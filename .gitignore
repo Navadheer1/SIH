@@ -11,8 +11,15 @@ env/
 
 # Environment variables
 .env
-.env.local
-.env.*.local
+.env.*
+*.env
+backend/.env
+backend/.env.*
+frontend/.env
+frontend/.env.*
+!.env.example
+!backend/.env.example
+!frontend/.env.example
 
 # Node.js / React
 node_modules/
@@ -59,4 +66,13 @@ data/satellite/industrial_fire/*
 data/satellite/persistent_thermal/*
 !data/satellite/persistent_thermal/.gitkeep
 *.pth
+*.npz
+
+# ML Satellite Dataset (Keep manifests, reports, scripts, .gitkeeps; ignore large samples/raw/processed)
+backend/data/ml/satellite/raw/*
+!backend/data/ml/satellite/raw/.gitkeep
+backend/data/ml/satellite/processed/*
+!backend/data/ml/satellite/processed/.gitkeep
+backend/data/ml/satellite/samples/*
+!backend/data/ml/satellite/samples/.gitkeep
 

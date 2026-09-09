@@ -1,0 +1,422 @@
+{
+  "audit_test_f3af976e": {
+    "state": {
+      "observation_id": "audit_test_f3af976e",
+      "status": "NEW",
+      "priority_level": "LOW",
+      "priority_index": "P4",
+      "assigned_agency": null,
+      "last_updated_at": "2026-09-08T12:42:24.137593+00:00",
+      "last_updated_by": "System Pipeline",
+      "total_actions_count": 1
+    },
+    "audit_trail": [
+      {
+        "id": "AUDIT-INIT-34A35AD4",
+        "observation_id": "audit_test_f3af976e",
+        "timestamp": "2026-09-08T12:42:24.137593+00:00",
+        "actor": "System Pipeline",
+        "actor_type": "AUTOMATED_PIPELINE",
+        "action": "HOTSPOT_DETECTED",
+        "previous_status": null,
+        "new_status": "NEW",
+        "target_agency": null,
+        "notes": "Radiometric thermal anomaly ingested from NASA FIRMS sensor stream.",
+        "metadata": {
+          "source": "NASA FIRMS",
+          "lifecycle_stage": "DETECT"
+        }
+      }
+    ]
+  },
+  "invalid_test_1f52cc77": {
+    "state": {
+      "observation_id": "invalid_test_1f52cc77",
+      "status": "RESOLVED",
+      "priority_level": "LOW",
+      "priority_index": "P4",
+      "assigned_agency": null,
+      "last_updated_at": "2026-09-08T12:42:24.148440+00:00",
+      "last_updated_by": "Operator",
+      "total_actions_count": 2
+    },
+    "audit_trail": [
+      {
+        "id": "AUDIT-INIT-0CAB5AEB",
+        "observation_id": "invalid_test_1f52cc77",
+        "timestamp": "2026-09-08T12:42:24.148130+00:00",
+        "actor": "System Pipeline",
+        "actor_type": "AUTOMATED_PIPELINE",
+        "action": "HOTSPOT_DETECTED",
+        "previous_status": null,
+        "new_status": "NEW",
+        "target_agency": null,
+        "notes": "Radiometric thermal anomaly ingested from NASA FIRMS sensor stream.",
+        "metadata": {
+          "source": "NASA FIRMS",
+          "lifecycle_stage": "DETECT"
+        }
+      },
+      {
+        "id": "AUDIT-1788871344148-041255",
+        "observation_id": "invalid_test_1f52cc77",
+        "timestamp": "2026-09-08T12:42:24.148440+00:00",
+        "actor": "Operator",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "RESOLVE",
+        "previous_status": "NEW",
+        "new_status": "RESOLVED",
+        "target_agency": null,
+        "notes": "Hazard verified contained / extinguished. Operational incident closed.",
+        "metadata": {
+          "priority_override": null
+        }
+      }
+    ]
+  },
+  "audit_test_d3cff6ee": {
+    "state": {
+      "observation_id": "audit_test_d3cff6ee",
+      "status": "DISPATCHED",
+      "priority_level": "CRITICAL",
+      "priority_index": "P1",
+      "assigned_agency": "Foam Tender Unit 1",
+      "last_updated_at": "2026-09-08T12:42:56.301960+00:00",
+      "last_updated_by": "On-Scene Commander",
+      "total_actions_count": 4
+    },
+    "audit_trail": [
+      {
+        "id": "AUDIT-INIT-AC4D168B",
+        "observation_id": "audit_test_d3cff6ee",
+        "timestamp": "2026-09-08T12:42:56.296475+00:00",
+        "actor": "System Pipeline",
+        "actor_type": "AUTOMATED_PIPELINE",
+        "action": "HOTSPOT_DETECTED",
+        "previous_status": null,
+        "new_status": "NEW",
+        "target_agency": null,
+        "notes": "Radiometric thermal anomaly ingested from NASA FIRMS sensor stream.",
+        "metadata": {
+          "source": "NASA FIRMS",
+          "lifecycle_stage": "DETECT"
+        }
+      },
+      {
+        "id": "AUDIT-1788871376298-545543",
+        "observation_id": "audit_test_d3cff6ee",
+        "timestamp": "2026-09-08T12:42:56.298219+00:00",
+        "actor": "Test Duty Officer",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "ACKNOWLEDGE",
+        "previous_status": "NEW",
+        "new_status": "ACKNOWLEDGED",
+        "target_agency": null,
+        "notes": "Acknowledged alert for SIH validation.",
+        "metadata": {
+          "priority_override": null
+        }
+      },
+      {
+        "id": "AUDIT-1788871376300-5BAA74",
+        "observation_id": "audit_test_d3cff6ee",
+        "timestamp": "2026-09-08T12:42:56.300224+00:00",
+        "actor": "Chief Dispatcher",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "DISPATCH",
+        "previous_status": "ACKNOWLEDGED",
+        "new_status": "DISPATCHED",
+        "target_agency": "Foam Tender Unit 1",
+        "notes": "Deploying industrial foam tender.",
+        "metadata": {
+          "priority_override": "CRITICAL"
+        }
+      },
+      {
+        "id": "AUDIT-1788871376301-72EF37",
+        "observation_id": "audit_test_d3cff6ee",
+        "timestamp": "2026-09-08T12:42:56.301960+00:00",
+        "actor": "On-Scene Commander",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "ADD_NOTE",
+        "previous_status": "DISPATCHED",
+        "new_status": "DISPATCHED",
+        "target_agency": null,
+        "notes": "Units arrived on scene. Perimeter secured.",
+        "metadata": {
+          "priority_override": null
+        }
+      }
+    ]
+  },
+  "audit_test_50a01230": {
+    "state": {
+      "observation_id": "audit_test_50a01230",
+      "status": "DISPATCHED",
+      "priority_level": "CRITICAL",
+      "priority_index": "P1",
+      "assigned_agency": "Foam Tender Unit 1",
+      "last_updated_at": "2026-09-08T12:43:17.360129+00:00",
+      "last_updated_by": "On-Scene Commander",
+      "total_actions_count": 4
+    },
+    "audit_trail": [
+      {
+        "id": "AUDIT-INIT-F3B44F6A",
+        "observation_id": "audit_test_50a01230",
+        "timestamp": "2026-09-08T12:43:17.354336+00:00",
+        "actor": "System Pipeline",
+        "actor_type": "AUTOMATED_PIPELINE",
+        "action": "HOTSPOT_DETECTED",
+        "previous_status": null,
+        "new_status": "NEW",
+        "target_agency": null,
+        "notes": "Radiometric thermal anomaly ingested from NASA FIRMS sensor stream.",
+        "metadata": {
+          "source": "NASA FIRMS",
+          "lifecycle_stage": "DETECT"
+        }
+      },
+      {
+        "id": "AUDIT-1788871397356-D0B350",
+        "observation_id": "audit_test_50a01230",
+        "timestamp": "2026-09-08T12:43:17.356390+00:00",
+        "actor": "Test Duty Officer",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "ACKNOWLEDGE",
+        "previous_status": "NEW",
+        "new_status": "ACKNOWLEDGED",
+        "target_agency": null,
+        "notes": "Acknowledged alert for SIH validation.",
+        "metadata": {
+          "priority_override": null
+        }
+      },
+      {
+        "id": "AUDIT-1788871397358-FE44B8",
+        "observation_id": "audit_test_50a01230",
+        "timestamp": "2026-09-08T12:43:17.358455+00:00",
+        "actor": "Chief Dispatcher",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "DISPATCH",
+        "previous_status": "ACKNOWLEDGED",
+        "new_status": "DISPATCHED",
+        "target_agency": "Foam Tender Unit 1",
+        "notes": "Deploying industrial foam tender.",
+        "metadata": {
+          "priority_override": "CRITICAL"
+        }
+      },
+      {
+        "id": "AUDIT-1788871397360-4E8D8E",
+        "observation_id": "audit_test_50a01230",
+        "timestamp": "2026-09-08T12:43:17.360129+00:00",
+        "actor": "On-Scene Commander",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "ADD_NOTE",
+        "previous_status": "DISPATCHED",
+        "new_status": "DISPATCHED",
+        "target_agency": null,
+        "notes": "Units arrived on scene. Perimeter secured.",
+        "metadata": {
+          "priority_override": null
+        }
+      }
+    ]
+  },
+  "audit_test_a1b3ef94": {
+    "state": {
+      "observation_id": "audit_test_a1b3ef94",
+      "status": "DISPATCHED",
+      "priority_level": "CRITICAL",
+      "priority_index": "P1",
+      "assigned_agency": "Foam Tender Unit 1",
+      "last_updated_at": "2026-09-08T12:43:54.779066+00:00",
+      "last_updated_by": "On-Scene Commander",
+      "total_actions_count": 4
+    },
+    "audit_trail": [
+      {
+        "id": "AUDIT-INIT-D87E0416",
+        "observation_id": "audit_test_a1b3ef94",
+        "timestamp": "2026-09-08T12:43:54.774112+00:00",
+        "actor": "System Pipeline",
+        "actor_type": "AUTOMATED_PIPELINE",
+        "action": "HOTSPOT_DETECTED",
+        "previous_status": null,
+        "new_status": "NEW",
+        "target_agency": null,
+        "notes": "Radiometric thermal anomaly ingested from NASA FIRMS sensor stream.",
+        "metadata": {
+          "source": "NASA FIRMS",
+          "lifecycle_stage": "DETECT"
+        }
+      },
+      {
+        "id": "AUDIT-1788871434775-1CC5C0",
+        "observation_id": "audit_test_a1b3ef94",
+        "timestamp": "2026-09-08T12:43:54.775540+00:00",
+        "actor": "Test Duty Officer",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "ACKNOWLEDGE",
+        "previous_status": "NEW",
+        "new_status": "ACKNOWLEDGED",
+        "target_agency": null,
+        "notes": "Acknowledged alert for SIH validation.",
+        "metadata": {
+          "priority_override": null
+        }
+      },
+      {
+        "id": "AUDIT-1788871434777-DE5AE2",
+        "observation_id": "audit_test_a1b3ef94",
+        "timestamp": "2026-09-08T12:43:54.777416+00:00",
+        "actor": "Chief Dispatcher",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "DISPATCH",
+        "previous_status": "ACKNOWLEDGED",
+        "new_status": "DISPATCHED",
+        "target_agency": "Foam Tender Unit 1",
+        "notes": "Deploying industrial foam tender.",
+        "metadata": {
+          "priority_override": "CRITICAL"
+        }
+      },
+      {
+        "id": "AUDIT-1788871434779-BE85CD",
+        "observation_id": "audit_test_a1b3ef94",
+        "timestamp": "2026-09-08T12:43:54.779066+00:00",
+        "actor": "On-Scene Commander",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "ADD_NOTE",
+        "previous_status": "DISPATCHED",
+        "new_status": "DISPATCHED",
+        "target_agency": null,
+        "notes": "Units arrived on scene. Perimeter secured.",
+        "metadata": {
+          "priority_override": null
+        }
+      }
+    ]
+  },
+  "423f0b1ad50facd6": {
+    "state": {
+      "observation_id": "423f0b1ad50facd6",
+      "status": "DISPATCHED",
+      "priority_level": "LOW",
+      "priority_index": "P4",
+      "assigned_agency": "Industrial Fire Brigade 1",
+      "last_updated_at": "2026-09-08T13:14:52.336089+00:00",
+      "last_updated_by": "Final Verification Dispatcher",
+      "total_actions_count": 2
+    },
+    "audit_trail": [
+      {
+        "id": "AUDIT-INIT-D567EAE6",
+        "observation_id": "423f0b1ad50facd6",
+        "timestamp": "2026-09-08T13:05:25.671338+00:00",
+        "actor": "System Pipeline",
+        "actor_type": "AUTOMATED_PIPELINE",
+        "action": "HOTSPOT_DETECTED",
+        "previous_status": null,
+        "new_status": "NEW",
+        "target_agency": null,
+        "notes": "Radiometric thermal anomaly ingested from NASA FIRMS sensor stream.",
+        "metadata": {
+          "source": "NASA FIRMS",
+          "lifecycle_stage": "DETECT"
+        }
+      },
+      {
+        "id": "AUDIT-1788873292336-DF7CD3",
+        "observation_id": "423f0b1ad50facd6",
+        "timestamp": "2026-09-08T13:14:52.336089+00:00",
+        "actor": "Final Verification Dispatcher",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "DISPATCH",
+        "previous_status": "NEW",
+        "new_status": "DISPATCHED",
+        "target_agency": "Industrial Fire Brigade 1",
+        "notes": "Final integration verification test run",
+        "metadata": {
+          "priority_override": null
+        }
+      }
+    ]
+  },
+  "audit_test_a0ae2777": {
+    "state": {
+      "observation_id": "audit_test_a0ae2777",
+      "status": "DISPATCHED",
+      "priority_level": "CRITICAL",
+      "priority_index": "P1",
+      "assigned_agency": "Foam Tender Unit 1",
+      "last_updated_at": "2026-09-08T13:14:02.996951+00:00",
+      "last_updated_by": "On-Scene Commander",
+      "total_actions_count": 4
+    },
+    "audit_trail": [
+      {
+        "id": "AUDIT-INIT-14D09DDA",
+        "observation_id": "audit_test_a0ae2777",
+        "timestamp": "2026-09-08T13:14:02.991507+00:00",
+        "actor": "System Pipeline",
+        "actor_type": "AUTOMATED_PIPELINE",
+        "action": "HOTSPOT_DETECTED",
+        "previous_status": null,
+        "new_status": "NEW",
+        "target_agency": null,
+        "notes": "Radiometric thermal anomaly ingested from NASA FIRMS sensor stream.",
+        "metadata": {
+          "source": "NASA FIRMS",
+          "lifecycle_stage": "DETECT"
+        }
+      },
+      {
+        "id": "AUDIT-1788873242993-A5C03C",
+        "observation_id": "audit_test_a0ae2777",
+        "timestamp": "2026-09-08T13:14:02.993166+00:00",
+        "actor": "Test Duty Officer",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "ACKNOWLEDGE",
+        "previous_status": "NEW",
+        "new_status": "ACKNOWLEDGED",
+        "target_agency": null,
+        "notes": "Acknowledged alert for SIH validation.",
+        "metadata": {
+          "priority_override": null
+        }
+      },
+      {
+        "id": "AUDIT-1788873242995-EB2591",
+        "observation_id": "audit_test_a0ae2777",
+        "timestamp": "2026-09-08T13:14:02.995235+00:00",
+        "actor": "Chief Dispatcher",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "DISPATCH",
+        "previous_status": "ACKNOWLEDGED",
+        "new_status": "DISPATCHED",
+        "target_agency": "Foam Tender Unit 1",
+        "notes": "Deploying industrial foam tender.",
+        "metadata": {
+          "priority_override": "CRITICAL"
+        }
+      },
+      {
+        "id": "AUDIT-1788873242996-DD101F",
+        "observation_id": "audit_test_a0ae2777",
+        "timestamp": "2026-09-08T13:14:02.996951+00:00",
+        "actor": "On-Scene Commander",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "ADD_NOTE",
+        "previous_status": "DISPATCHED",
+        "new_status": "DISPATCHED",
+        "target_agency": null,
+        "notes": "Units arrived on scene. Perimeter secured.",
+        "metadata": {
+          "priority_override": null
+        }
+      }
+    ]
+  }
+}

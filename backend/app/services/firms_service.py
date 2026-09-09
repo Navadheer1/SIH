@@ -8,7 +8,11 @@ import json
 from typing import List, Dict, Any, Optional, Tuple
 import httpx
 
+from app.config import NASA_FIRMS_MAP_KEY
+
 logger = logging.getLogger(__name__)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 # Predefined geographical bounding boxes: [min_lon, min_lat, max_lon, max_lat]
 REGION_BOUNDS = {
@@ -134,6 +138,41 @@ async def _fetch_single_feed(client: httpx.AsyncClient, feed: Dict[str, str], ta
     return items
 
 
+def _load_stored_processed_hotspots(target_bbox: List[float]) -> List[Dict[str, Any]]:
+    """
+    Load stored Phase 2/3 ingested FIRMS observations filtered by bounding box.
+    Queries Supabase database primary store first; falls back to local JSON storage.
+    """
+    try:
+        from app.db.database import get_session_factory
+        from app.db.repositories import FirmsObservationRepository
+
+        factory = get_session_factory()
+        if factory is not None:
+            with factory() as db:
+                db_records = FirmsObservationRepository.get_observations(db, limit=5000, offset=0, bbox=target_bbox)
+                if db_records:
+                    return [r.to_dict() for r in db_records]
+    except Exception as ex:
+        logger.warning(f"Database read failed in firms_service, falling back to local storage: {ex}")
+
+    # Fallback to local JSON file
+    from app.config import FIRMS_OBSERVATIONS_PATH
+    if not os.path.exists(FIRMS_OBSERVATIONS_PATH):
+        return []
+    try:
+        with open(FIRMS_OBSERVATIONS_PATH, "r", encoding="utf-8") as f:
+            items = json.load(f)
+            if isinstance(items, list):
+                return [
+                    it for it in items
+                    if isinstance(it, dict) and _is_within_bbox(float(it.get("latitude", 0)), float(it.get("longitude", 0)), target_bbox)
+                ]
+    except Exception as e:
+        logger.error(f"Error reading processed FIRMS observations: {e}")
+    return []
+
+
 def _load_backup_hotspots(target_bbox: List[float]) -> List[Dict[str, Any]]:
     """Load local backup FIRMS hotspots if online network fetch is unavailable."""
     if not os.path.exists(BACKUP_PATH):
@@ -163,8 +202,8 @@ async def fetch_firms_hotspots(
     force_refresh: bool = False
 ) -> Dict[str, Any]:
     """
-    Fetch active fire hotspots from NASA FIRMS API (if MAP_KEY available)
-    or NASA FIRMS public 24h CSV feeds in parallel with fallback to local raw backup.
+    Fetch active fire hotspots from Phase 2 ingested observations storage (if available),
+    or NASA FIRMS API (if MAP_KEY available) / public 24h CSV feeds with fallback to backup.
     Caches response in-memory for 5 minutes.
     """
     # Determine target bounding box
@@ -184,51 +223,60 @@ async def fetch_firms_hotspots(
             logger.info(f"Returning cached FIRMS hotspots for key: {cache_key}")
             return cached_entry["data"]
 
-    map_key = os.getenv("NASA_FIRMS_MAP_KEY", "").strip()
     hotspots: List[Dict[str, Any]] = []
 
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    }
+    # Priority 1: If not forcing refresh, load from Phase 2 ingested storage
+    if not force_refresh:
+        stored_obs = _load_stored_processed_hotspots(target_bbox)
+        if stored_obs:
+            logger.info(f"Loaded {len(stored_obs)} real FIRMS observations from Phase 2 processed storage for bbox {target_bbox}")
+            hotspots = stored_obs
 
-    try:
-        async with httpx.AsyncClient(timeout=15.0, headers=headers, follow_redirects=True) as client:
-            # Strategy A: Use NASA FIRMS MAP_KEY API if key is provided
-            if map_key:
-                try:
-                    min_lon, min_lat, max_lon, max_lat = target_bbox
-                    bbox_str = f"{min_lon},{min_lat},{max_lon},{max_lat}"
-                    api_url = f"https://firms.modaps.eosdis.nasa.gov/api/area/csv/{map_key}/VIIRS_SNPP_NRT/{bbox_str}/1"
-                    logger.info(f"Querying NASA FIRMS MAP_KEY API: {api_url}")
-                    
-                    resp = await client.get(api_url)
-                    if resp.status_code == 200 and not resp.text.startswith("Invalid MAP_KEY"):
-                        reader = csv.DictReader(io.StringIO(resp.text))
-                        for row in reader:
-                            item = _parse_firms_csv_row(row, "VIIRS", "VIIRS")
-                            if item and _is_within_bbox(item["latitude"], item["longitude"], target_bbox):
-                                hotspots.append(item)
-                except Exception as ex:
-                    logger.warning(f"FIRMS MAP_KEY API query failed, falling back to public feeds: {ex}")
-
-            # Strategy B: Fallback to public official 24h FIRMS CSV feeds concurrently
-            if not hotspots:
-                logger.info("Fetching FIRMS hotspots concurrently from official public 24h CSV feeds...")
-                tasks = [_fetch_single_feed(client, feed, target_bbox) for feed in PUBLIC_FIRMS_FEEDS]
-                results = await asyncio.gather(*tasks, return_exceptions=True)
-                for res in results:
-                    if isinstance(res, list):
-                        hotspots.extend(res)
-    except Exception as e:
-        logger.warning(f"Network error fetching NASA FIRMS online: {e}")
-
-    # Strategy C: Local Raw Backup Fallback if online fetch returned no hotspots
+    # Priority 2: If no stored observations or force_refresh requested, fetch online
     if not hotspots:
-        logger.info("Loading real FIRMS hotspots from local raw backup snapshot...")
-        hotspots = _load_backup_hotspots(target_bbox)
-    else:
-        # Update local backup file with freshly retrieved online hotspots
-        _save_backup_hotspots(hotspots)
+        map_key = NASA_FIRMS_MAP_KEY
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=15.0, headers=headers, follow_redirects=True) as client:
+                # Strategy A: Use NASA FIRMS MAP_KEY API if key is provided
+                if map_key:
+                    try:
+                        min_lon, min_lat, max_lon, max_lat = target_bbox
+                        bbox_str = f"{min_lon},{min_lat},{max_lon},{max_lat}"
+                        api_url = f"https://firms.modaps.eosdis.nasa.gov/api/area/csv/{map_key}/VIIRS_SNPP_NRT/{bbox_str}/1"
+                        logger.info(f"Querying NASA FIRMS MAP_KEY API for target bbox: {bbox_str}")
+                        
+                        resp = await client.get(api_url)
+                        if resp.status_code == 200 and not resp.text.startswith("Invalid MAP_KEY"):
+                            reader = csv.DictReader(io.StringIO(resp.text))
+                            for row in reader:
+                                item = _parse_firms_csv_row(row, "VIIRS", "VIIRS")
+                                if item and _is_within_bbox(item["latitude"], item["longitude"], target_bbox):
+                                    hotspots.append(item)
+                    except Exception as ex:
+                        logger.warning(f"FIRMS MAP_KEY API query failed, falling back to public feeds: {ex}")
+
+                # Strategy B: Fallback to public official 24h FIRMS CSV feeds concurrently
+                if not hotspots:
+                    logger.info("Fetching FIRMS hotspots concurrently from official public 24h CSV feeds...")
+                    tasks = [_fetch_single_feed(client, feed, target_bbox) for feed in PUBLIC_FIRMS_FEEDS]
+                    results = await asyncio.gather(*tasks, return_exceptions=True)
+                    for res in results:
+                        if isinstance(res, list):
+                            hotspots.extend(res)
+        except Exception as e:
+            logger.warning(f"Network error fetching NASA FIRMS online: {e}")
+
+        # Strategy C: Local Raw Backup Fallback if online fetch returned no hotspots
+        if not hotspots:
+            logger.info("Loading real FIRMS hotspots from local raw backup snapshot...")
+            hotspots = _load_backup_hotspots(target_bbox)
+        else:
+            # Update local backup file with freshly retrieved online hotspots
+            _save_backup_hotspots(hotspots)
 
     # Build standardized response
     response_data = {
@@ -248,3 +296,95 @@ async def fetch_firms_hotspots(
         }
 
     return response_data
+
+
+async def check_firms_connectivity(timeout_seconds: float = 5.0) -> Dict[str, Any]:
+    """
+    Perform a single, controlled, minimal, timeout-protected connectivity check to NASA FIRMS API.
+    
+    Guarantees:
+    - Never polls periodically or continuously.
+    - Never fetches global data (uses minimal 0.1-degree bounding box).
+    - Never logs or exposes the NASA FIRMS key.
+    - Never stores observations in any database.
+    
+    Returns a dict with:
+      - status: 'REACHABLE' | 'UNREACHABLE' | 'INVALID_CREDENTIAL' | 'NOT_CONFIGURED'
+      - latency_ms: float or None
+      - http_status: int or None
+      - error_category: str or None
+    """
+    if not NASA_FIRMS_MAP_KEY:
+        return {
+            "status": "NOT_CONFIGURED",
+            "latency_ms": None,
+            "http_status": None,
+            "error_category": None
+        }
+
+    # Use a minimal 0.1-degree test bounding box in central India for 1 day
+    test_bbox = "78.9,20.5,79.0,20.6"
+    test_url = f"https://firms.modaps.eosdis.nasa.gov/api/area/csv/{NASA_FIRMS_MAP_KEY}/VIIRS_SNPP_NRT/{test_bbox}/1"
+    headers = {
+        "User-Agent": "SIH-26162-SystemStatusCheck/1.0"
+    }
+
+    start_time = time.time()
+    try:
+        async with httpx.AsyncClient(timeout=timeout_seconds, headers=headers, follow_redirects=True) as client:
+            resp = await client.get(test_url)
+            elapsed_ms = round((time.time() - start_time) * 1000, 2)
+
+            if resp.status_code == 200:
+                if resp.text.startswith("Invalid MAP_KEY"):
+                    logger.warning(f"FIRMS connectivity check returned invalid key error in {elapsed_ms}ms (HTTP 200)")
+                    return {
+                        "status": "INVALID_CREDENTIAL",
+                        "latency_ms": elapsed_ms,
+                        "http_status": 200,
+                        "error_category": "invalid_map_key"
+                    }
+                else:
+                    line_count = len(resp.text.strip().splitlines()) - 1 if resp.text.strip() else 0
+                    logger.info(f"FIRMS connectivity check successful: HTTP 200 in {elapsed_ms}ms (record_count={max(0, line_count)})")
+                    return {
+                        "status": "REACHABLE",
+                        "latency_ms": elapsed_ms,
+                        "http_status": 200,
+                        "error_category": None
+                    }
+            elif resp.status_code in (401, 403):
+                logger.warning(f"FIRMS connectivity check failed: HTTP {resp.status_code} in {elapsed_ms}ms")
+                return {
+                    "status": "INVALID_CREDENTIAL",
+                    "latency_ms": elapsed_ms,
+                    "http_status": resp.status_code,
+                    "error_category": "unauthorized"
+                }
+            else:
+                logger.warning(f"FIRMS connectivity check returned HTTP {resp.status_code} in {elapsed_ms}ms")
+                return {
+                    "status": "UNREACHABLE",
+                    "latency_ms": elapsed_ms,
+                    "http_status": resp.status_code,
+                    "error_category": f"http_{resp.status_code}"
+                }
+    except httpx.TimeoutException:
+        elapsed_ms = round((time.time() - start_time) * 1000, 2)
+        logger.warning(f"FIRMS connectivity check timed out after {elapsed_ms}ms")
+        return {
+            "status": "UNREACHABLE",
+            "latency_ms": elapsed_ms,
+            "http_status": None,
+            "error_category": "timeout"
+        }
+    except Exception as ex:
+        elapsed_ms = round((time.time() - start_time) * 1000, 2)
+        logger.warning(f"FIRMS connectivity check failed after {elapsed_ms}ms: {type(ex).__name__}")
+        return {
+            "status": "UNREACHABLE",
+            "latency_ms": elapsed_ms,
+            "http_status": None,
+            "error_category": type(ex).__name__
+        }
+

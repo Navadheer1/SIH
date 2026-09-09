@@ -1,0 +1,102 @@
+{
+  "evaluation_summary": {
+    "total_test_samples": 153,
+    "overall_accuracy": 1.0
+  },
+  "performance_by_source": {
+    "SEN2FIRE": {
+      "sample_count": 29,
+      "accuracy": 1.0,
+      "macro_precision": 1.0,
+      "macro_recall": 1.0,
+      "macro_f1": 1.0,
+      "is_statistically_small": false,
+      "flag": "Adequate sample size"
+    },
+    "TS_SATFIRE": {
+      "sample_count": 24,
+      "accuracy": 1.0,
+      "macro_precision": 1.0,
+      "macro_recall": 1.0,
+      "macro_f1": 1.0,
+      "is_statistically_small": false,
+      "flag": "Adequate sample size"
+    },
+    "FIRMS_OSM_INDUSTRIAL_WEAK": {
+      "sample_count": 40,
+      "accuracy": 1.0,
+      "macro_precision": 1.0,
+      "macro_recall": 1.0,
+      "macro_f1": 1.0,
+      "is_statistically_small": false,
+      "flag": "Adequate sample size"
+    },
+    "DIVERSE_GEOGRAPHIC_BACKGROUND": {
+      "sample_count": 60,
+      "accuracy": 1.0,
+      "macro_precision": 1.0,
+      "macro_recall": 1.0,
+      "macro_f1": 1.0,
+      "is_statistically_small": false,
+      "flag": "Adequate sample size"
+    }
+  },
+  "performance_by_label_provenance": {
+    "SOURCE_LABEL": {
+      "sample_count": 53,
+      "accuracy": 1.0,
+      "macro_precision": 1.0,
+      "macro_recall": 1.0,
+      "macro_f1": 1.0,
+      "is_statistically_small": false,
+      "flag": "Adequate sample size"
+    },
+    "WEAK_LABEL": {
+      "sample_count": 79,
+      "accuracy": 1.0,
+      "macro_precision": 1.0,
+      "macro_recall": 1.0,
+      "macro_f1": 1.0,
+      "is_statistically_small": false,
+      "flag": "Adequate sample size"
+    },
+    "GROUND_TRUTH": {
+      "sample_count": 21,
+      "accuracy": 1.0,
+      "macro_precision": 1.0,
+      "macro_recall": 1.0,
+      "macro_f1": 1.0,
+      "is_statistically_small": false,
+      "flag": "Adequate sample size"
+    }
+  },
+  "performance_by_class": {
+    "WILDFIRE": {
+      "sample_count": 53,
+      "accuracy": 1.0,
+      "macro_precision": 1.0,
+      "macro_recall": 1.0,
+      "macro_f1": 1.0,
+      "is_statistically_small": false,
+      "flag": "Adequate sample size"
+    },
+    "INDUSTRIAL_FIRE": {
+      "sample_count": 40,
+      "accuracy": 1.0,
+      "macro_precision": 1.0,
+      "macro_recall": 1.0,
+      "macro_f1": 1.0,
+      "is_statistically_small": false,
+      "flag": "Adequate sample size"
+    },
+    "NON_FIRE": {
+      "sample_count": 60,
+      "accuracy": 1.0,
+      "macro_precision": 1.0,
+      "macro_recall": 1.0,
+      "macro_f1": 1.0,
+      "is_statistically_small": false,
+      "flag": "Adequate sample size"
+    }
+  }
+}

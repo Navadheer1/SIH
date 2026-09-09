@@ -15,6 +15,7 @@ import {
   mapAlertStatusToLifecycle,
   getSeverityFromFrpAndRisk,
 } from '../types/hotspot';
+import { getApiUrl } from '../config/api';
 import { AssetDetailModal } from './AssetDetailModal';
 
 interface IncidentIntelligencePanelProps {
@@ -91,9 +92,9 @@ export const IncidentIntelligencePanel: React.FC<IncidentIntelligencePanelProps>
     const queryParams = `lat=${lat}&lon=${lon}&frp=${frp}&brightness=${brightness}&confidence=${hotspot?.confidence || 'nominal'}&persistence_score=${persistenceScore}&observation_count=${observationCount}&duration_hours=${durationHours}`;
 
     Promise.allSettled([
-      fetch(`http://127.0.0.1:8000/api/hotspots/classify?${queryParams}`).then((r) => (r.ok ? r.json() : null)),
-      fetch(`http://127.0.0.1:8000/api/hotspots/risk?${queryParams}`).then((r) => (r.ok ? r.json() : null)),
-      fetch(`http://127.0.0.1:8000/api/incidents/impact?${queryParams}`).then((r) => (r.ok ? r.json() : null)),
+      fetch(getApiUrl(`/api/hotspots/classify?${queryParams}`)).then((r) => (r.ok ? r.json() : null)),
+      fetch(getApiUrl(`/api/hotspots/risk?${queryParams}`)).then((r) => (r.ok ? r.json() : null)),
+      fetch(getApiUrl(`/api/incidents/impact?${queryParams}`)).then((r) => (r.ok ? r.json() : null)),
     ]).then(([aiRes, riskRes, impactRes]) => {
       if (!isMounted) return;
       if (aiRes.status === 'fulfilled' && aiRes.value) setAiData(aiRes.value);
@@ -136,7 +137,7 @@ export const IncidentIntelligencePanel: React.FC<IncidentIntelligencePanelProps>
   const detectionTime =
     hotspot?.acquired_at ||
     (hotspot?.acq_date && hotspot?.acq_time ? `${hotspot.acq_date} ${hotspot.acq_time} UTC` : null) ||
-    (alert?.created_at ? new Date(alert.created_at).toUTCString() : 'Real-Time Telemetry');
+    (alert?.created_at ? new Date(alert.created_at).toUTCString() : 'Near-Real-Time Satellite Thermal Anomaly Detection');
 
   // Explainable Impact Reasons ("Why This Incident Matters")
   const impactReasons = impactData?.impact_assessment?.explainable_reasons || [
@@ -207,8 +208,8 @@ export const IncidentIntelligencePanel: React.FC<IncidentIntelligencePanelProps>
           <span className="intel-lifecycle-pill">
             STATUS: {lifecycleStatus.replace(/_/g, ' ')}
           </span>
-          <span className="intel-provenance-pill">
-            🟢 LIVE DATA
+          <span className="intel-provenance-pill" title="NASA FIRMS Near-Real-Time Direct Readout Telemetry">
+            🛰️ NRT SATELLITE OBS
           </span>
         </div>
       </div>
@@ -236,9 +237,15 @@ export const IncidentIntelligencePanel: React.FC<IncidentIntelligencePanelProps>
               <span className="ca-val">{hotspot?.satellite || 'VIIRS 375m / MODIS'}</span>
             </div>
             <div className="core-answer-item full-width">
-              <span className="ca-label">DETECTION TIME:</span>
-              <span className="ca-val time">{detectionTime}</span>
+              <span className="ca-label">OBSERVED AT:</span>
+              <span className="ca-val time">{hotspot?.acquired_at || detectionTime}</span>
             </div>
+            {hotspot?.ingested_at && (
+              <div className="core-answer-item full-width">
+                <span className="ca-label">INGESTED AT:</span>
+                <span className="ca-val time">{hotspot.ingested_at}</span>
+              </div>
+            )}
           </div>
         </div>
 

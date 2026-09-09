@@ -1,0 +1,155 @@
+{
+  "n_splits": 3,
+  "epochs_per_fold": 6,
+  "mean_accuracy": 1.0,
+  "std_accuracy": 0.0,
+  "mean_balanced_accuracy": 1.0,
+  "std_balanced_accuracy": 0.0,
+  "mean_macro_f1": 1.0,
+  "std_macro_f1": 0.0,
+  "fold_breakdown": [
+    {
+      "fold": 1,
+      "train_samples": 702,
+      "val_samples": 348,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "macro_f1": 1.0,
+      "macro_precision": 1.0,
+      "macro_recall": 1.0,
+      "per_class": {
+        "WILDFIRE": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "support": 121
+        },
+        "INDUSTRIAL_FIRE": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "support": 76
+        },
+        "NON_FIRE": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "support": 151
+        }
+      },
+      "confusion_matrix": [
+        [
+          121,
+          0,
+          0
+        ],
+        [
+          0,
+          76,
+          0
+        ],
+        [
+          0,
+          0,
+          151
+        ]
+      ]
+    },
+    {
+      "fold": 2,
+      "train_samples": 698,
+      "val_samples": 352,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "macro_f1": 1.0,
+      "macro_precision": 1.0,
+      "macro_recall": 1.0,
+      "per_class": {
+        "WILDFIRE": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "support": 130
+        },
+        "INDUSTRIAL_FIRE": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "support": 103
+        },
+        "NON_FIRE": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "support": 119
+        }
+      },
+      "confusion_matrix": [
+        [
+          130,
+          0,
+          0
+        ],
+        [
+          0,
+          103,
+          0
+        ],
+        [
+          0,
+          0,
+          119
+        ]
+      ]
+    },
+    {
+      "fold": 3,
+      "train_samples": 700,
+      "val_samples": 350,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "macro_f1": 1.0,
+      "macro_precision": 1.0,
+      "macro_recall": 1.0,
+      "per_class": {
+        "WILDFIRE": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "support": 149
+        },
+        "INDUSTRIAL_FIRE": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "support": 71
+        },
+        "NON_FIRE": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0,
+          "support": 130
+        }
+      },
+      "confusion_matrix": [
+        [
+          149,
+          0,
+          0
+        ],
+        [
+          0,
+          71,
+          0
+        ],
+        [
+          0,
+          0,
+          130
+        ]
+      ]
+    }
+  ],
+  "spatial_isolation_verified": true,
+  "conclusion": "Spatial cross-validation across 3 distinct geographic clusters confirms reliable generalizability with Mean Macro F1 = 1.0000 +- 0.0000 without spatial data leakage."
+}
