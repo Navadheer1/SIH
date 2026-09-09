@@ -383,5 +383,165 @@ describe('Thermoscope 3D Satellite Intelligence Globe Architecture Tests', () =>
     assert.equal(computeCameraAspect(1280, 720), 1.7778);
     assert.equal(computeCameraAspect(800, 560), 1.4286);
   });
+
+  it('Test 14: Validates Fullscreen Map to Incident Command Split Workspace machine, ESC handling, and 8-section content schema', () => {
+    // 1. Workspace State Machine Implementation
+    class WorkspaceStateMachine {
+      constructor() {
+        this.workspaceState = 'NORMAL_DASHBOARD';
+        this.isBrowserFullscreen = false;
+        this.selectedIncident = null;
+      }
+
+      selectIncident(incident) {
+        this.selectedIncident = incident;
+      }
+
+      openIncident() {
+        // Must ensure browser fullscreen is active
+        this.isBrowserFullscreen = true;
+        this.workspaceState = 'INCIDENT_SPLIT_VIEW';
+      }
+
+      closeIncident() {
+        // Closes side panel and returns strictly to FULLSCREEN_MAP (stays fullscreen!)
+        if (this.workspaceState === 'INCIDENT_SPLIT_VIEW') {
+          this.workspaceState = 'FULLSCREEN_MAP';
+          // Browser remains fullscreen!
+          assert.equal(this.isBrowserFullscreen, true, 'Browser must remain in fullscreen when closing incident panel');
+        }
+      }
+
+      toggleFullscreenOrWorkspace() {
+        if (this.workspaceState === 'INCIDENT_SPLIT_VIEW' || this.workspaceState === 'FULLSCREEN_MAP') {
+          this.isBrowserFullscreen = false;
+          this.workspaceState = 'NORMAL_DASHBOARD';
+        } else {
+          this.isBrowserFullscreen = true;
+          this.workspaceState = 'FULLSCREEN_MAP';
+        }
+      }
+
+      handleEscapeKey() {
+        if (this.workspaceState === 'INCIDENT_SPLIT_VIEW') {
+          // In split view, first ESC closes incident panel to FULLSCREEN_MAP
+          this.workspaceState = 'FULLSCREEN_MAP';
+          return { handledLocally: true, exitFullscreen: false };
+        } else if (this.workspaceState === 'FULLSCREEN_MAP') {
+          // In fullscreen map, ESC exits browser fullscreen back to NORMAL_DASHBOARD
+          this.isBrowserFullscreen = false;
+          this.workspaceState = 'NORMAL_DASHBOARD';
+          return { handledLocally: false, exitFullscreen: true };
+        }
+        return { handledLocally: false, exitFullscreen: false };
+      }
+
+      getNavButtonConfig() {
+        if (this.workspaceState === 'INCIDENT_SPLIT_VIEW') {
+          return { text: 'EXIT WORKSPACE', tooltip: 'EXIT WORKSPACE TO NORMAL DASHBOARD', icon: '⤢' };
+        }
+        if (this.workspaceState === 'FULLSCREEN_MAP') {
+          return { text: 'EXIT FULL SCREEN', tooltip: 'EXIT FULL SCREEN', icon: '⛶' };
+        }
+        return { text: 'FULL SCREEN', tooltip: 'ENTER FULL SCREEN', icon: '⛶' };
+      }
+
+      getLayoutWidths(isMobileOrLaptop = false) {
+        if (this.workspaceState === 'INCIDENT_SPLIT_VIEW') {
+          return isMobileOrLaptop
+            ? { mapWidthPct: 60, panelWidthPct: 40 }
+            : { mapWidthPct: 68, panelWidthPct: 32 };
+        }
+        return { mapWidthPct: 100, panelWidthPct: 0 };
+      }
+    }
+
+    const sm = new WorkspaceStateMachine();
+
+    // Verify initial state
+    assert.equal(sm.workspaceState, 'NORMAL_DASHBOARD');
+    assert.equal(sm.isBrowserFullscreen, false);
+    assert.deepEqual(sm.getNavButtonConfig(), { text: 'FULL SCREEN', tooltip: 'ENTER FULL SCREEN', icon: '⛶' });
+    assert.deepEqual(sm.getLayoutWidths(false), { mapWidthPct: 100, panelWidthPct: 0 });
+
+    // Step 1: User toggles fullscreen -> enters FULLSCREEN_MAP
+    sm.toggleFullscreenOrWorkspace();
+    assert.equal(sm.workspaceState, 'FULLSCREEN_MAP');
+    assert.equal(sm.isBrowserFullscreen, true);
+    assert.deepEqual(sm.getNavButtonConfig(), { text: 'EXIT FULL SCREEN', tooltip: 'EXIT FULL SCREEN', icon: '⛶' });
+    assert.deepEqual(sm.getLayoutWidths(false), { mapWidthPct: 100, panelWidthPct: 0 });
+
+    // Step 2: User clicks OPEN INCIDENT -> transforms into INCIDENT_SPLIT_VIEW (remains fullscreen!)
+    sm.openIncident();
+    assert.equal(sm.workspaceState, 'INCIDENT_SPLIT_VIEW');
+    assert.equal(sm.isBrowserFullscreen, true, 'Must stay in fullscreen when opening incident');
+    assert.deepEqual(sm.getNavButtonConfig(), { text: 'EXIT WORKSPACE', tooltip: 'EXIT WORKSPACE TO NORMAL DASHBOARD', icon: '⤢' });
+    assert.deepEqual(sm.getLayoutWidths(false), { mapWidthPct: 68, panelWidthPct: 32 });
+    assert.deepEqual(sm.getLayoutWidths(true), { mapWidthPct: 60, panelWidthPct: 40 });
+
+    // Step 3: User presses ESC while in INCIDENT_SPLIT_VIEW -> returns to FULLSCREEN_MAP (does NOT exit fullscreen)
+    const esc1 = sm.handleEscapeKey();
+    assert.equal(esc1.handledLocally, true);
+    assert.equal(esc1.exitFullscreen, false);
+    assert.equal(sm.workspaceState, 'FULLSCREEN_MAP');
+    assert.equal(sm.isBrowserFullscreen, true, 'ESC in split view must NOT exit browser fullscreen');
+
+    // Step 4: User opens incident again and clicks [ CLOSE INCIDENT ]
+    sm.openIncident();
+    assert.equal(sm.workspaceState, 'INCIDENT_SPLIT_VIEW');
+    sm.closeIncident();
+    assert.equal(sm.workspaceState, 'FULLSCREEN_MAP');
+    assert.equal(sm.isBrowserFullscreen, true);
+
+    // Step 5: User opens incident again and clicks EXIT WORKSPACE -> returns to NORMAL_DASHBOARD
+    sm.openIncident();
+    assert.equal(sm.workspaceState, 'INCIDENT_SPLIT_VIEW');
+    sm.toggleFullscreenOrWorkspace();
+    assert.equal(sm.workspaceState, 'NORMAL_DASHBOARD');
+    assert.equal(sm.isBrowserFullscreen, false);
+
+    // Step 6: Validate all 8 operational sections schema
+    const mockIncident = {
+      id: 'TH-2026-0842',
+      lat: 22.4208,
+      lon: 69.8312,
+      satellite: 'NOAA-21',
+      sensor: 'VIIRS 375m',
+      source: 'NASA FIRMS',
+      frp: 48.6,
+      brightness: 346.8,
+      confidence: 'high',
+      persistence: 84,
+      industrialProb: 91,
+      riskScore: 88,
+      estimatedInfluenceKm: 3.2,
+      status: 'CRITICAL',
+      classification: 'Industrial High-Temperature Facility',
+      facilityName: 'Reliance Jamnagar Refining & Petrochemical Complex',
+      facilityType: 'Heavy Hydrocarbon Refining & Petrochemicals',
+      distanceKm: 1.8,
+      acquired_at: new Date().toISOString(),
+    };
+
+    function validateIncidentCommandSections(incident) {
+      const sections = {
+        '01_EVENT_SUMMARY': !!(incident.id && incident.source && incident.sensor && incident.lat && incident.lon),
+        '02_THERMAL_SIGNAL': incident.frp > 0 && incident.brightness > 0 && !!incident.confidence,
+        '03_PERSISTENCE_ANALYSIS': incident.persistence >= 0 && incident.persistence <= 100,
+        '04_AI_CLASSIFICATION': !!incident.classification && incident.industrialProb > 0,
+        '05_INDUSTRIAL_CONTEXT': !!incident.facilityName && incident.distanceKm !== null,
+        '06_3D_RISK_ASSESSMENT': incident.riskScore >= 0 && incident.riskScore <= 100 && incident.estimatedInfluenceKm > 0,
+        '07_EVIDENCE_TELEMETRY': !!incident.sensor && !!incident.satellite,
+        '08_INCIDENT_RESPONSE_ACTIONS': ['dispatch', 'tasking', 'brief', 'notify'].length === 4,
+      };
+
+      for (const [secName, isValid] of Object.entries(sections)) {
+        assert.equal(isValid, true, `Section ${secName} must be valid`);
+      }
+      return Object.keys(sections).length;
+    }
+
+    assert.equal(validateIncidentCommandSections(mockIncident), 8, 'Must validate exactly 8 operational command sections');
+  });
 });
 

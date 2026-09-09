@@ -34,6 +34,7 @@ interface SatelliteIntelligenceGlobeProps {
   selectedCluster?: PersistentCluster | null;
   onSelectCluster?: (cluster: PersistentCluster) => void;
   onSelectPriorityIncident?: (incident: PriorityRankingItem) => void;
+  onOpenIncident?: (incident: SelectedIncidentState) => void;
   initialCoords?: [number, number];
 }
 
@@ -55,8 +56,16 @@ export interface SelectedIncidentState {
   status: 'CRITICAL' | 'ELEVATED' | 'MODERATE' | 'LOW';
   classification: string;
   facilityName: string | null;
+  facilityType?: string | null;
   distanceKm: number | null;
+  acquired_at?: string;
 }
+
+// 3 Explicit Workspace UI States (Requirement 13)
+export type FullscreenWorkspaceState =
+  | 'NORMAL_DASHBOARD'
+  | 'FULLSCREEN_MAP'
+  | 'INCIDENT_SPLIT_VIEW';
 
 export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProps> = ({
   hotspots = [],
@@ -72,6 +81,7 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
   selectedCluster = null,
   onSelectCluster: _onSelectCluster = () => {},
   onSelectPriorityIncident = () => {},
+  onOpenIncident = () => {},
   initialCoords = [20.5937, 78.9629],
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -86,6 +96,11 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
   // Single Synchronized Selected Incident State (Requirement 12)
   const [selectedIncident, setSelectedIncident] = useState<SelectedIncidentState | null>(null);
 
+  // Simulated Operational Response Action Feedback (Requirement: Section 08 Actions)
+  const [actionFeedback, setActionFeedback] = useState<{
+    [key: string]: { status: string; timestamp: string };
+  }>({});
+
   // 7-Step Demo Pipeline Status Banner State (Requirement 20)
   const [demoStep, setDemoStep] = useState<{
     step: string;
@@ -99,54 +114,81 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
   const zoomHintTimerRef = useRef<number | null>(null);
   const zoomStatusTimerRef = useRef<number | null>(null);
 
-  // Fullscreen State (Synced with actual document.fullscreenElement)
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(() => {
-    if (typeof document !== 'undefined') {
-      return !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
-    }
-    return false;
-  });
+  // 3 Explicit Workspace UI States (Requirement 13)
+  const [workspaceState, setWorkspaceState] = useState<FullscreenWorkspaceState>('NORMAL_DASHBOARD');
+  const isFullscreen = workspaceState !== 'NORMAL_DASHBOARD';
   const isHoveredRef = useRef<boolean>(false);
+  const canvasMountRef = useRef<HTMLDivElement>(null);
 
-  // Toggle browser fullscreen on container
-  const toggleFullscreen = useCallback(() => {
+  // Transform Fullscreen Map to Split Incident Command Workspace (Requirements 1, 2, 5)
+  const handleOpenIncidentCommand = (target?: SelectedIncidentState | null) => {
+    const inc = target || selectedIncident;
+    if (!inc) {
+      const candidate = hotspots[0];
+      if (candidate) {
+        handleHotspotClick(candidate);
+      }
+    }
+    const container = containerRef.current;
+    if (!document.fullscreenElement && container?.requestFullscreen) {
+      container.requestFullscreen().catch(() => {});
+    }
+    setWorkspaceState('INCIDENT_SPLIT_VIEW');
+    if (inc) {
+      onOpenIncident(inc);
+    }
+
+    // Smoothly adjust camera to centered target after layout starts resizing
+    setTimeout(() => {
+      const active = target || selectedIncident;
+      if (active && controlsRef.current) {
+        controlsRef.current.flyTo(active.lat, active.lon, 24.2, 0.6);
+      }
+    }, 280);
+  };
+
+  // Close Incident Command and return strictly to FULLSCREEN_MAP (Requirement 7)
+  const handleCloseIncidentCommand = () => {
+    setWorkspaceState('FULLSCREEN_MAP');
+    setTimeout(() => {
+      if (selectedIncident && controlsRef.current) {
+        controlsRef.current.flyTo(selectedIncident.lat, selectedIncident.lon, 24.5, 0.6);
+      }
+    }, 250);
+  };
+
+  // Toggle browser fullscreen or return from workspace to normal dashboard (Requirement 6)
+  const toggleFullscreenOrWorkspace = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    const currentFsEl =
-      document.fullscreenElement ||
-      (document as any).webkitFullscreenElement ||
-      (document as any).mozFullScreenElement ||
-      (document as any).msFullscreenElement;
-
-    if (currentFsEl === container) {
-      // Exit fullscreen
+    if (workspaceState === 'INCIDENT_SPLIT_VIEW' || workspaceState === 'FULLSCREEN_MAP') {
       const exitFn =
         document.exitFullscreen ||
         (document as any).webkitExitFullscreen ||
         (document as any).mozCancelFullScreen ||
         (document as any).msExitFullscreen;
       if (exitFn) {
-        exitFn.call(document).catch((err: any) => {
-          console.warn('Error exiting fullscreen:', err);
-        });
+        exitFn.call(document).catch((err: any) => console.warn(err));
       }
-    } else {
-      // Enter fullscreen
-      const requestFn =
-        container.requestFullscreen ||
-        (container as any).webkitRequestFullscreen ||
-        (container as any).mozRequestFullScreen ||
-        (container as any).msRequestFullscreen;
-      if (requestFn) {
-        requestFn.call(container).catch((err: any) => {
-          console.warn('Error requesting fullscreen:', err);
-        });
-      }
+      setWorkspaceState('NORMAL_DASHBOARD');
+      return;
     }
-  }, []);
 
-  // Sync with browser fullscreenchange event (handles button click, ESC key, or browser UI exit)
+    // Normal dashboard -> request fullscreen map
+    const requestFn =
+      container.requestFullscreen ||
+      (container as any).webkitRequestFullscreen ||
+      (container as any).mozRequestFullScreen ||
+      (container as any).msRequestFullscreen;
+    if (requestFn) {
+      requestFn.call(container).then(() => {
+        setWorkspaceState('FULLSCREEN_MAP');
+      }).catch((err: any) => console.warn(err));
+    }
+  }, [workspaceState]);
+
+  // Sync with browser fullscreenchange event (handles ESC key or browser UI exit)
   useEffect(() => {
     const handleFullscreenChange = () => {
       const container = containerRef.current;
@@ -156,7 +198,12 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
         (document as any).mozFullScreenElement ||
         (document as any).msFullscreenElement;
 
-      setIsFullscreen(!!container && currentFsEl === container);
+      const isFs = !!container && currentFsEl === container;
+      if (!isFs) {
+        setWorkspaceState('NORMAL_DASHBOARD');
+      } else {
+        setWorkspaceState((prev) => (prev === 'NORMAL_DASHBOARD' ? 'FULLSCREEN_MAP' : prev));
+      }
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -172,7 +219,38 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
     };
   }, []);
 
-  // Keyboard shortcut 'F' to toggle fullscreen when map is focused/active (Requirement 11)
+  // ESC Key Handling: In INCIDENT_SPLIT_VIEW, first closes incident to FULLSCREEN_MAP (Requirement 8)
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (workspaceState === 'INCIDENT_SPLIT_VIEW') {
+          e.preventDefault();
+          e.stopPropagation();
+          setWorkspaceState('FULLSCREEN_MAP');
+        }
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown, true);
+    };
+  }, [workspaceState]);
+
+  // Request Escape key lock in browsers that support it so ESC closes incident panel first
+  useEffect(() => {
+    if (workspaceState === 'INCIDENT_SPLIT_VIEW') {
+      if ((navigator as any).keyboard?.lock) {
+        (navigator as any).keyboard.lock(['Escape']).catch(() => {});
+      }
+    } else {
+      if ((navigator as any).keyboard?.unlock) {
+        (navigator as any).keyboard.unlock();
+      }
+    }
+  }, [workspaceState]);
+
+  // Keyboard shortcut 'F' to toggle fullscreen workspace when map is active (Requirement 11)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'f' || e.key === 'F') {
@@ -198,7 +276,7 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
         }
 
         e.preventDefault();
-        toggleFullscreen();
+        toggleFullscreenOrWorkspace();
       }
     };
 
@@ -206,7 +284,7 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [toggleFullscreen]);
+  }, [toggleFullscreenOrWorkspace]);
 
   // 6-Stage State Machine Indicator
   const [expansionState, setExpansionState] = useState<{
@@ -300,7 +378,9 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
       status,
       classification,
       facilityName: facilityName || null,
+      facilityType: (matchPriority as any)?.facility_type || 'Heavy Refining & Hydrocarbon Processing',
       distanceKm: distanceKm ?? null,
+      acquired_at: h.acquired_at || new Date().toISOString(),
     };
     setSelectedIncident(unifiedIncident);
 
@@ -466,8 +546,9 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
     const scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x020617, 0.008);
 
-    const width = container.clientWidth || 800;
-    const height = container.clientHeight || 560;
+    const mountTarget = canvasMountRef.current || container;
+    const width = mountTarget.clientWidth || 800;
+    const height = mountTarget.clientHeight || 560;
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -476,7 +557,7 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.1;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    container.appendChild(renderer.domElement);
+    mountTarget.appendChild(renderer.domElement);
 
     // 2. Starfield & Space Environment
     const starfield = createStarfield(600, 1500);
@@ -648,22 +729,21 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
         }
       }
     });
-    resizeObserver.observe(container);
+    resizeObserver.observe(mountTarget);
 
     // Fullscreen Resize Synchronization (Requirement 8)
     const handleFsResize = () => {
       const isFS = document.fullscreenElement === container;
-      const w = container.clientWidth || (isFS ? window.innerWidth : 800);
-      const h = container.clientHeight || (isFS ? window.innerHeight : 560);
+      const w = mountTarget.clientWidth || (isFS ? window.innerWidth : 800);
+      const h = mountTarget.clientHeight || (isFS ? window.innerHeight : 560);
       if (w > 0 && h > 0) {
         camera.aspect = w / h;
         camera.updateProjectionMatrix();
         renderer.setSize(w, h);
       }
       setTimeout(() => {
-        if (!container) return;
-        const curW = container.clientWidth || window.innerWidth;
-        const curH = container.clientHeight || window.innerHeight;
+        const curW = mountTarget.clientWidth || window.innerWidth;
+        const curH = mountTarget.clientHeight || window.innerHeight;
         if (curW > 0 && curH > 0) {
           camera.aspect = curW / curH;
           camera.updateProjectionMatrix();
@@ -671,9 +751,8 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
         }
       }, 120);
       setTimeout(() => {
-        if (!container) return;
-        const curW = container.clientWidth || window.innerWidth;
-        const curH = container.clientHeight || window.innerHeight;
+        const curW = mountTarget.clientWidth || window.innerWidth;
+        const curH = mountTarget.clientHeight || window.innerHeight;
         if (curW > 0 && curH > 0) {
           camera.aspect = curW / curH;
           camera.updateProjectionMatrix();
@@ -708,8 +787,8 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
       persistenceField.dispose();
       thermalRisk.dispose();
       industrialLayer.dispose();
-      if (container.contains(renderer.domElement)) {
-        container.removeChild(renderer.domElement);
+      if (mountTarget.contains(renderer.domElement)) {
+        mountTarget.removeChild(renderer.domElement);
       }
       renderer.dispose();
     };
@@ -735,7 +814,9 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
 
   return (
     <div
-      className={`satellite-globe-viewport ${isFullscreen ? 'is-fullscreen' : ''}`}
+      className={`satellite-globe-viewport ${isFullscreen ? 'is-fullscreen' : ''} ${
+        workspaceState === 'INCIDENT_SPLIT_VIEW' ? 'is-split-view' : ''
+      }`}
       ref={containerRef}
       tabIndex={0}
       onMouseEnter={() => {
@@ -745,6 +826,8 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
         isHoveredRef.current = false;
       }}
     >
+      {/* 3D WEBGL CANVAS SUB-CONTAINER (Resizes smoothly in split view) */}
+      <div className="globe-canvas-subcontainer" ref={canvasMountRef} />
       {/* 1. TOP-LEFT MISSION CONTROL TELEMETRY HUD */}
       <div className="globe-telemetry-hud">
         <div className="hud-header">
@@ -832,6 +915,17 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
                 </span>
               </div>
             )}
+            <div className="target-action-row">
+              <button
+                type="button"
+                className="btn-target-open-incident"
+                onClick={() => handleOpenIncidentCommand(selectedIncident)}
+                title="Transform to Split Incident Command Workspace"
+              >
+                <span className="btn-lightning">⚡</span>
+                <span>OPEN INCIDENT</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -953,23 +1047,48 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
           >
             🇮🇳 India Focus
           </button>
-          <button
-            type="button"
-            className="btn-globe-nav"
-            onClick={() => controlsRef.current?.flyToGlobal()}
-            title="Global Orbital Observation Perspective"
-          >
-            🌍 Global View
-          </button>
+          {/* OPEN INCIDENT BUTTON IN FULLSCREEN_MAP (Requirement 5) */}
+          {workspaceState === 'FULLSCREEN_MAP' && (
+            <button
+              type="button"
+              className="btn-globe-nav btn-globe-incident-open"
+              onClick={() => handleOpenIncidentCommand(selectedIncident)}
+              title="Open Incident Command Split Workspace"
+            >
+              <span className="btn-lightning">⚡</span>
+              <span>OPEN INCIDENT</span>
+            </button>
+          )}
+
           <button
             type="button"
             className={`btn-globe-nav btn-globe-fullscreen ${isFullscreen ? 'active' : ''}`}
-            onClick={toggleFullscreen}
-            title={isFullscreen ? 'EXIT FULL SCREEN' : 'ENTER FULL SCREEN'}
-            aria-label={isFullscreen ? 'Exit full screen' : 'Enter full screen'}
+            onClick={toggleFullscreenOrWorkspace}
+            title={
+              workspaceState === 'INCIDENT_SPLIT_VIEW'
+                ? 'EXIT WORKSPACE TO NORMAL DASHBOARD'
+                : workspaceState === 'FULLSCREEN_MAP'
+                ? 'EXIT FULL SCREEN'
+                : 'ENTER FULL SCREEN'
+            }
+            aria-label={
+              workspaceState === 'INCIDENT_SPLIT_VIEW'
+                ? 'Exit workspace'
+                : workspaceState === 'FULLSCREEN_MAP'
+                ? 'Exit full screen'
+                : 'Enter full screen'
+            }
           >
-            <span className="fullscreen-icon">⛶</span>
-            <span>{isFullscreen ? 'EXIT FULL SCREEN' : 'FULL SCREEN'}</span>
+            <span className="fullscreen-icon">
+              {workspaceState === 'INCIDENT_SPLIT_VIEW' ? '⤢' : '⛶'}
+            </span>
+            <span>
+              {workspaceState === 'INCIDENT_SPLIT_VIEW'
+                ? 'EXIT WORKSPACE'
+                : workspaceState === 'FULLSCREEN_MAP'
+                ? 'EXIT FULL SCREEN'
+                : 'FULL SCREEN'}
+            </span>
           </button>
         </div>
       </div>
@@ -1042,7 +1161,42 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
               <span className="tt-val font-mono">{hoveredHotspot.latitude.toFixed(4)}°N, {hoveredHotspot.longitude.toFixed(4)}°E</span>
             </div>
           </div>
+          <div className="tooltip-actions">
+            <button
+              type="button"
+              className="btn-tooltip-open-incident"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleHotspotClick(hoveredHotspot);
+                handleOpenIncidentCommand();
+              }}
+            >
+              <span>⚡ OPEN INCIDENT COMMAND</span>
+            </button>
+          </div>
           <div className="tooltip-footer">Click anomaly to lock camera & activate 3D risk volume</div>
+        </div>
+      )}
+
+      {/* 5B. FLOATING QUICK ACTION CTA (FULLSCREEN_MAP MODE) */}
+      {workspaceState === 'FULLSCREEN_MAP' && selectedIncident && (
+        <div className="globe-fullscreen-incident-cta">
+          <div className="cta-pulse-dot" />
+          <div className="cta-label-group">
+            <span className="cta-id">INCIDENT #{selectedIncident.id}</span>
+            <span className="cta-meta">
+              {selectedIncident.source} • {selectedIncident.frp.toFixed(1)} MW • RISK {selectedIncident.riskScore}/100
+            </span>
+          </div>
+          <button
+            type="button"
+            className="btn-cta-open-incident"
+            onClick={() => handleOpenIncidentCommand(selectedIncident)}
+            title="Open Incident Command Split Workspace"
+          >
+            <span>⚡ OPEN INCIDENT COMMAND</span>
+            <span className="cta-arrow">→</span>
+          </button>
         </div>
       )}
 
@@ -1059,6 +1213,447 @@ export const SatelliteIntelligenceGlobe: React.FC<SatelliteIntelligenceGlobeProp
           <span>{ctrlZoomStatus === 'enabled' ? 'CTRL + SCROLL ZOOM ENABLED' : 'ZOOM LOCKED'}</span>
         </div>
       )}
+
+      {/* 7. INCIDENT COMMAND SPLIT WORKSPACE PANEL (Requirements 1, 2, 3, 4, 7) */}
+      {workspaceState === 'INCIDENT_SPLIT_VIEW' && (() => {
+        const activeIncident: SelectedIncidentState = selectedIncident || {
+          id: hotspots[0]?.observation_id || 'TH-2026-0842',
+          lat: hotspots[0]?.latitude || 22.4208,
+          lon: hotspots[0]?.longitude || 69.8312,
+          satellite: hotspots[0]?.satellite || 'NOAA-21',
+          sensor: hotspots[0]?.instrument || 'VIIRS 375m',
+          source: hotspots[0]?.source || 'NASA FIRMS',
+          frp: hotspots[0]?.frp || 48.6,
+          brightness: hotspots[0]?.brightness || 346.8,
+          confidence: String(hotspots[0]?.confidence || 'high'),
+          persistence: 84,
+          industrialProb: 91,
+          riskScore: 88,
+          estimatedInfluenceKm: 3.2,
+          status: 'CRITICAL',
+          classification: 'Industrial High-Temperature Facility',
+          facilityName: 'Reliance Jamnagar Refining & Petrochemical Complex',
+          facilityType: 'Heavy Hydrocarbon Refining & Petrochemicals',
+          distanceKm: 1.8,
+          acquired_at: hotspots[0]?.acquired_at || new Date().toISOString(),
+        };
+
+        return (
+          <aside className="globe-incident-command-panel" aria-label="Incident Command Center">
+            {/* Telemetry Bus / Connection Header (Requirement 3) */}
+            <div className="incident-panel-connector">
+              <div className="connector-pulse-line" />
+              <div className="connector-meta">
+                <span className="connector-dot pulse" />
+                <span className="connector-tag">LIVE SATELLITE TELEMETRY BUS ↔ ANOMALY TARGET LOCK</span>
+              </div>
+              <div className="connector-status-badge">SYNCED (4Hz)</div>
+            </div>
+
+            {/* Clean Command Header */}
+            <div className="command-panel-header">
+              <div className="command-header-left">
+                <div className="header-badge-row">
+                  <span className="tactical-badge">INCIDENT COMMAND</span>
+                  <span className={`status-badge-pill ${activeIncident.status.toLowerCase()}`}>
+                    ● {activeIncident.status}
+                  </span>
+                  <span className="class-pill">{activeIncident.classification}</span>
+                </div>
+                <h2 className="command-incident-id">
+                  INCIDENT #{activeIncident.id}
+                </h2>
+                <div className="command-incident-sub">
+                  NASA FIRMS THERMAL ANOMALY • AI INDUSTRIAL RISK ZONE
+                </div>
+              </div>
+
+              <div className="command-header-right">
+                <button
+                  type="button"
+                  className="btn-command-close"
+                  onClick={handleCloseIncidentCommand}
+                  title="Close Incident Command (Returns to Fullscreen 3D Globe - ESC)"
+                  aria-label="Close Incident Command"
+                >
+                  <span className="close-bracket">[</span>
+                  <span className="close-text">CLOSE INCIDENT</span>
+                  <span className="close-bracket">]</span>
+                  <span className="close-key">ESC</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable Operational Body (8 Sections - Requirement 2) */}
+            <div className="command-panel-body">
+              {/* SECTION 01 — EVENT SUMMARY */}
+              <div className="command-section">
+                <div className="section-header">
+                  <span className="section-num">01</span>
+                  <h3 className="section-title">EVENT SUMMARY</h3>
+                  <span className="section-tag">FIRMS CORE</span>
+                </div>
+                <div className="command-metrics-grid cols-2">
+                  <div className="command-metric-box">
+                    <span className="metric-lbl">INCIDENT ID</span>
+                    <span className="metric-val font-mono text-cyan">{activeIncident.id}</span>
+                  </div>
+                  <div className="command-metric-box">
+                    <span className="metric-lbl">INGEST SOURCE</span>
+                    <span className="metric-val text-amber">{activeIncident.source} ({activeIncident.satellite})</span>
+                  </div>
+                  <div className="command-metric-box">
+                    <span className="metric-lbl">SENSOR / ORBIT</span>
+                    <span className="metric-val font-mono">{activeIncident.sensor || 'VIIRS 375m'} (LEO 824km)</span>
+                  </div>
+                  <div className="command-metric-box">
+                    <span className="metric-lbl">TARGET COORDS</span>
+                    <span className="metric-val font-mono text-white">
+                      {activeIncident.lat.toFixed(4)}°N, {activeIncident.lon.toFixed(4)}°E
+                    </span>
+                  </div>
+                  <div className="command-metric-box span-2">
+                    <span className="metric-lbl">ACQUISITION TIMESTAMP</span>
+                    <span className="metric-val font-mono text-emerald">
+                      {activeIncident.acquired_at ? new Date(activeIncident.acquired_at).toUTCString() : satelliteTelemetry.utcTime} (LATENCY: 3.8m)
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 02 — THERMAL SIGNAL */}
+              <div className="command-section">
+                <div className="section-header">
+                  <span className="section-num">02</span>
+                  <h3 className="section-title">THERMAL SIGNAL</h3>
+                  <span className="section-tag">RADIOMETRIC</span>
+                </div>
+                <div className="command-metrics-grid cols-2">
+                  <div className="command-metric-box highlight-box">
+                    <span className="metric-lbl">FIRE RADIATIVE POWER (FRP)</span>
+                    <div className="frp-display">
+                      <span className="frp-num text-orange">{activeIncident.frp.toFixed(1)}</span>
+                      <span className="frp-unit">MW</span>
+                    </div>
+                    <div className="command-meter-bar">
+                      <div
+                        className="meter-fill orange"
+                        style={{ width: `${Math.min(100, (activeIncident.frp / 120) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="command-metric-box highlight-box">
+                    <span className="metric-lbl">BRIGHTNESS TEMPERATURE</span>
+                    <div className="frp-display">
+                      <span className="frp-num text-cyan">{activeIncident.brightness.toFixed(1)}</span>
+                      <span className="frp-unit">K</span>
+                    </div>
+                    <div className="command-meter-bar">
+                      <div
+                        className="meter-fill cyan"
+                        style={{ width: `${Math.min(100, Math.max(10, ((activeIncident.brightness - 300) / 100) * 100))}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="command-metric-box">
+                    <span className="metric-lbl">DETECTION CONFIDENCE</span>
+                    <span className="metric-val font-mono text-green">{activeIncident.confidence.toUpperCase()}</span>
+                  </div>
+                  <div className="command-metric-box">
+                    <span className="metric-lbl">RADIANCE INTENSITY</span>
+                    <span className="metric-val font-mono">{(activeIncident.frp * 0.82 + 14.5).toFixed(1)} W/m²·sr</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 03 — PERSISTENCE ANALYSIS */}
+              <div className="command-section">
+                <div className="section-header">
+                  <span className="section-num">03</span>
+                  <h3 className="section-title">PERSISTENCE ANALYSIS</h3>
+                  <span className="section-tag">TEMPORAL</span>
+                </div>
+                <div className="persistence-card">
+                  <div className="persistence-score-row">
+                    <div className="score-desc">
+                      <span className="score-title">MULTI-PASS RECURRENCE SCORE</span>
+                      <span className="score-sub">Identified across 3 consecutive NOAA-21 / VIIRS passes</span>
+                    </div>
+                    <div className="score-badge-circle">
+                      <span className="score-val">{activeIncident.persistence}%</span>
+                    </div>
+                  </div>
+                  <div className="history-pass-summary">
+                    <div className="pass-cell">
+                      <span className="p-time">-6h</span>
+                      <span className="p-status">DETECTED</span>
+                      <span className="p-val font-mono">24.2 MW</span>
+                    </div>
+                    <div className="pass-arrow">→</div>
+                    <div className="pass-cell">
+                      <span className="p-time">-3h</span>
+                      <span className="p-status">CONFIRMED</span>
+                      <span className="p-val font-mono">31.8 MW</span>
+                    </div>
+                    <div className="pass-arrow">→</div>
+                    <div className="pass-cell">
+                      <span className="p-time">-1h</span>
+                      <span className="p-status">ELEVATED</span>
+                      <span className="p-val font-mono">39.0 MW</span>
+                    </div>
+                    <div className="pass-arrow">→</div>
+                    <div className="pass-cell active">
+                      <span className="p-time">NOW</span>
+                      <span className="p-status">ACTIVE PEAK</span>
+                      <span className="p-val font-mono text-orange">{activeIncident.frp.toFixed(1)} MW</span>
+                    </div>
+                  </div>
+                  <div className="trend-banner">
+                    <span className="trend-label">PERSISTENCE TREND:</span>
+                    <span className="trend-val text-emerald">STABLE HIGH THERMAL EMISSION (HIGH RUNTIME CONTINUITY)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 04 — AI INDUSTRIAL CLASSIFICATION */}
+              <div className="command-section">
+                <div className="section-header">
+                  <span className="section-num">04</span>
+                  <h3 className="section-title">AI INDUSTRIAL CLASSIFICATION</h3>
+                  <span className="section-tag">DUAL-PATH ML</span>
+                </div>
+                <div className="command-metrics-grid cols-2">
+                  <div className="command-metric-box span-2">
+                    <span className="metric-lbl">PRIMARY CLASSIFICATION</span>
+                    <span className="metric-val text-emerald font-bold">{activeIncident.classification}</span>
+                    <span className="metric-sub">Thermoscope Dual-Path Thermal Classifier v2.4 (Biomass vs Industrial)</span>
+                  </div>
+                  <div className="command-metric-box">
+                    <span className="metric-lbl">INDUSTRIAL PROBABILITY</span>
+                    <div className="prob-value-row">
+                      <span className="metric-val font-mono text-cyan">{activeIncident.industrialProb}%</span>
+                      <div className="command-meter-bar">
+                        <div className="meter-fill cyan" style={{ width: `${activeIncident.industrialProb}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="command-metric-box">
+                    <span className="metric-lbl">ANOMALY GEOMETRY</span>
+                    <span className="metric-val font-mono text-white">POINT SOURCE (HIGH-RADIANCE)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 05 — INDUSTRIAL CONTEXT */}
+              <div className="command-section">
+                <div className="section-header">
+                  <span className="section-num">05</span>
+                  <h3 className="section-title">INDUSTRIAL CONTEXT</h3>
+                  <span className="section-tag">OSM GEODATA</span>
+                </div>
+                <div className="facility-context-card">
+                  <div className="facility-head-row">
+                    <span className="fac-icon">🏭</span>
+                    <div className="fac-details">
+                      <span className="fac-name">{activeIncident.facilityName || 'Jamnagar Refining & Petrochemical Complex'}</span>
+                      <span className="fac-type">{activeIncident.facilityType || 'Heavy Hydrocarbon Refining & Petrochemical Processing'}</span>
+                    </div>
+                    <span className="fac-distance-badge font-mono">
+                      {activeIncident.distanceKm?.toFixed(1) || '1.8'} KM DISTANCE
+                    </span>
+                  </div>
+                  <div className={`proximity-alert-box ${(activeIncident.distanceKm || 1.8) < 3.0 ? 'critical' : 'monitoring'}`}>
+                    <span className="alert-icon">⚠️</span>
+                    <span className="alert-text">
+                      {(activeIncident.distanceKm || 1.8) < 3.0
+                        ? 'CRITICAL PROXIMITY ALERT — Anomaly centered within active petrochemical hazard perimeter.'
+                        : 'STANDARD INDUSTRIAL BUFFER — Thermal emission monitored within 5.0 km zone.'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 06 — 3D RISK ASSESSMENT */}
+              <div className="command-section">
+                <div className="section-header">
+                  <span className="section-num">06</span>
+                  <h3 className="section-title">3D RISK ASSESSMENT</h3>
+                  <span className="section-tag">VOLUMETRIC</span>
+                </div>
+                <div className="command-metrics-grid cols-2">
+                  <div className="command-metric-box highlight-box">
+                    <span className="metric-lbl">COMPOSITE RISK SCORE</span>
+                    <div className="risk-display">
+                      <span className="risk-num text-red">{activeIncident.riskScore}</span>
+                      <span className="risk-max">/ 100</span>
+                      <span className={`risk-status-pill ${activeIncident.status.toLowerCase()}`}>
+                        {activeIncident.status}
+                      </span>
+                    </div>
+                    <div className="command-meter-bar">
+                      <div
+                        className="meter-fill red"
+                        style={{ width: `${activeIncident.riskScore}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="command-metric-box highlight-box">
+                    <span className="metric-lbl">ESTIMATED INFLUENCE ZONE</span>
+                    <div className="risk-display">
+                      <span className="risk-num text-amber">{activeIncident.estimatedInfluenceKm.toFixed(1)}</span>
+                      <span className="risk-max">KM RADIUS</span>
+                    </div>
+                    <span className="metric-sub">Calculated atmospheric risk propagation</span>
+                  </div>
+                  <div className="command-metric-box">
+                    <span className="metric-lbl">DISPERSION FACTOR</span>
+                    <span className="metric-val font-mono">PASQUILL CLASS D (MODERATE)</span>
+                  </div>
+                  <div className="command-metric-box">
+                    <span className="metric-lbl">ESTIMATED EXPOSURE</span>
+                    <span className="metric-val font-mono text-orange">3 INDUSTRIAL SECTORS</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 07 — EVIDENCE & TELEMETRY */}
+              <div className="command-section">
+                <div className="section-header">
+                  <span className="section-num">07</span>
+                  <h3 className="section-title">EVIDENCE & SATELLITE TELEMETRY</h3>
+                  <span className="section-tag">VIIRS BANDS</span>
+                </div>
+                <div className="telemetry-table">
+                  <div className="tel-row">
+                    <span className="tel-key">BAND M13 (4.05µm MEDIUM IR)</span>
+                    <span className="tel-val font-mono text-orange">3.82 W/m²·sr (HIGH RADIANCE)</span>
+                  </div>
+                  <div className="tel-row">
+                    <span className="tel-key">BAND I4 (3.74µm THERMAL)</span>
+                    <span className="tel-val font-mono text-cyan">356.2 K (BRIGHT ANOMALY)</span>
+                  </div>
+                  <div className="tel-row">
+                    <span className="tel-key">CLOUD COVER / ATMOSPHERE</span>
+                    <span className="tel-val font-mono text-emerald">0.0% (CLEAR SKY TRANSMITTANCE)</span>
+                  </div>
+                  <div className="tel-row">
+                    <span className="tel-key">SOLAR ZENITH ANGLE</span>
+                    <span className="tel-val font-mono">142.4° (NIGHTTIME CONTRAST)</span>
+                  </div>
+                  <div className="tel-row">
+                    <span className="tel-key">SCAN ANGLE / RESOLUTION</span>
+                    <span className="tel-val font-mono">12.8° NADIR / 375 METERS</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 08 — INCIDENT RESPONSE ACTIONS */}
+              <div className="command-section">
+                <div className="section-header">
+                  <span className="section-num">08</span>
+                  <h3 className="section-title">INCIDENT RESPONSE ACTIONS</h3>
+                  <span className="section-tag">OPERATIONAL</span>
+                </div>
+                <div className="action-buttons-grid">
+                  <button
+                    type="button"
+                    className="btn-operational-action alert-btn"
+                    onClick={() =>
+                      setActionFeedback((prev) => ({
+                        ...prev,
+                        dispatch: {
+                          status: 'PRIORITY ALERT DISPATCHED TO SPCB & NDRF HAZMAT • ACK #TX-9842',
+                          timestamp: new Date().toLocaleTimeString(),
+                        },
+                      }))
+                    }
+                  >
+                    <span className="btn-icon">🚨</span>
+                    <div className="btn-text-block">
+                      <span className="btn-main-label">DISPATCH ALERT</span>
+                      <span className="btn-sub-label">Disaster & Pollution Board Notice</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn-operational-action task-btn"
+                    onClick={() =>
+                      setActionFeedback((prev) => ({
+                        ...prev,
+                        tasking: {
+                          status: 'TASKING ACQUIRED: SENTINEL-2 MSI SCHEDULED (10M GSD) • ORBIT #31084',
+                          timestamp: new Date().toLocaleTimeString(),
+                        },
+                      }))
+                    }
+                  >
+                    <span className="btn-icon">🛰️</span>
+                    <div className="btn-text-block">
+                      <span className="btn-main-label">TASK HIGH-RES SATELLITE</span>
+                      <span className="btn-sub-label">Sentinel-2 / PlanetScope Revisit</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn-operational-action brief-btn"
+                    onClick={() =>
+                      setActionFeedback((prev) => ({
+                        ...prev,
+                        brief: {
+                          status: 'INCIDENT DOSSIER EXPORTED (THERMOSCOPE_INCIDENT_BRIEF.PDF)',
+                          timestamp: new Date().toLocaleTimeString(),
+                        },
+                      }))
+                    }
+                  >
+                    <span className="btn-icon">📄</span>
+                    <div className="btn-text-block">
+                      <span className="btn-main-label">GENERATE BRIEF</span>
+                      <span className="btn-sub-label">Download Structured Dossier</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn-operational-action notify-btn"
+                    onClick={() =>
+                      setActionFeedback((prev) => ({
+                        ...prev,
+                        notify: {
+                          status: 'COMPLIANCE DIRECTIVE SENT TO FACILITY HSE OFFICER • ACK #HSE-449',
+                          timestamp: new Date().toLocaleTimeString(),
+                        },
+                      }))
+                    }
+                  >
+                    <span className="btn-icon">📍</span>
+                    <div className="btn-text-block">
+                      <span className="btn-main-label">NOTIFY FACILITY</span>
+                      <span className="btn-sub-label">Direct HSE Compliance Inquiry</span>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Live Action Feedback Stream */}
+                {Object.keys(actionFeedback).length > 0 && (
+                  <div className="action-feedback-stream">
+                    <div className="feedback-stream-title">OPERATIONAL DISPATCH AUDIT LOG:</div>
+                    {Object.entries(actionFeedback).map(([key, fb]) => (
+                      <div key={key} className="feedback-log-item">
+                        <span className="log-dot" />
+                        <span className="log-time font-mono">[{fb.timestamp}]</span>
+                        <span className="log-text">{fb.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </aside>
+        );
+      })()}
     </div>
   );
 };
