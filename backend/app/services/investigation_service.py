@@ -11,6 +11,7 @@ from app.schemas.investigation import (
     PersistenceEvidence,
     IndustrialContextEvidence,
     Sentinel2Evidence,
+    Sentinel1Evidence,
     FusionResult,
     RiskResult,
     Provenance,
@@ -19,6 +20,7 @@ from app.schemas.investigation import (
 from app.services.firms_ingestion_service import load_stored_observations
 from app.services.osm_service import fetch_hotspot_osm_context
 from app.services.satellite_service import get_satellite_provider
+from app.services.satellite_orchestrator import get_satellite_orchestrator
 from app.services.satellite_classifier import get_satellite_classifier
 from app.services.evidence_fusion_service import get_evidence_fusion_service, EvidenceFusionService
 from app.services.risk_service import calculate_risk_score
@@ -112,17 +114,39 @@ class InvestigationService:
 
         async def fetch_satellite():
             try:
-                provider = get_satellite_provider()
+                orchestrator = get_satellite_orchestrator()
                 return await asyncio.wait_for(
-                    provider.fetch_satellite_image(lat=lat, lon=lon, timestamp=timestamp, observation_id=clean_id),
-                    timeout=8.0
+                    orchestrator.get_orchestrated_satellite_evidence(
+                        lat=lat,
+                        lon=lon,
+                        timestamp=timestamp,
+                        observation_id=clean_id,
+                        force_refresh=force_refresh
+                    ),
+                    timeout=20.0
                 )
             except asyncio.TimeoutError:
                 logger.warning(f"Satellite retrieval timed out for observation {clean_id}")
-                return {"available": False, "status": "TIMEOUT", "image_available": False, "error": "TIMEOUT"}
+                s2_to = {"available": False, "status": "TIMEOUT", "image_available": False, "error": "TIMEOUT"}
+                s1_to = {"available": False, "status": "S1_FALLBACK_UNAVAILABLE", "image_available": False, "error": "TIMEOUT"}
+                return {
+                    "sentinel2": s2_to,
+                    "sentinel1": s1_to,
+                    "selected_satellite": "NONE",
+                    "fallback_reason": "Satellite evidence retrieval timed out.",
+                    "active_evidence": s2_to
+                }
             except Exception as e:
                 logger.warning(f"Satellite retrieval error for observation {clean_id}: {e}")
-                return {"available": False, "status": "RETRIEVAL_FAILED", "image_available": False, "error": str(e)}
+                s2_err = {"available": False, "status": "RETRIEVAL_FAILED", "image_available": False, "error": str(e)}
+                s1_err = {"available": False, "status": "S1_FALLBACK_UNAVAILABLE", "image_available": False, "error": str(e)}
+                return {
+                    "sentinel2": s2_err,
+                    "sentinel1": s1_err,
+                    "selected_satellite": "NONE",
+                    "fallback_reason": f"Satellite retrieval error: {e}",
+                    "active_evidence": s2_err
+                }
 
         osm_res, sat_res = await asyncio.gather(fetch_osm(), fetch_satellite())
 
@@ -133,12 +157,34 @@ class InvestigationService:
         else:
             osm_context = osm_res if isinstance(osm_res, dict) else {}
 
-        # Check Satellite dependency health
-        if isinstance(sat_res, dict) and sat_res.get("error"):
-            system_warnings.append(f"Copernicus Sentinel-2 service degraded ({sat_res.get('error')}); proceeding with thermal and geospatial evidence.")
-            sat_data = {"available": False, "image_available": False, "status": "DEGRADED", "is_synthetic": False}
+        # Unpack Orchestrated Satellite Evidence (preserving backwards compatibility)
+        if isinstance(sat_res, dict) and "sentinel2" in sat_res:
+            sat_data = sat_res.get("sentinel2", {})
+            s1_data = sat_res.get("sentinel1", {})
+            selected_satellite = sat_res.get("selected_satellite", "SENTINEL_2")
+            fallback_reason = sat_res.get("fallback_reason")
+            active_sat = sat_res.get("active_evidence", sat_data)
         else:
+            # Backwards compatibility fallback if sat_res is direct S2 provider dict
             sat_data = sat_res if isinstance(sat_res, dict) else {}
+            s1_data = {
+                "available": False,
+                "status": "S1_NOT_QUERIED",
+                "role": "BACKUP",
+                "reason_not_queried": "Direct Sentinel-2 provider mode."
+            }
+            selected_satellite = "SENTINEL_2"
+            fallback_reason = None
+            active_sat = sat_data
+
+        # Check Satellite dependency health
+        if isinstance(sat_data, dict) and sat_data.get("error"):
+            system_warnings.append(f"Copernicus Sentinel-2 service degraded ({sat_data.get('error')}); proceeding with thermal and geospatial evidence.")
+            if not sat_data.get("available"):
+                sat_data["status"] = "DEGRADED"
+
+        if selected_satellite == "SENTINEL_1" and fallback_reason:
+            system_warnings.append(f"Sentinel-1 SAR radar backup engaged: {fallback_reason}")
 
         # 4. Persistence Context
         persistence_score = float(target_obs.get("persistence_score", 0.0))
@@ -152,7 +198,7 @@ class InvestigationService:
             "classification": "PERSISTENT" if persistence_score >= 60.0 else ("SUSPICIOUS" if persistence_score >= 30.0 else "TEMPORARY")
         }
 
-        # 5. Sentinel-2 CNN Inference
+        # 5. Sentinel-2 CNN Inference (Run on genuine S2 optical imagery if available)
         sat_cv_res: Dict[str, Any] = {}
         if sat_data.get("available") and sat_data.get("image_path"):
             img_path = sat_data.get("image_path")
@@ -206,14 +252,16 @@ class InvestigationService:
         base_ai = classify_thermal_event(spot_dict, osm_context=osm_context)
         risk_res = calculate_risk_score(spot_dict, osm_context=osm_context, ai_classification=base_ai)
 
-        # 7. Phase 6E Evidence Fusion
+        # 7. Phase 6E & 6K Evidence Fusion
         fusion_svc = get_evidence_fusion_service()
         evidence_obj = fusion_svc.assemble_evidence_object(
             observation_id=clean_id,
             firms_data=target_obs,
             persistence_data=pers_data,
             osm_data=osm_context,
-            satellite_data=sat_evidence_merged
+            satellite_data=sat_evidence_merged,
+            sentinel1_data=s1_data,
+            selected_satellite=selected_satellite
         )
         fusion_out = fusion_svc.fuse(evidence_obj)
 
@@ -221,9 +269,9 @@ class InvestigationService:
         all_warnings = list(dict.fromkeys(system_warnings + fusion_out.get("warnings", [])))
 
         # Determine overall investigation status
-        if not sat_data.get("available") or not osm_context.get("distance_km"):
+        if (not sat_data.get("available") and not s1_data.get("available")) or not osm_context.get("distance_km"):
             status_label = "PARTIAL_EVIDENCE"
-        elif sat_data.get("cloud_cover", 0.0) >= 50.0:
+        elif sat_data.get("cloud_cover", 0.0) >= 50.0 and not s1_data.get("available"):
             status_label = "DEGRADED"
         else:
             status_label = "SUCCESS"
@@ -278,6 +326,27 @@ class InvestigationService:
             class_probabilities=sat_evidence_merged.get("class_probabilities", {})
         )
 
+        sentinel1_model = Sentinel1Evidence(
+            available=bool(s1_data.get("available")),
+            state=s1_data.get("status") or s1_data.get("state") or ("S1_FALLBACK_AVAILABLE" if s1_data.get("available") else "S1_NOT_QUERIED"),
+            role="BACKUP",
+            product_id=s1_data.get("product_id"),
+            polarization=s1_data.get("polarization"),
+            orbit_direction=s1_data.get("orbit_direction"),
+            acquisition_mode=s1_data.get("acquisition_mode"),
+            satellite_acquired_at=s1_data.get("satellite_acquired_at"),
+            time_difference_hours=s1_data.get("time_difference_hours"),
+            image_url=s1_data.get("image_url"),
+            source=s1_data.get("source", "Copernicus Data Space"),
+            product=s1_data.get("product", "Sentinel-1 GRD"),
+            is_synthetic=bool(s1_data.get("is_synthetic", False)),
+            reason_not_queried=s1_data.get("reason_not_queried"),
+            sar_disclaimer=s1_data.get(
+                "sar_disclaimer",
+                "Sentinel-1 is SAR radar evidence that can provide cloud-independent surface information. It does not measure fire temperature."
+            )
+        )
+
         fusion_model = FusionResult(
             candidate_class=fusion_out["candidate_class"],
             candidate_score=fusion_out["candidate_score"],
@@ -294,16 +363,30 @@ class InvestigationService:
             factors=risk_res.get("factors", {})
         )
 
+        active_sat_acquired = (
+            sat_data.get("satellite_acquired_at") if selected_satellite == "SENTINEL_2"
+            else s1_data.get("satellite_acquired_at")
+        )
+        active_time_diff = (
+            sat_data.get("time_difference_hours") if selected_satellite == "SENTINEL_2"
+            else s1_data.get("time_difference_hours")
+        )
+
         provenance_model = Provenance(
             sources=fusion_out["sources"],
             timestamps={
                 "firms_acquired_at": timestamp,
-                "satellite_acquired_at": sat_data.get("satellite_acquired_at"),
+                "sentinel2_acquired_at": sat_data.get("satellite_acquired_at"),
+                "sentinel1_acquired_at": s1_data.get("satellite_acquired_at"),
                 "retrieved_at": datetime.now(timezone.utc).isoformat()
             },
             firms_acquired_at=timestamp,
             sentinel2_acquired_at=sat_data.get("satellite_acquired_at"),
-            temporal_offset_hours=sat_data.get("time_difference_hours"),
+            sentinel1_acquired_at=s1_data.get("satellite_acquired_at"),
+            satellite_primary_source="Copernicus Data Space Sentinel-2 L2A",
+            satellite_backup_source="Copernicus Data Space Sentinel-1 GRD",
+            selected_satellite=selected_satellite,
+            temporal_offset_hours=active_time_diff,
             disclaimer=fusion_out.get("disclaimer", "")
         )
 
@@ -315,13 +398,17 @@ class InvestigationService:
             persistence=persistence_model,
             industrial_context=industrial_model,
             sentinel2=sentinel_model,
+            sentinel1=sentinel1_model,
+            selected_satellite=selected_satellite,
+            satellite_fallback_reason=fallback_reason,
             fusion=fusion_model,
             risk=risk_model,
             provenance=provenance_model,
             warnings=all_warnings,
             disclaimers=[
                 "AI Candidate Classification is an evidence-fusion output, not a standalone confirmation of an industrial fire.",
-                "Sentinel-2 imagery is optical evidence and may not be temporally coincident with the FIRMS observation."
+                "Sentinel-2 imagery is optical evidence and may not be temporally coincident with the FIRMS observation.",
+                "Sentinel-1 is SAR radar evidence that can provide cloud-independent surface information. It does not measure fire temperature."
             ],
             created_at=now_iso
         )

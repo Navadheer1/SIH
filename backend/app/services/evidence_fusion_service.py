@@ -231,7 +231,9 @@ class EvidenceFusionService:
         firms_data: Optional[Dict[str, Any]] = None,
         persistence_data: Optional[Dict[str, Any]] = None,
         osm_data: Optional[Dict[str, Any]] = None,
-        satellite_data: Optional[Dict[str, Any]] = None
+        satellite_data: Optional[Dict[str, Any]] = None,
+        sentinel1_data: Optional[Dict[str, Any]] = None,
+        selected_satellite: str = "SENTINEL_2"
     ) -> Dict[str, Any]:
         """
         Builds a normalized, standardized Evidence Object adhering strictly to the SIH Phase 6E schema.
@@ -307,12 +309,36 @@ class EvidenceFusionService:
             "class_probabilities": sat.get("class_probabilities", {})
         }
 
+        # 5. Sentinel-1 SAR Backup Block (Phase 6K)
+        s1 = sentinel1_data or {}
+        s1_available = bool(s1.get("available") or s1.get("image_available"))
+        s1_block = {
+            "available": s1_available,
+            "state": s1.get("status") or ("S1_FALLBACK_AVAILABLE" if s1_available else "S1_NOT_QUERIED"),
+            "role": "BACKUP",
+            "product_id": s1.get("product_id"),
+            "polarization": s1.get("polarization"),
+            "orbit_direction": s1.get("orbit_direction"),
+            "acquisition_mode": s1.get("acquisition_mode"),
+            "satellite_acquired_at": s1.get("satellite_acquired_at"),
+            "time_difference_hours": s1.get("time_difference_hours"),
+            "image_url": s1.get("image_url"),
+            "is_synthetic": bool(s1.get("is_synthetic", False)),
+            "reason_not_queried": s1.get("reason_not_queried"),
+            "sar_disclaimer": s1.get(
+                "sar_disclaimer",
+                "Sentinel-1 is SAR radar evidence that can provide cloud-independent surface information. It does not measure fire temperature."
+            )
+        }
+
         return {
             "observation_id": str(observation_id),
             "firms": firms_block,
             "persistence": pers_block,
             "industrial_context": osm_block,
-            "sentinel2": sat_block
+            "sentinel2": sat_block,
+            "sentinel1": s1_block,
+            "selected_satellite": selected_satellite
         }
 
     def fuse(
@@ -394,7 +420,10 @@ class EvidenceFusionService:
             osm["score"] = 0.0
             warnings.append("OpenStreetMap industrial context unavailable.")
 
-        # 4. Evaluate Sentinel-2 Optical CNN Evidence & Cloud Quality Guardrails
+        # 4. Evaluate Satellite Evidence (Sentinel-2 Optical Primary or Sentinel-1 SAR Radar Backup)
+        s1 = evidence_object.get("sentinel1", {})
+        selected_sat = evidence_object.get("selected_satellite", "SENTINEL_2")
+
         sat_score = 0.0
         sat_weight = self.weights["sentinel2_vision"]
         sat_class = sat.get("class", "UNKNOWN")
@@ -403,7 +432,37 @@ class EvidenceFusionService:
         sat_quality, cloud_discount = assess_sentinel2_cloud_quality(cloud_pct)
         sat["quality"] = sat_quality
 
-        if sat.get("available") and sat_class != "UNKNOWN":
+        if selected_sat == "SENTINEL_1" and s1.get("available"):
+            # Phase 6K Sentinel-1 SAR Radar Backup Integration
+            sources.append("Copernicus Sentinel-1 SAR Radar Backup")
+            if s1.get("satellite_acquired_at"):
+                sources.append(f"Sentinel-1 Acquisition ({s1['satellite_acquired_at']})")
+
+            pols = s1.get("polarization") or ["VV", "VH"]
+            pol_str = "/".join(pols) if isinstance(pols, list) else str(pols)
+            orbit_dir = s1.get("orbit_direction", "descending")
+            reasoning.append(
+                f"Sentinel-1 SAR radar evidence utilized as cloud-independent backup (Polarization: {pol_str}, Orbit: {orbit_dir}). "
+                "Provides structural surface backscatter penetrating cloud cover; does not measure thermal emission."
+            )
+
+            if cloud_pct is not None and float(cloud_pct) >= 70.0:
+                warnings.append(f"Sentinel-1 SAR backup engaged due to dense Sentinel-2 cloud obscuration ({float(cloud_pct):.1f}%).")
+            elif sat.get("state") in ("NO_ACQUISITION", "UNAVAILABLE"):
+                reasoning.append("Sentinel-1 SAR radar evidence engaged due to absence of Sentinel-2 optical overpass.")
+
+            # SAR contributes structural physical context without claiming thermal measurement
+            sat_score = 0.50
+            sat_weight = self.weights["sentinel2_vision"] * 0.50
+            sat_quality = "SAR_ALL_WEATHER"
+            cloud_discount = 1.00
+
+            if s1.get("time_difference_hours") is not None:
+                s1_diff = abs(float(s1["time_difference_hours"]))
+                if s1_diff > 48.0:
+                    warnings.append(f"Sentinel-1 SAR acquisition is {s1_diff:.1f} hours apart from FIRMS detection.")
+
+        elif sat.get("available") and sat_class != "UNKNOWN":
             sources.append("Copernicus Sentinel-2 Multispectral")
             if sat.get("satellite_acquired_at"):
                 sources.append(f"Sentinel-2 Acquisition ({sat['satellite_acquired_at']})")
@@ -435,7 +494,7 @@ class EvidenceFusionService:
                         warnings.append(f"Sentinel-2 optical acquisition is {time_diff:.1f} hours apart from FIRMS detection; optical conditions may have evolved.")
         else:
             sat_weight = 0.0
-            reasoning.append("Sentinel-2 acquisition unavailable; classification based on FIRMS, persistence, and industrial context.")
+            reasoning.append("Satellite acquisition unavailable; classification based on FIRMS, persistence, and industrial context.")
 
         # 5. Weighted Normalization & Contribution Calculation
         total_active_weight = firms_weight + pers_weight + osm_weight + sat_weight
@@ -603,12 +662,15 @@ class EvidenceFusionService:
             "persistence": pers,
             "industrial_context": osm,
             "sentinel2": sat,
+            "sentinel1": s1,
+            "selected_satellite": selected_sat,
             "reasoning": reasoning,
             "warnings": warnings,
             "sources": unique_sources,
             "disclaimer": (
                 "AI Candidate Classification is an evidence-fusion output, not a standalone confirmation of an industrial fire. "
-                "Sentinel-2 imagery is optical evidence and may not be temporally coincident with the FIRMS observation."
+                "Sentinel-2 imagery is optical evidence and may not be temporally coincident with the FIRMS observation. "
+                "Sentinel-1 is SAR radar evidence that can provide cloud-independent surface information. It does not measure fire temperature."
             )
         }
 

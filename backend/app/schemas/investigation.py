@@ -51,6 +51,35 @@ class Sentinel2Evidence(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+MANDATORY_SAR_DISCLAIMER = (
+    "Sentinel-1 is SAR radar evidence that can provide cloud-independent surface information. "
+    "It does not measure fire temperature."
+)
+
+
+class Sentinel1Evidence(BaseModel):
+    available: bool = Field(False, description="Whether genuine Sentinel-1 SAR backup imagery is available")
+    state: str = Field("S1_NOT_QUERIED", description="S1 state: S1_NOT_QUERIED, S1_FALLBACK_AVAILABLE, S1_FALLBACK_UNAVAILABLE, S1_PROCESSING_FAILED, S1_AUTH_FAILED")
+    role: str = Field("BACKUP", description="Satellite role: always BACKUP")
+    product_id: Optional[str] = Field(None, description="Copernicus Sentinel-1 product ID")
+    polarization: Optional[List[str]] = Field(None, description="SAR polarizations (e.g., ['VV', 'VH'])")
+    orbit_direction: Optional[str] = Field(None, description="Orbit direction: ascending or descending")
+    acquisition_mode: Optional[str] = Field(None, description="Sensor mode (e.g., IW)")
+    satellite_acquired_at: Optional[str] = Field(None, description="Exact timestamp of SAR acquisition")
+    time_difference_hours: Optional[float] = Field(None, description="Hours between FIRMS and Sentinel-1 acquisitions")
+    image_url: Optional[str] = Field(None, description="URL endpoint serving genuine SAR georeferenced raster")
+    source: str = Field("Copernicus Data Space", description="Evidence source")
+    product: str = Field("Sentinel-1 GRD", description="Product type")
+    is_synthetic: bool = Field(False, description="Strict safety flag indicating imagery is not synthetic")
+    reason_not_queried: Optional[str] = Field(None, description="Explanation when Sentinel-1 was skipped")
+    sar_disclaimer: str = Field(
+        MANDATORY_SAR_DISCLAIMER,
+        description="Mandatory scientific SAR disclaimer"
+    )
+
+    model_config = {"populate_by_name": True}
+
+
 class FusionResult(BaseModel):
     candidate_class: str = Field(..., description="Synthesized candidate classification: WILDFIRE, INDUSTRIAL_FIRE, NON_FIRE, UNKNOWN")
     candidate_score: float = Field(..., description="Bounded multi-source fusion score in [0.0, 1.0]")
@@ -72,10 +101,15 @@ class Provenance(BaseModel):
     timestamps: Dict[str, Optional[str]] = Field(default_factory=dict, description="Component acquisition timestamps")
     firms_acquired_at: Optional[str] = Field(None, description="FIRMS observation time")
     sentinel2_acquired_at: Optional[str] = Field(None, description="Sentinel-2 acquisition time")
-    temporal_offset_hours: Optional[float] = Field(None, description="Temporal offset in hours between FIRMS and Sentinel-2")
+    sentinel1_acquired_at: Optional[str] = Field(None, description="Sentinel-1 acquisition time")
+    satellite_primary_source: str = Field("Copernicus Data Space Sentinel-2 L2A", description="Primary optical satellite source")
+    satellite_backup_source: str = Field("Copernicus Data Space Sentinel-1 GRD", description="Backup SAR radar satellite source")
+    selected_satellite: str = Field("SENTINEL_2", description="Active satellite source: SENTINEL_2, SENTINEL_1, NONE")
+    temporal_offset_hours: Optional[float] = Field(None, description="Temporal offset in hours between FIRMS and satellite")
     disclaimer: str = Field(
         "AI Candidate Classification is an evidence-fusion output, not a standalone confirmation of an industrial fire. "
-        "Sentinel-2 imagery is optical evidence and may not be temporally coincident with the FIRMS observation.",
+        "Sentinel-2 imagery is optical evidence and may not be temporally coincident with the FIRMS observation. "
+        "Sentinel-1 is SAR radar evidence that can provide cloud-independent surface information. It does not measure fire temperature.",
         description="Mandatory scientific disclaimer"
     )
 
@@ -87,6 +121,9 @@ class InvestigationResponse(BaseModel):
     persistence: PersistenceEvidence = Field(..., description="Temporal persistence evidence")
     industrial_context: IndustrialContextEvidence = Field(..., description="OpenStreetMap industrial proximity context")
     sentinel2: Sentinel2Evidence = Field(..., description="Copernicus Sentinel-2 optical CNN evidence")
+    sentinel1: Sentinel1Evidence = Field(default_factory=Sentinel1Evidence, description="Copernicus Sentinel-1 SAR radar backup evidence")
+    selected_satellite: str = Field("SENTINEL_2", description="Active satellite source: SENTINEL_2, SENTINEL_1, NONE")
+    satellite_fallback_reason: Optional[str] = Field(None, description="Reason Sentinel-1 backup was triggered, or None if S2 was usable")
     fusion: FusionResult = Field(..., description="Phase 6E Multi-Source Evidence Fusion Result")
     risk: RiskResult = Field(..., description="Operational hazard risk assessment")
     provenance: Provenance = Field(..., description="Data lineage, timestamps, and disclaimers")
@@ -94,7 +131,8 @@ class InvestigationResponse(BaseModel):
     disclaimers: List[str] = Field(
         default_factory=lambda: [
             "AI Candidate Classification is an evidence-fusion output, not a standalone confirmation of an industrial fire.",
-            "Sentinel-2 imagery is optical evidence and may not be temporally coincident with the FIRMS observation."
+            "Sentinel-2 imagery is optical evidence and may not be temporally coincident with the FIRMS observation.",
+            "Sentinel-1 is SAR radar evidence that can provide cloud-independent surface information. It does not measure fire temperature."
         ],
         description="Mandatory regulatory and operational disclaimers"
     )

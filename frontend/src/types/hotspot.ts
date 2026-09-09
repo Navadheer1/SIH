@@ -648,6 +648,24 @@ export interface Sentinel2Evidence {
   class_probabilities: Record<string, number>;
 }
 
+export interface Sentinel1Evidence {
+  available: boolean;
+  state: 'S1_NOT_QUERIED' | 'S1_FALLBACK_AVAILABLE' | 'S1_FALLBACK_UNAVAILABLE' | 'S1_PROCESSING_FAILED' | 'S1_AUTH_FAILED' | string;
+  role: 'BACKUP' | string;
+  product_id?: string | null;
+  polarization?: string[] | null;
+  orbit_direction?: 'ascending' | 'descending' | string | null;
+  acquisition_mode?: string | null;
+  satellite_acquired_at?: string | null;
+  time_difference_hours?: number | null;
+  image_url?: string | null;
+  source?: string;
+  product?: string;
+  is_synthetic: boolean;
+  reason_not_queried?: string | null;
+  sar_disclaimer?: string;
+}
+
 export interface FusionResult {
   candidate_class: 'WILDFIRE' | 'INDUSTRIAL_FIRE' | 'NON_FIRE' | 'UNKNOWN' | string;
   candidate_score: number;
@@ -669,6 +687,8 @@ export interface Provenance {
   observation_id: string;
   firms_acquired_at?: string | null;
   sentinel2_acquired_at?: string | null;
+  sentinel1_acquired_at?: string | null;
+  selected_satellite?: 'SENTINEL_2' | 'SENTINEL_1' | 'NONE' | string;
   temporal_offset_hours?: number | null;
   osm_queried_at?: string | null;
   investigated_at: string;
@@ -680,6 +700,9 @@ export interface InvestigationResponse {
   persistence: PersistenceEvidence;
   industrial_context: IndustrialContextEvidence;
   sentinel2: Sentinel2Evidence;
+  sentinel1?: Sentinel1Evidence;
+  selected_satellite?: 'SENTINEL_2' | 'SENTINEL_1' | 'NONE' | string;
+  satellite_fallback_reason?: string | null;
   fusion: FusionResult;
   risk: RiskResult;
   provenance: Provenance;
