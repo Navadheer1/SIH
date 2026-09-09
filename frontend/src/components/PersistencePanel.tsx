@@ -1,3 +1,11 @@
+import {
+  faBolt,
+  faFire,
+  faIndustry,
+  faTriangleExclamation,
+  faXmark,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useEffect, useState } from 'react';
 import { PersistentCluster, AiClassificationResponse, RiskScoreResponse } from '../types/hotspot';
 import { getApiUrl } from '../config/api';
@@ -69,7 +77,7 @@ export const PersistencePanel: React.FC<PersistencePanelProps> = ({ cluster, onC
           <p className="panel-subtitle">Spatial-Temporal Satellite Cluster Analysis</p>
         </div>
         <button className="panel-close-btn" onClick={onClose}>
-          ✕
+          <FontAwesomeIcon icon={faXmark} />
         </button>
       </div>
 
@@ -104,7 +112,7 @@ export const PersistencePanel: React.FC<PersistencePanelProps> = ({ cluster, onC
             className="btn-open-workspace"
             onClick={() => onOpenInvestigation(cluster)}
           >
-            ⚡ Open Full Investigation Workspace
+            <FontAwesomeIcon icon={faBolt} /> Open Full Investigation Workspace
           </button>
         )}
 
@@ -126,7 +134,7 @@ export const PersistencePanel: React.FC<PersistencePanelProps> = ({ cluster, onC
         {/* Insufficient History Warning */}
         {!cluster.has_sufficient_history && (
           <div className="panel-warning">
-            ⚠️ <strong>Data Limitation Notice:</strong> Insufficient historical FIRMS observations available in the current window for temporal persistence analysis.
+            <FontAwesomeIcon icon={faTriangleExclamation} /> <strong>Data Limitation Notice:</strong> Insufficient historical FIRMS observations available in the current window for temporal persistence analysis.
           </div>
         )}
 
@@ -153,7 +161,7 @@ export const PersistencePanel: React.FC<PersistencePanelProps> = ({ cluster, onC
         {/* Nearby Industrial Context Integration */}
         {cluster.industrial_context && cluster.industrial_context.nearby_facility && (
           <div className="facility-context-card">
-            <div className="facility-card-header">🏭 NEARBY INDUSTRIAL FACILITY</div>
+            <div className="facility-card-header"><FontAwesomeIcon icon={faIndustry} /> NEARBY INDUSTRIAL FACILITY</div>
             <div className="facility-card-body">
               <div className="facility-name">{cluster.industrial_context.nearby_facility}</div>
               <div className="facility-meta">
@@ -176,7 +184,7 @@ export const PersistencePanel: React.FC<PersistencePanelProps> = ({ cluster, onC
           <div className="timeline-list">
             {cluster.observations.map((obs, idx) => (
               <div key={`obs-${idx}`} className="timeline-item">
-                <div className="timeline-dot">🔥</div>
+                <div className="timeline-dot"><FontAwesomeIcon icon={faFire} /></div>
                 <div className="timeline-content">
                   <div className="timeline-time">{obs.acquired_at}</div>
                   <div className="timeline-details">

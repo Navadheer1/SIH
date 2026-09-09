@@ -170,7 +170,150 @@ export async function getDecisionSupport(
         throw new Error(`Decision support fetch failed (${errorDetail})`);
       }
 
-      const data: import('../types/hotspot').DecisionSupportResponse = await response.json();
+      const raw: any = await response.json();
+
+      // Normalize Threat Zones
+      const tz = raw.threat_zone || raw.threat_zones || { available: false, zones: {} };
+      const innerZone = tz.zones?.inner_zone || tz.zones?.inner;
+      const secZone = tz.zones?.secondary_zone || tz.zones?.secondary;
+      const monZone = tz.zones?.monitoring_zone || tz.zones?.monitoring;
+
+      const highHazard = tz.high_hazard_zone || (innerZone ? {
+        name: innerZone.name || 'Inner Tactical Zone',
+        radius_meters: Math.round((innerZone.radius_km || 0.3) * 1000),
+        description: innerZone.description || 'Immediate tactical isolation area. Thermal radiation & flashover hazard.',
+        key_actions: ['Immediate tactical perimeter isolation', 'Deploy thermal suppression & foam units'],
+      } : null);
+
+      const modHazard = tz.moderate_hazard_zone || (secZone ? {
+        name: secZone.name || 'Secondary Impact Zone',
+        radius_meters: Math.round((secZone.radius_km || 0.8) * 1000),
+        description: secZone.description || 'Secondary buffer zone. Airborne particulate and plume dispersion corridor.',
+        key_actions: ['Secondary perimeter staging', 'Plume & atmospheric dispersion monitoring'],
+      } : null);
+
+      const precHazard = tz.precautionary_zone || (monZone ? {
+        name: monZone.name || 'Perimeter Monitoring Zone',
+        radius_meters: Math.round((monZone.radius_km || 1.85) * 1000),
+        description: monZone.description || 'Extended precautionary buffer. Logistics & traffic control corridor.',
+        key_actions: ['Traffic diversion & logistical staging', 'Coordinate with local municipal services'],
+      } : null);
+
+      const threatRadiusMeters = tz.threat_radius_meters || (precHazard?.radius_meters ?? modHazard?.radius_meters ?? highHazard?.radius_meters ?? 1000);
+
+      const normalizedThreatZones = {
+        ...tz,
+        threat_radius_meters: threatRadiusMeters,
+        high_hazard_zone: highHazard,
+        moderate_hazard_zone: modHazard,
+        precautionary_zone: precHazard,
+      };
+
+      // Normalize Asset Exposure
+      const ae = raw.asset_exposure || { available: false, total_exposed_assets: 0, critical_infrastructure_count: 0, exposed_assets: [] };
+      const exposedList = ae.exposed_assets || ae.facilities || [];
+      const facilitiesList = exposedList.map((item: any) => ({
+        ...item,
+        name: item.name || item.asset_name || 'Mapped Facility',
+        type: item.type || item.raw_type || item.category || 'Infrastructure',
+        distance_km: item.distance_km ?? 0.5,
+        is_critical: item.is_critical ?? (
+          item.exposure_level?.includes('HIGH') ||
+          item.threat_zone?.includes('Inner') ||
+          item.category === 'INDUSTRIAL' ||
+          item.category === 'UTILITIES'
+        ),
+      }));
+
+      const normalizedAssetExposure = {
+        ...ae,
+        exposed_assets: exposedList,
+        facilities: facilitiesList,
+        high_vulnerability_count: ae.high_vulnerability_count ?? facilitiesList.filter((f: any) => f.is_critical).length,
+        moderate_count: ae.moderate_count ?? facilitiesList.filter((f: any) => !f.is_critical).length,
+      };
+
+      // Normalize Priority
+      const priority = raw.priority || {
+        priority_index: 'P4',
+        priority_level: 'LOW',
+        priority_score: 0,
+        priority_label: 'P4 — ROUTINE',
+      };
+      const normalizedPriority = {
+        ...priority,
+        scoring_breakdown: priority.scoring_breakdown || priority.contributing_factors || {},
+        ranking_reasons: priority.ranking_reasons || priority.reasons || [],
+        explainability_summary: priority.explainability_summary || raw.summary?.recommended_action || priority.priority_label || 'Evaluated based on multi-source radiometric intensity, spatial context, and asset exposure.',
+      };
+
+      // Normalize Future Impact
+      const fi = raw.future_impact || { available: false, projections: {} };
+      let projectionsList: any[] = [];
+      if (Array.isArray(fi.projections)) {
+        projectionsList = fi.projections;
+      } else if (fi.projections && typeof fi.projections === 'object') {
+        projectionsList = Object.entries(fi.projections).map(([key, val]: [string, any]) => ({
+          time_horizon: val.time_horizon || key,
+          hours: val.hours ?? (parseInt(key.replace(/[^0-9]/g, '')) || 1),
+          projection_window_hours: val.hours ?? (parseInt(key.replace(/[^0-9]/g, '')) || 1),
+          threat_level: val.threat_level || val.impact_level || 'MODERATE',
+          risk_summary: val.risk_summary || `Projected footprint: ${val.projected_area_sqkm != null ? val.projected_area_sqkm.toFixed(1) + ' km²' : 'Expanding'} (${val.confidence_level || 'MEDIUM'} confidence). ${val.total_exposed_assets ?? 0} assets exposed.`,
+          radius_meters: val.radius_meters || (val.projected_area_sqkm ? Math.round(Math.sqrt(val.projected_area_sqkm / Math.PI) * 1000) : undefined),
+          ...val,
+        }));
+      }
+
+      const normalizedFutureImpact = {
+        ...fi,
+        scenarios_evaluated: fi.scenarios_evaluated ?? projectionsList.length,
+        projections: projectionsList,
+        advisory_notes: fi.advisory_notes || (fi.escalation_reasons && fi.escalation_reasons.length > 0 ? fi.escalation_reasons : [
+          'Spread models incorporate historical local wind vectors and terrain slope.',
+          'Dynamic updates occur as refreshed FIRMS/Sentinel-2 passes are ingested.'
+        ]),
+      };
+
+      // Normalize Recommended Actions
+      const recActions = Array.isArray(raw.recommended_actions)
+        ? raw.recommended_actions.map((rec: any) => {
+            let stakeholders = rec.recommended_stakeholders;
+            if (!stakeholders || !Array.isArray(stakeholders) || stakeholders.length === 0) {
+              if (rec.category === 'DEPLOY_UNIT') {
+                stakeholders = ['Industrial Fire Brigade', 'Rapid Tactical Unit'];
+              } else if (rec.category === 'REVIEW_SATELLITE') {
+                stakeholders = ['Remote Sensing Specialist', 'EOC Analyst'];
+              } else if (rec.category === 'VERIFY_FACILITY') {
+                stakeholders = ['Facility Safety Officer', 'Local EOC'];
+              } else {
+                stakeholders = ['Emergency Operations Center', 'Incident Commander'];
+              }
+            }
+            return {
+              ...rec,
+              recommended_stakeholders: stakeholders,
+            };
+          })
+        : [];
+
+      // Normalize Safety Flags
+      const safetyFlags = raw.safety_flags || {
+        is_synthetic: !!raw.investigation?.sentinel2?.is_synthetic,
+        is_calibrated: !!raw.investigation?.sentinel2?.is_calibrated,
+        is_simulation_only: true,
+      };
+
+      const data: import('../types/hotspot').DecisionSupportResponse = {
+        ...raw,
+        threat_zone: normalizedThreatZones,
+        threat_zones: normalizedThreatZones,
+        asset_exposure: normalizedAssetExposure,
+        priority: normalizedPriority,
+        future_impact: normalizedFutureImpact,
+        recommended_actions: recActions,
+        safety_flags: safetyFlags,
+      };
+
       return data;
     } finally {
       inFlightDecisionSupport.delete(cleanId);
@@ -289,7 +432,7 @@ export const DEMO_SCENARIO_PRESETS: import('../types/hotspot').DemoScenarioPrese
     candidate_class: 'INDUSTRIAL_FIRE',
     coordinates: [24.23818, 97.22869],
     location_name: 'Gujarat Petrochemical Corridor',
-    badge: '🏭 P1 CRITICAL',
+    badge: 'P1 CRITICAL',
   },
   {
     id: 'demo_wildfire_p2',
@@ -301,7 +444,7 @@ export const DEMO_SCENARIO_PRESETS: import('../types/hotspot').DemoScenarioPrese
     candidate_class: 'WILDFIRE',
     coordinates: [22.6789, 80.54321],
     location_name: 'Kanha Forest Reserve Perimeter',
-    badge: '🌲 P2 HIGH',
+    badge: 'P2 HIGH',
   },
   {
     id: 'demo_crop_burn_p4',
@@ -313,7 +456,7 @@ export const DEMO_SCENARIO_PRESETS: import('../types/hotspot').DemoScenarioPrese
     candidate_class: 'NON_FIRE',
     coordinates: [30.7333, 76.7794],
     location_name: 'Northern Agricultural Belt',
-    badge: '🌾 P4 LOW',
+    badge: 'P4 LOW',
   },
   {
     id: 'demo_degraded_cloud',
@@ -325,7 +468,7 @@ export const DEMO_SCENARIO_PRESETS: import('../types/hotspot').DemoScenarioPrese
     candidate_class: 'UNKNOWN',
     coordinates: [21.8456, 73.1234],
     location_name: 'Gulf Coastal Industrial Zone',
-    badge: '☁️ P3 GUARDRAIL',
+    badge: 'P3 GUARDRAIL',
   },
 ];
 

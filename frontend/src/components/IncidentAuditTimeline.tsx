@@ -1,3 +1,17 @@
+import {
+  faBolt,
+  faCircleCheck,
+  faClipboardList,
+  faEye,
+  faFileLines,
+  faMagnifyingGlass,
+  faPenToSquare,
+  faSatellite,
+  faTriangleExclamation,
+  faTruckMedical,
+  faXmark,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useState, useEffect, useCallback } from 'react';
 import { IncidentAuditItem, IncidentAuditTrailResponse } from '../types/hotspot';
 import { getIncidentAuditTrail, recordIncidentAction } from '../config/api';
@@ -82,29 +96,29 @@ export const IncidentAuditTimeline: React.FC<IncidentAuditTimelineProps> = ({
   const getActionIcon = (action: string) => {
     switch (action?.toUpperCase()) {
       case 'HOTSPOT_DETECTED':
-        return '🛰️';
+        return <FontAwesomeIcon icon={faSatellite} />;
       case 'ACKNOWLEDGE':
       case 'ACKNOWLEDGED':
-        return '👁️';
+        return <FontAwesomeIcon icon={faEye} />;
       case 'DISPATCH':
       case 'DISPATCHED':
-        return '🚒';
+        return <FontAwesomeIcon icon={faTruckMedical} />;
       case 'INVESTIGATE':
       case 'INVESTIGATING':
-        return '🔍';
+        return <FontAwesomeIcon icon={faMagnifyingGlass} />;
       case 'ESCALATE':
       case 'ESCALATED':
-        return '⚡';
+        return <FontAwesomeIcon icon={faBolt} />;
       case 'RESOLVE':
       case 'RESOLVED':
-        return '✅';
+        return <FontAwesomeIcon icon={faCircleCheck} />;
       case 'DISMISS':
       case 'DISMISSED':
-        return '✕';
+        return <FontAwesomeIcon icon={faXmark} />;
       case 'ADD_NOTE':
-        return '📝';
+        return <FontAwesomeIcon icon={faPenToSquare} />;
       default:
-        return '📋';
+        return <FontAwesomeIcon icon={faClipboardList} />;
     }
   };
 
@@ -123,7 +137,7 @@ export const IncidentAuditTimeline: React.FC<IncidentAuditTimelineProps> = ({
     <div className="incident-audit-timeline-container" data-testid="incident-audit-timeline">
       <div className="timeline-header-bar">
         <div className="timeline-title-wrap">
-          <span className="timeline-icon">📜</span>
+          <span className="timeline-icon"><FontAwesomeIcon icon={faFileLines} /></span>
           <div>
             <h4 className="timeline-heading">Incident Lifecycle Audit Trail</h4>
             <p className="timeline-subheading">
@@ -156,7 +170,7 @@ export const IncidentAuditTimeline: React.FC<IncidentAuditTimelineProps> = ({
           {isSubmitting ? 'Saving...' : '+ Add Log Note'}
         </button>
       </form>
-      {noteSuccess && <div className="note-saved-hint">✓ Operational note appended to immutable audit log.</div>}
+      {noteSuccess && <div className="note-saved-hint">Operational note appended to immutable audit log.</div>}
 
       {/* Loading state */}
       {loading && (
@@ -169,7 +183,7 @@ export const IncidentAuditTimeline: React.FC<IncidentAuditTimelineProps> = ({
       {/* Error state */}
       {error && !loading && (
         <div className="timeline-error-box">
-          <span>⚠️ {error}</span>
+          <span><FontAwesomeIcon icon={faTriangleExclamation} /> {error}</span>
           <button type="button" className="btn-timeline-retry" onClick={fetchTrail}>
             Retry
           </button>
@@ -195,7 +209,7 @@ export const IncidentAuditTimeline: React.FC<IncidentAuditTimelineProps> = ({
                       <strong>{item.action.replace('_', ' ')}</strong>
                       {item.previous_status && item.previous_status !== item.new_status && (
                         <span className="status-transition-tag">
-                          {item.previous_status} ➔ {item.new_status}
+                          {item.previous_status} → {item.new_status}
                         </span>
                       )}
                     </div>
@@ -209,7 +223,7 @@ export const IncidentAuditTimeline: React.FC<IncidentAuditTimelineProps> = ({
                     <span className="actor-name">By: <strong>{item.actor}</strong></span>
                     {item.target_agency && (
                       <span className="target-agency-badge">
-                        🏢 Assigned: <strong>{item.target_agency}</strong>
+                        Assigned: <strong>{item.target_agency}</strong>
                       </span>
                     )}
                   </div>

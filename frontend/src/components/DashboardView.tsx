@@ -1,13 +1,25 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Hotspot,
   PersistentCluster,
   ThermalAlert,
   PriorityRankingItem,
 } from '../types/hotspot';
-import { SystemHealthCards } from './SystemHealthCards';
-import { MetricsSummary } from './MetricsSummary';
+import { CompactStatusStrip } from './CompactStatusStrip';
+import { HeroKpiStrip } from './HeroKpiStrip';
 import { FireMap } from './FireMap';
+import type { IncidentDrawerData } from './IncidentEvidenceDrawer';
+import { RecentActivitySection } from './RecentActivitySection';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faMap,
+  faFire,
+  faArrowsRotate,
+  faIndustry,
+  faTriangleExclamation,
+  faFilter,
+  faLocationDot,
+} from '@fortawesome/free-solid-svg-icons';
 
 interface DashboardViewProps {
   hotspots: Hotspot[];
@@ -17,10 +29,18 @@ interface DashboardViewProps {
   loadingHotspots: boolean;
   loadingClusters: boolean;
   loadingPriority: boolean;
+  lastUpdated: string;
   onSelectHotspot: (h: Hotspot) => void;
   onSelectCluster: (c: PersistentCluster) => void;
   onSelectAlert: (a: ThermalAlert) => void;
   onRefreshAll: () => void;
+  refreshing?: boolean;
+  onNavigateView?: (view: 'status' | 'incidents' | 'map' | 'settings') => void;
+  selectedPriorityIncident?: PriorityRankingItem | null;
+  onSelectPriorityIncident?: (p: PriorityRankingItem) => void;
+  onEnrichHotspot?: (hotspotId: string, lat: number, lon: number) => void;
+  basemap?: 'standard' | 'satellite';
+  onBasemapChange?: (mode: 'standard' | 'satellite') => void;
 }
 
 export function DashboardView({
@@ -28,36 +48,76 @@ export function DashboardView({
   clusters,
   alerts,
   priorityItems,
-  loadingHotspots,
-  loadingClusters,
   loadingPriority,
+  lastUpdated = '',
+  refreshing = false,
   onSelectHotspot,
   onSelectCluster,
   onSelectAlert,
   onRefreshAll,
+  onNavigateView,
+  selectedPriorityIncident,
+  onSelectPriorityIncident,
+  onEnrichHotspot,
+  basemap = 'standard',
+  onBasemapChange,
 }: DashboardViewProps) {
   const [metricFilter, setMetricFilter] = useState<'all' | 'persistent' | 'industrial' | 'high_risk'>('all');
   const [mapLayerMode, setMapLayerMode] = useState<'all' | 'hotspots' | 'clusters' | 'industrial'>('all');
+  const [severityFilter, setSeverityFilter] = useState<'ALL' | 'CRITICAL' | 'HIGH' | 'MODERATE'>('ALL');
+  const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
+  const [activeMapCoords, setActiveMapCoords] = useState<[number, number] | null>(null);
+  const [activeMapZoom, setActiveMapZoom] = useState<number>(5);
 
-  // Filtered counts
+  // Filtered Decision Counts
   const totalHotspots = hotspots.length;
-  const persistentCount = clusters.filter(c => c.classification === 'PERSISTENT' || c.classification === 'HIGHLY PERSISTENT' || c.observation_count > 1).length;
-  const industrialCandidatesCount = priorityItems.filter(p => p.industrial_facility && p.industrial_distance_km !== null && p.industrial_distance_km <= 1.0).length;
-  const highRiskCount = priorityItems.filter(p => p.risk_score >= 0.70 || p.risk_level === 'CRITICAL' || p.risk_level === 'HIGH').length;
+  const persistentCount = clusters.filter(
+    (c) => c.classification === 'PERSISTENT' || c.classification === 'HIGHLY PERSISTENT' || c.observation_count > 1
+  ).length;
+  const industrialCandidatesCount = priorityItems.filter(
+    (p) => p.industrial_facility && p.industrial_distance_km !== null && p.industrial_distance_km <= 1.0
+  ).length;
+  const highRiskCount = priorityItems.filter(
+    (p) => p.risk_score >= 0.7 || p.risk_level === 'CRITICAL' || p.risk_level === 'HIGH'
+  ).length;
 
   const handleMetricFilterClick = (filter: 'all' | 'persistent' | 'industrial' | 'high_risk') => {
     setMetricFilter(filter);
     if (filter === 'persistent') setMapLayerMode('clusters');
     else if (filter === 'industrial') setMapLayerMode('industrial');
-    else if (filter === 'all') setMapLayerMode('all');
     else setMapLayerMode('all');
   };
 
-  // Unified display triage list
-  const displayTriageList = priorityItems.length > 0
-    ? priorityItems
-    : clusters.length > 0
-    ? [...clusters]
+  // Build unified Priority Incidents list for the 30% column
+  const triageIncidents = useMemo<IncidentDrawerData[]>(() => {
+    let list: IncidentDrawerData[] = [];
+
+    if (priorityItems.length > 0) {
+      list = priorityItems.map((p, idx) => ({
+        id: p.cluster_id || p.hotspot_id || `priority_${idx + 1}`,
+        rank: p.rank || idx + 1,
+        latitude: p.latitude,
+        longitude: p.longitude,
+        risk_score: p.risk_score,
+        risk_level: p.risk_level || p.priority || 'MODERATE',
+        classification: p.classification || 'Industrial Fire Candidate',
+        industrial_facility: p.industrial_facility || 'Thermal Anomaly (5 KM enrichment pending)',
+        industrial_distance_km: p.industrial_distance_km ?? null,
+        closest_critical_asset: p.closest_critical_asset ?? null,
+        exposed_assets_count: p.exposed_assets_count ?? (p.nearby_features ? p.nearby_features.length : 0),
+        exposure_summary: p.exposure_summary ?? {},
+        nearby_features: p.nearby_features ?? [],
+        data_status: p.data_status ?? 'OSM_UNAVAILABLE',
+        persistence_score: p.persistence_score,
+        observation_count: p.observation_count,
+        duration_hours: p.duration_hours,
+        frp: p.frp,
+        brightness: p.brightness,
+        reasons: p.reasons || [],
+        recommended_action: p.recommended_action,
+      }));
+    } else if (clusters.length > 0) {
+      list = [...clusters]
         .sort((a, b) => (b.total_frp || 0) - (a.total_frp || 0))
         .map((c, idx) => {
           const totalFrp = c.total_frp || 25.0;
@@ -66,90 +126,173 @@ export function DashboardView({
             score >= 0.7 ? 'CRITICAL' : score >= 0.4 ? 'HIGH' : score >= 0.2 ? 'MODERATE' : 'LOW';
 
           return {
+            id: c.cluster_id,
             rank: idx + 1,
-            cluster_id: c.cluster_id,
             latitude: c.center_latitude,
             longitude: c.center_longitude,
             risk_score: score,
             risk_level: level,
-            classification: c.classification || 'TEMPORARY',
+            classification: c.classification || 'Persistent Thermal Source',
             industrial_facility: c.industrial_context?.nearby_facility || 'Rural / Agricultural Zone',
             industrial_distance_km: c.industrial_context?.distance_km ?? null,
             persistence_score: c.persistence_score || (c.observation_count > 1 ? 75 : 15),
             observation_count: c.observation_count,
             duration_hours: c.duration_hours,
-            reasons: ['Real NASA FIRMS observation cluster'],
+            frp: totalFrp,
           };
-        })
-    : hotspots.map((h, idx) => {
+        });
+    } else {
+      list = hotspots.map((h, idx) => {
         const frpVal = h.frp || 15.0;
         const score = Math.min(0.95, frpVal / 100);
         const level: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW' =
           score >= 0.7 ? 'CRITICAL' : score >= 0.4 ? 'HIGH' : score >= 0.2 ? 'MODERATE' : 'LOW';
 
         return {
+          id: h.observation_id || `HOTSPOT_${idx + 1}`,
           rank: idx + 1,
-          cluster_id: h.observation_id || `HOTSPOT_${idx + 1}`,
           latitude: h.latitude,
           longitude: h.longitude,
           risk_score: score,
           risk_level: level,
           classification: 'NASA FIRMS Detection',
-          industrial_facility: 'Rural / Unregistered Land',
+          industrial_facility: 'Rural Land',
           industrial_distance_km: null,
           persistence_score: 15,
           observation_count: 1,
           duration_hours: 0,
-          reasons: ['NASA FIRMS active thermal detection'],
+          frp: frpVal,
+          brightness: h.brightness,
+          satellite: h.satellite,
+          acquired_at: h.acquired_at,
         };
       });
+    }
+
+    // Filter only important incidents: Critical, High, Moderate (or all if ALL selected)
+    return list.filter((item) => {
+      if (severityFilter === 'CRITICAL') return item.risk_level === 'CRITICAL';
+      if (severityFilter === 'HIGH') return item.risk_level === 'HIGH';
+      if (severityFilter === 'MODERATE') return item.risk_level === 'MODERATE';
+      return true;
+    });
+  }, [priorityItems, clusters, hotspots, severityFilter]);
+
+  const handleIncidentClick = (item: IncidentDrawerData) => {
+    setSelectedIncidentId(item.id);
+    setActiveMapCoords([item.latitude, item.longitude]);
+    setActiveMapZoom(12);
+
+    const matchingPri = priorityItems.find((p) => (p.cluster_id || p.hotspot_id) === item.id);
+    if (matchingPri && onSelectPriorityIncident) {
+      onSelectPriorityIncident(matchingPri);
+    }
+
+    // Coordinate with parent selection handlers to open the Right Sidebar Investigation Panel
+    const matchingAlert = alerts.find((a) => a.cluster_id === item.id || a.alert_id === item.id);
+    if (matchingAlert) {
+      onSelectAlert(matchingAlert);
+      return;
+    }
+    const matchingCluster = clusters.find((c) => c.cluster_id === item.id);
+    if (matchingCluster) {
+      onSelectCluster(matchingCluster);
+      return;
+    }
+    const matchingHotspot = hotspots.find((h) => h.observation_id === item.id);
+    if (matchingHotspot) {
+      onSelectHotspot(matchingHotspot);
+      return;
+    }
+    // Fallback: construct hotspot from incident data
+    onSelectHotspot({
+      observation_id: item.id,
+      latitude: item.latitude,
+      longitude: item.longitude,
+      brightness: item.brightness || 340,
+      confidence: 'nominal',
+      frp: item.frp || 25,
+      acquired_at: item.acquired_at || new Date().toISOString(),
+      satellite: item.satellite || 'NASA FIRMS',
+      instrument: 'VIIRS',
+      source: 'NASA FIRMS',
+    });
+  };
+
+  const getSeverityBadgeClass = (level: string) => {
+    switch (level) {
+      case 'CRITICAL':
+        return 'badge-sev-critical';
+      case 'HIGH':
+        return 'badge-sev-high';
+      case 'MODERATE':
+        return 'badge-sev-medium';
+      default:
+        return 'badge-sev-low';
+    }
+  };
 
   return (
     <div className="dashboard-view-container">
-      {/* 1. TOP SYSTEM HEALTH BANNER */}
-      <SystemHealthCards onRefreshTrigger={onRefreshAll} />
-
-      {/* 2. KEY METRICS SUMMARY ROW */}
-      <MetricsSummary
-        totalHotspots={totalHotspots}
-        persistentCount={persistentCount}
-        industrialCandidatesCount={industrialCandidatesCount}
-        highRiskCount={highRiskCount}
-        loading={loadingHotspots || loadingClusters}
-        onFilterClick={handleMetricFilterClick}
-        activeFilter={metricFilter}
+      {/* 1. COMPACT SYSTEM STATUS STRIP */}
+      <CompactStatusStrip
+        lastUpdated={lastUpdated}
+        onRefresh={onRefreshAll}
+        refreshing={refreshing}
+        onNavigateStatus={() => onNavigateView && onNavigateView('status')}
       />
 
-      {/* 3. OPERATIONAL SPLIT: 2D MAP + QUICK TRIAGE LEADERBOARD */}
-      <div className="dashboard-split-grid">
-        {/* LEFT COLUMN: INTERACTIVE 2D EMERGENCY MAP */}
-        <div className="dashboard-map-panel">
+      {/* 2. ENTERPRISE KPI DECISION STRIP */}
+      <HeroKpiStrip
+        thermalAnomaliesCount={totalHotspots}
+        persistentSourcesCount={persistentCount}
+        industrialCandidatesCount={industrialCandidatesCount}
+        highRiskIncidentsCount={highRiskCount}
+        activeFilter={metricFilter}
+        onFilterClick={handleMetricFilterClick}
+      />
+
+      {/* 3. MAIN OPERATIONAL CONTENT: 70% MAP / 30% PRIORITY INCIDENTS */}
+      <div className="dashboard-operational-grid">
+        {/* LEFT ~70%: DOMINANT INTERACTIVE LIVE MAP */}
+        <div className="dashboard-map-panel card-white">
           <div className="panel-header-bar">
             <div className="panel-title-group">
-              <span className="panel-icon">🗺️</span>
-              <h3 className="panel-title">Near-Real-Time Thermal Anomaly Map</h3>
+              <FontAwesomeIcon icon={faMap} className="panel-header-icon text-green" />
+              <h3 className="panel-title">Live Thermal & Industrial Intelligence Map</h3>
             </div>
+
             <div className="map-layer-controls">
               <button
                 type="button"
                 className={`btn-layer-pill ${mapLayerMode === 'all' ? 'active' : ''}`}
                 onClick={() => setMapLayerMode('all')}
               >
-                All Layers
+                All Sources
               </button>
               <button
                 type="button"
                 className={`btn-layer-pill ${mapLayerMode === 'hotspots' ? 'active' : ''}`}
                 onClick={() => setMapLayerMode('hotspots')}
               >
-                🔥 Thermal Spots
+                <FontAwesomeIcon icon={faFire} className="pill-icon-mr" />
+                <span>Thermal Spots</span>
               </button>
               <button
                 type="button"
                 className={`btn-layer-pill ${mapLayerMode === 'clusters' ? 'active' : ''}`}
                 onClick={() => setMapLayerMode('clusters')}
               >
-                🔄 Persistent Sources
+                <FontAwesomeIcon icon={faArrowsRotate} className="pill-icon-mr" />
+                <span>Persistent</span>
+              </button>
+              <button
+                type="button"
+                className={`btn-layer-pill ${mapLayerMode === 'industrial' ? 'active' : ''}`}
+                onClick={() => setMapLayerMode('industrial')}
+              >
+                <FontAwesomeIcon icon={faIndustry} className="pill-icon-mr" />
+                <span>Industrial</span>
               </button>
             </div>
           </div>
@@ -161,142 +304,160 @@ export function DashboardView({
               activeAlerts={alerts}
               selectedHotspot={null}
               selectedCluster={null}
+              selectedPriorityIncident={selectedPriorityIncident}
               onSelectHotspot={onSelectHotspot}
               onSelectCluster={onSelectCluster}
               onSelectAlert={onSelectAlert}
-              mapCenter={[20.5937, 78.9629]}
-              mapZoom={5}
+              mapCenter={activeMapCoords || [20.5937, 78.9629]}
+              mapZoom={activeMapZoom}
               viewMode={mapLayerMode === 'clusters' ? 'clusters' : 'hotspots'}
+              basemap={basemap}
+              onBasemapChange={onBasemapChange}
             />
           </div>
 
-          {/* MAP LEGEND */}
-          <div className="map-compact-legend">
-            <div className="legend-item">
-              <span className="legend-dot dot-thermal" />
-              <span>Thermal Anomaly (FIRMS)</span>
-            </div>
-            <div className="legend-item">
-              <span className="legend-dot dot-persistent" />
-              <span>Persistent Source</span>
-            </div>
-            <div className="legend-item">
-              <span className="legend-dot dot-candidate" />
-              <span>Uncertain Candidate</span>
-            </div>
-            <div className="legend-item">
-              <span className="legend-icon-factory">🏭</span>
-              <span>Industrial Facility</span>
-            </div>
-          </div>
+          {/* COMPACT RECENT ACTIVITY FEED BELOW MAP */}
+          <RecentActivitySection alertsCount={alerts.length} hotspotsCount={hotspots.length} />
         </div>
 
-        {/* RIGHT COLUMN: QUICK INCIDENT TRIAGE LEADERBOARD */}
-        <div className="dashboard-triage-panel">
+        {/* RIGHT ~30%: PRIORITY INCIDENTS LIST */}
+        <div className="dashboard-triage-panel card-white">
           <div className="panel-header-bar">
             <div className="panel-title-group">
-              <span className="panel-icon">🚨</span>
-              <h3 className="panel-title">Incident Priority Triage</h3>
+              <FontAwesomeIcon icon={faTriangleExclamation} className="panel-header-icon text-red" />
+              <h3 className="panel-title">Priority Incidents</h3>
             </div>
             <span className="triage-count-badge">
-              {loadingPriority && priorityItems.length === 0 ? '...' : `${displayTriageList.length} active`}
+              {loadingPriority && priorityItems.length === 0 ? '...' : `${triageIncidents.length} active`}
             </span>
           </div>
 
-          <div className="triage-list-scroll">
-            {/* Spotlight for verified observation 04e53a2f16d0d665 */}
-            <div className="verified-evidence-spotlight">
-              <div className="spotlight-header">
-                <span className="spotlight-tag">🛰️ VERIFIED SATELLITE EVIDENCE</span>
-                <span className="spotlight-obs-id">OBS: 04e53a2f16d0d665</span>
+          {/* SEVERITY FILTER PILLS */}
+          <div className="severity-filter-bar">
+            <span className="filter-label">
+              <FontAwesomeIcon icon={faFilter} className="mr-1 text-muted" /> Filter:
+            </span>
+            <button
+              type="button"
+              className={`pill-filter ${severityFilter === 'ALL' ? 'active' : ''}`}
+              onClick={() => setSeverityFilter('ALL')}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              className={`pill-filter ${severityFilter === 'CRITICAL' ? 'active' : ''}`}
+              onClick={() => setSeverityFilter('CRITICAL')}
+            >
+              Critical
+            </button>
+            <button
+              type="button"
+              className={`pill-filter ${severityFilter === 'HIGH' ? 'active' : ''}`}
+              onClick={() => setSeverityFilter('HIGH')}
+            >
+              High
+            </button>
+            <button
+              type="button"
+              className={`pill-filter ${severityFilter === 'MODERATE' ? 'active' : ''}`}
+              onClick={() => setSeverityFilter('MODERATE')}
+            >
+              Medium
+            </button>
+          </div>
+
+          {/* INCIDENTS LIST */}
+          <div className="triage-incidents-list">
+            {loadingPriority && priorityItems.length === 0 ? (
+              <div className="triage-loading-state" style={{ textAlign: 'center', padding: '24px 16px' }}>
+                <FontAwesomeIcon icon={faArrowsRotate} spin style={{ fontSize: '18px', color: '#059669', marginBottom: '8px' }} />
+                <div style={{ fontWeight: 600, color: '#334155', fontSize: '13px' }}>Syncing priority queue...</div>
+                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>Connecting to threat prioritization engine</div>
               </div>
-              <div className="spotlight-body">
-                <div className="spotlight-text">
-                  <strong>Real Copernicus Sentinel-2 Optical Acquisition</strong>
-                  <span>Lat 22.6789°N, Lon 80.54321°E • True-Color L2A (10m GSD)</span>
-                </div>
+            ) : triageIncidents.length === 0 ? (
+              <div className="triage-empty-state" style={{ textAlign: 'center', padding: '20px 12px' }}>
+                <p style={{ color: '#64748b', fontSize: '12px', margin: 0 }}>No incidents match the selected severity filter.</p>
                 <button
                   type="button"
-                  className="btn-spotlight-investigate"
-                  onClick={() => {
-                    const matched = hotspots.find(h => h.observation_id === '04e53a2f16d0d665');
-                    if (matched) {
-                      onSelectHotspot(matched);
-                    } else {
-                      onSelectHotspot({
-                        observation_id: '04e53a2f16d0d665',
-                        latitude: 22.6789,
-                        longitude: 80.54321,
-                        brightness: 360.2,
-                        frp: 25.8,
-                        confidence: 'h',
-                        satellite: 'VIIRS (N20)',
-                        instrument: 'VIIRS',
-                        acquired_at: '2026-09-07 14:30 UTC'
-                      } as Hotspot);
-                    }
-                  }}
+                  className="btn btn-sm"
+                  style={{ marginTop: '8px', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '4px 10px', fontSize: '11px', cursor: 'pointer' }}
+                  onClick={onRefreshAll}
                 >
-                  🔍 Inspect Evidence
+                  <FontAwesomeIcon icon={faArrowsRotate} /> Retry Sync
                 </button>
               </div>
-            </div>
-
-            {loadingPriority && priorityItems.length === 0 ? (
-              <div className="loading-state-p">⏳ Computing priority rankings...</div>
-            ) : displayTriageList.length === 0 ? (
-              <div className="empty-state-p">No critical thermal incidents requiring triage.</div>
             ) : (
-              displayTriageList.slice(0, 10).map((item, idx) => {
-                const isCritical = item.risk_level === 'CRITICAL' || item.risk_score >= 0.70;
-                const isHigh = item.risk_level === 'HIGH' || item.risk_score >= 0.40;
-                const badgeCls = isCritical ? 'risk-badge-critical' : isHigh ? 'risk-badge-high' : 'risk-badge-moderate';
+              triageIncidents.map((inc) => {
+                const isSelected = selectedIncidentId === inc.id;
+                const scoreDisplay = inc.risk_score <= 1.0 ? Math.round(inc.risk_score * 100) : Math.round(inc.risk_score);
+                const hasNearbyFeatures = inc.nearby_features && inc.nearby_features.length > 0;
 
                 return (
-                  <div key={item.cluster_id || idx} className="triage-card">
-                    <div className="triage-card-top">
-                      <span className="triage-rank">#{item.rank || idx + 1}</span>
-                      <span className={`risk-badge ${badgeCls}`}>
-                        Risk {(item.risk_score).toFixed(2)} • {item.risk_level}
+                  <div
+                    key={inc.id}
+                    className={`incident-list-card ${isSelected ? 'selected' : ''}`}
+                    onClick={() => handleIncidentClick(inc)}
+                    role="button"
+                    tabIndex={0}
+                    style={{
+                      cursor: 'pointer',
+                      borderLeft: isSelected ? '4px solid #059669' : undefined,
+                    }}
+                  >
+                    <div className="card-top-row">
+                      <span className={`severity-badge ${getSeverityBadgeClass(inc.risk_level)}`}>
+                        {inc.risk_level}
+                      </span>
+                      <span className="incident-risk-score font-mono font-bold" style={{ color: inc.risk_level === 'CRITICAL' ? '#dc2626' : inc.risk_level === 'HIGH' ? '#ea580c' : '#475569' }}>
+                        Risk: {scoreDisplay}/100
                       </span>
                     </div>
 
-                    <div className="triage-facility-name">
-                      {item.industrial_facility || 'Rural / Unregistered Land'}
+                    <div className="card-mid-row">
+                      <h4 className="incident-facility-name">
+                        {inc.industrial_facility || 'Unregistered Sector'}
+                      </h4>
+                      <p className="incident-coords-text">
+                        <FontAwesomeIcon icon={faLocationDot} className="mr-1 text-muted" />
+                        {inc.latitude.toFixed(3)}°N, {inc.longitude.toFixed(3)}°E
+                        {inc.industrial_distance_km !== null && inc.industrial_distance_km !== undefined
+                          ? ` • ${Number(inc.industrial_distance_km).toFixed(2)} km`
+                          : ''}
+                      </p>
                     </div>
 
-                    <div className="triage-meta-row">
-                      <span>📍 {item.latitude.toFixed(3)}°N, {item.longitude.toFixed(3)}°E</span>
-                      {item.industrial_distance_km !== null && (
-                        <span>📏 {(item.industrial_distance_km * 1000).toFixed(0)}m to facility</span>
-                      )}
-                    </div>
+                    {/* Threat Exposure Status / Asset Counts */}
+                    {hasNearbyFeatures ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#059669', background: '#ecfdf5', padding: '3px 8px', borderRadius: '4px', margin: '4px 0' }}>
+                        <FontAwesomeIcon icon={faIndustry} />
+                        <span>{inc.exposed_assets_count || inc.nearby_features!.length} mapped assets within 5.0 km</span>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '10px', color: '#64748b', background: '#f8fafc', padding: '3px 8px', borderRadius: '4px', margin: '4px 0' }}>
+                        <span>Geospatial enrichment pending</span>
+                        {onEnrichHotspot && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEnrichHotspot(inc.id, inc.latitude, inc.longitude);
+                            }}
+                            style={{ background: '#059669', color: '#ffffff', border: 'none', borderRadius: '3px', padding: '2px 6px', fontSize: '10px', cursor: 'pointer' }}
+                          >
+                            Enrich 5km
+                          </button>
+                        )}
+                      </div>
+                    )}
 
-                    <div className="triage-submeta-row">
-                      <span>🔄 {item.observation_count} obs ({item.duration_hours.toFixed(1)}h)</span>
-                      <span>⚖️ {item.classification}</span>
-                    </div>
-
-                    <div className="triage-action-row">
-                      <button
-                        type="button"
-                        className="btn-triage-investigate"
-                        onClick={() => {
-                          const matchedCluster = clusters.find(c => c.cluster_id === item.cluster_id);
-                          if (matchedCluster) {
-                            onSelectCluster(matchedCluster);
-                          } else {
-                            // Fallback to hotspot
-                            const matchedHotspot = hotspots.find(h =>
-                              Math.abs(h.latitude - item.latitude) < 0.05 &&
-                              Math.abs(h.longitude - item.longitude) < 0.05
-                            );
-                            if (matchedHotspot) onSelectHotspot(matchedHotspot);
-                          }
-                        }}
-                      >
-                        🔍 Investigate Incident
-                      </button>
+                    <div className="card-bottom-row">
+                      <span className="incident-class-name font-medium">
+                        {inc.classification.replace(/_/g, ' ')}
+                      </span>
+                      <span className="incident-time-tag">
+                        {inc.id.slice(0, 14)}
+                      </span>
                     </div>
                   </div>
                 );

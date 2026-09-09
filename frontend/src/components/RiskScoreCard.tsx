@@ -1,3 +1,13 @@
+import {
+  faCheck,
+  faClock,
+  faFire,
+  faIndustry,
+  faRobot,
+  faSatellite,
+  faTriangleExclamation,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React from 'react';
 import { RiskScoreResponse } from '../types/hotspot';
 
@@ -24,7 +34,7 @@ export const RiskScoreCard: React.FC<RiskScoreCardProps> = ({
   if (error) {
     return (
       <div className="risk-card error-card">
-        <span>⚠️ Risk Calculation Error: {error}</span>
+        <span><FontAwesomeIcon icon={faTriangleExclamation} /> Risk Calculation Error: {error}</span>
       </div>
     );
   }
@@ -50,7 +60,7 @@ export const RiskScoreCard: React.FC<RiskScoreCardProps> = ({
     <div className="risk-card">
       <div className="risk-card-header">
         <div>
-          <span className="risk-title">⚠️ Investigation Priority Score</span>
+          <span className="risk-title"><FontAwesomeIcon icon={faTriangleExclamation} /> Investigation Priority Score</span>
           <p className="risk-subtitle">Explainable Weighted Prioritization Model</p>
         </div>
         <span className={`risk-level-badge ${getRiskBadgeClass(risk_level)}`}>
@@ -78,23 +88,23 @@ export const RiskScoreCard: React.FC<RiskScoreCardProps> = ({
           <div className="table-title">Risk Component Breakdown:</div>
           <div className="components-table">
             <div className="table-row">
-              <span className="col-name">🔥 Thermal Intensity</span>
+              <span className="col-name"><FontAwesomeIcon icon={faFire} /> Thermal Intensity</span>
               <span className="col-val">{components.thermal_intensity} / {max_component_weights.thermal_intensity}</span>
             </div>
             <div className="table-row">
-              <span className="col-name">🛰️ Satellite Confidence</span>
+              <span className="col-name"><FontAwesomeIcon icon={faSatellite} /> Satellite Confidence</span>
               <span className="col-val">{components.satellite_confidence} / {max_component_weights.satellite_confidence}</span>
             </div>
             <div className="table-row">
-              <span className="col-name">🕐 Persistence Score</span>
+              <span className="col-name"><FontAwesomeIcon icon={faClock} /> Persistence Score</span>
               <span className="col-val">{components.persistence} / {max_component_weights.persistence}</span>
             </div>
             <div className="table-row">
-              <span className="col-name">🏭 Industrial Proximity</span>
+              <span className="col-name"><FontAwesomeIcon icon={faIndustry} /> Industrial Proximity</span>
               <span className="col-val">{components.industrial_proximity} / {max_component_weights.industrial_proximity}</span>
             </div>
             <div className="table-row">
-              <span className="col-name">🤖 AI Classification</span>
+              <span className="col-name"><FontAwesomeIcon icon={faRobot} /> AI Classification</span>
               <span className="col-val">{components.classification_context} / {max_component_weights.classification_context}</span>
             </div>
             <div className="table-row table-total">
@@ -110,7 +120,7 @@ export const RiskScoreCard: React.FC<RiskScoreCardProps> = ({
           <ul className="reasons-list">
             {reasons.map((reason, idx) => (
               <li key={`reason-${idx}`} className="reason-item">
-                ✓ {reason}
+                <FontAwesomeIcon icon={faCheck} className="mr-1" /> {reason}
               </li>
             ))}
           </ul>

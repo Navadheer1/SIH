@@ -1,3 +1,9 @@
+import {
+  faCircle,
+  faInfoCircle,
+  faXmark,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React from 'react';
 import { ExposedAsset } from '../types/hotspot';
 
@@ -11,13 +17,13 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ asset, onClo
 
   const getCategoryIcon = (cat: string) => {
     switch (cat) {
-      case 'HEALTHCARE': return '🏥';
-      case 'EDUCATION': return '🎓';
-      case 'INDUSTRIAL': return '🏭';
-      case 'UTILITIES': return '⚡';
-      case 'TRANSPORT': return '🛣️';
-      case 'SETTLEMENTS': return '🏘️';
-      default: return '🏛️';
+      case 'HEALTHCARE': return 'Healthcare';
+      case 'EDUCATION': return 'Education';
+      case 'INDUSTRIAL': return 'Industrial';
+      case 'UTILITIES': return 'Utilities';
+      case 'TRANSPORT': return 'Transport';
+      case 'SETTLEMENTS': return 'Settlements';
+      default: return 'Public';
     }
   };
 
@@ -32,7 +38,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ asset, onClo
               <h3 className="asset-name-title">{asset.asset_name}</h3>
             </div>
           </div>
-          <button type="button" className="btn-modal-close" onClick={onClose}>✕</button>
+          <button type="button" className="btn-modal-close" onClick={onClose}><FontAwesomeIcon icon={faXmark} /></button>
         </div>
 
         <div className="asset-modal-body">
@@ -66,12 +72,12 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ asset, onClo
 
             <div className="meta-box">
               <span className="m-label">DATA PROVENANCE</span>
-              <span className="m-val source-val">🟢 {asset.data_source}</span>
+              <span className="m-val source-val"><FontAwesomeIcon icon={faCircle} style={{ color: "#2F8F46", marginRight: "4px" }} /> {asset.data_source}</span>
             </div>
           </div>
 
           <div className="asset-modal-disclaimer">
-            ℹ️ <em>Potentially exposed asset within AI-calculated threat perimeter. No physical structural damage is claimed.</em>
+            <FontAwesomeIcon icon={faInfoCircle} className="mr-1 text-green" /> <em>Potentially exposed asset within AI-calculated threat perimeter. No physical structural damage is claimed.</em>
           </div>
         </div>
       </div>

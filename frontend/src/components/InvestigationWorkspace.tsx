@@ -1,3 +1,23 @@
+import {
+  faArrowsRotate,
+  faBolt,
+  faBuilding,
+  faCheck,
+  faCircleCheck,
+  faEye,
+  faFire,
+  faHourglassHalf,
+  faIndustry,
+  faInfoCircle,
+  faLocationDot,
+  faLock,
+  faMagnifyingGlass,
+  faRobot,
+  faSatellite,
+  faTriangleExclamation,
+  faXmark,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useState, useEffect } from 'react';
 import {
   ThermalAlert,
@@ -183,15 +203,15 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
         <div className="workspace-top-bar">
           <div className="workspace-top-title">
             <span className="workspace-nav-badge">SIH DEMO MODE</span>
-            <span className="workspace-header-title">🔍 Thermal Event Investigation Workspace</span>
+            <span className="workspace-header-title"><FontAwesomeIcon icon={faMagnifyingGlass} /> Thermal Event Investigation Workspace</span>
             <span className="workspace-coordinates-pill">
-              📍 {latitude.toFixed(4)}°N, {longitude.toFixed(4)}°E
+              {latitude.toFixed(4)}°N, {longitude.toFixed(4)}°E
             </span>
             {loadingEvidence && (
-              <span className="workspace-loading-indicator">🔄 Synchronizing Multi-Modal Evidence...</span>
+              <span className="workspace-loading-indicator"><FontAwesomeIcon icon={faArrowsRotate} spin /> Synchronizing Multi-Modal Evidence...</span>
             )}
             {evidenceError && (
-              <span className="workspace-error-indicator">⚠️ {evidenceError}</span>
+              <span className="workspace-error-indicator"><FontAwesomeIcon icon={faTriangleExclamation} /> {evidenceError}</span>
             )}
           </div>
 
@@ -199,7 +219,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
 
             {onClose && (
               <button type="button" className="workspace-close-btn" onClick={onClose}>
-                ✕ Close Workspace
+                <FontAwesomeIcon icon={faXmark} /> Close Workspace
               </button>
             )}
           </div>
@@ -242,7 +262,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
             {/* 2. NASA FIRMS THERMAL SENSOR EVIDENCE */}
             <div className="evidence-panel-card firms-evidence-card">
               <div className="card-header-bar">
-                <span className="card-header-icon">🛰️</span>
+                <span className="card-header-icon"><FontAwesomeIcon icon={faSatellite} /></span>
                 <span className="card-header-title">NASA FIRMS Sensor Telemetry</span>
                 <span className="card-header-tag">Active Hotspot</span>
               </div>
@@ -283,14 +303,14 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
               </div>
 
               <div className="evidence-footer-note">
-                ℹ️ Thermal detection recorded directly via NASA FIRMS near-real-time satellite orbit telemetry.
+                <FontAwesomeIcon icon={faInfoCircle} className="mr-1 text-green" /> Thermal detection recorded directly via NASA FIRMS near-real-time satellite orbit telemetry.
               </div>
             </div>
 
             {/* 3. PERSISTENCE EVIDENCE */}
             <div className="evidence-panel-card persistence-evidence-card">
               <div className="card-header-bar">
-                <span className="card-header-icon">⏳</span>
+                <span className="card-header-icon"><FontAwesomeIcon icon={faHourglassHalf} /></span>
                 <span className="card-header-title">Spatial-Temporal Persistence Evidence</span>
                 <span className="card-header-tag">Clustering Engine</span>
               </div>
@@ -345,7 +365,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
             {/* 4. OPENSTREETMAP INDUSTRIAL CONTEXT */}
             <div className="evidence-panel-card osm-evidence-card">
               <div className="card-header-bar">
-                <span className="card-header-icon">🏭</span>
+                <span className="card-header-icon"><FontAwesomeIcon icon={faIndustry} /></span>
                 <span className="card-header-title">OpenStreetMap Industrial Proximity</span>
                 <span className="card-header-tag">Geospatial Context</span>
               </div>
@@ -353,7 +373,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
               {facilityName && facilityName !== 'None identified' ? (
                 <div className="facility-detail-box">
                   <div className="facility-headline-row">
-                    <span className="facility-icon">🏗️</span>
+                    <span className="facility-icon"><FontAwesomeIcon icon={faBuilding} /></span>
                     <div>
                       <h4 className="facility-name-text">{facilityName}</h4>
                       <span className="facility-category-text">
@@ -381,7 +401,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
                 </div>
               ) : (
                 <div className="empty-facility-notice">
-                  <span className="empty-icon">📍</span>
+                  <span className="empty-icon"><FontAwesomeIcon icon={faLocationDot} /></span>
                   <span className="empty-text">No nearby industrial facility identified within 5 km search radius.</span>
                 </div>
               )}
@@ -391,7 +411,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
             {/* 5. EXPLAINABLE AI CLASSIFICATION */}
             <div className="evidence-panel-card ai-evidence-card">
               <div className="card-header-bar">
-                <span className="card-header-icon">🤖</span>
+                <span className="card-header-icon"><FontAwesomeIcon icon={faRobot} /></span>
                 <span className="card-header-title">Explainable AI Event Classifier</span>
                 <span className="card-header-tag">Phase 5 Model</span>
               </div>
@@ -424,7 +444,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
                     <span className="indicators-title">Supporting Explainability Indicators:</span>
                     <ul className="indicators-list">
                       {aiClassification.supporting_indicators.map((ind, iIdx) => (
-                        <li key={iIdx}>✓ {ind}</li>
+                        <li key={iIdx}><FontAwesomeIcon icon={faCheck} className="mr-1" /> {ind}</li>
                       ))}
                     </ul>
                   </div>
@@ -438,7 +458,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
             {/* 6. SATELLITE COMPUTER VISION & GRAD-CAM */}
             <div className="evidence-panel-card satellite-vision-card">
               <div className="card-header-bar">
-                <span className="card-header-icon">📡</span>
+                <span className="card-header-icon"><FontAwesomeIcon icon={faSatellite} /></span>
                 <span className="card-header-title">Satellite Optical Intelligence & Grad-CAM</span>
                 <span className="card-header-tag">PyTorch ResNet-18</span>
               </div>
@@ -455,17 +475,17 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
                     {showGradCam && (
                       <div className="gradcam-heatmap-layer">
                         <div className="gradcam-core-focal" />
-                        <span className="gradcam-indicator-pill">🔥 Grad-CAM Thermal Activation Zone</span>
+                        <span className="gradcam-indicator-pill"><FontAwesomeIcon icon={faFire} /> Grad-CAM Thermal Activation Zone</span>
                       </div>
                     )}
                     <div className="image-caption-bar">
-                      <span>🛰️ Sentinel-2 L2A Optical Sensor</span>
+                      <span><FontAwesomeIcon icon={faSatellite} /> Sentinel-2 L2A Optical Sensor</span>
                       <span>{satEvidence?.captured_at || 'Observation Cycle UTC'}</span>
                     </div>
                   </div>
                 ) : (
                   <div className="optical-image-placeholder">
-                    <span className="placeholder-icon">🛰️</span>
+                    <span className="placeholder-icon"><FontAwesomeIcon icon={faSatellite} /></span>
                     <p className="placeholder-desc">
                       {satEvidence?.visual_evidence || 'Optical satellite patch retrieval unconfigured or in progress.'}
                     </p>
@@ -482,14 +502,14 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
                       className={`toggle-option-btn ${!showGradCam ? 'selected' : ''}`}
                       onClick={() => setShowGradCam(false)}
                     >
-                      👁️ Original Optical Image
+                      <FontAwesomeIcon icon={faEye} /> Original Optical Image
                     </button>
                     <button
                       type="button"
                       className={`toggle-option-btn ${showGradCam ? 'selected' : ''}`}
                       onClick={() => setShowGradCam(true)}
                     >
-                      🔥 Grad-CAM Visual Heatmap
+                      <FontAwesomeIcon icon={faFire} /> Grad-CAM Visual Heatmap
                     </button>
                   </div>
                   <span className="resolution-indicator">10m Ground Sample Distance</span>
@@ -533,7 +553,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
             {/* 7. MULTI-MODAL EVIDENCE FUSION CARD */}
             <div className="evidence-panel-card evidence-fusion-card">
               <div className="card-header-bar">
-                <span className="card-header-icon">⚡</span>
+                <span className="card-header-icon"><FontAwesomeIcon icon={faBolt} /></span>
                 <span className="card-header-title">Multi-Modal Evidence Fusion</span>
                 <span className="card-header-tag">Decision Engine</span>
               </div>
@@ -545,23 +565,23 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
 
                 <div className="fusion-contributions-list">
                   <div className="fusion-contrib-row">
-                    <span className="contrib-label">🛰️ NASA FIRMS Sensor Telemetry</span>
+                    <span className="contrib-label"><FontAwesomeIcon icon={faSatellite} /> NASA FIRMS Sensor Telemetry</span>
                     <span className="contrib-weight">Weight: 20%</span>
                   </div>
                   <div className="fusion-contrib-row">
-                    <span className="contrib-label">🏭 OpenStreetMap Industrial Context</span>
+                    <span className="contrib-label"><FontAwesomeIcon icon={faIndustry} /> OpenStreetMap Industrial Context</span>
                     <span className="contrib-weight">Weight: 15%</span>
                   </div>
                   <div className="fusion-contrib-row">
-                    <span className="contrib-label">⏳ Spatial-Temporal Persistence</span>
+                    <span className="contrib-label"><FontAwesomeIcon icon={faHourglassHalf} /> Spatial-Temporal Persistence</span>
                     <span className="contrib-weight">Weight: 15%</span>
                   </div>
                   <div className="fusion-contrib-row">
-                    <span className="contrib-label">🤖 Multi-Feature AI Classifier</span>
+                    <span className="contrib-label"><FontAwesomeIcon icon={faRobot} /> Multi-Feature AI Classifier</span>
                     <span className="contrib-weight">Weight: 35%</span>
                   </div>
                   <div className="fusion-contrib-row">
-                    <span className="contrib-label">📡 Sentinel-2 Computer Vision</span>
+                    <span className="contrib-label"><FontAwesomeIcon icon={faSatellite} /> Sentinel-2 Computer Vision</span>
                     <span className="contrib-weight">Weight: 15%</span>
                   </div>
                 </div>
@@ -576,7 +596,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
                       'Multi-modal evidence combines satellite thermal radiometry, temporal persistence, geographic proximity, and optical visual verification.'}
                   </p>
                   <div className="distinction-note">
-                    ⚠️ <strong>Clarification:</strong> Fusion score represents <em>Investigation Priority Contribution</em>, not an empirical probability of fire ignition.
+                    <FontAwesomeIcon icon={faTriangleExclamation} /> <strong>Clarification:</strong> Fusion score represents <em>Investigation Priority Contribution</em>, not an empirical probability of fire ignition.
                   </div>
                 </div>
               </div>
@@ -585,7 +605,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
             {/* 8. RISK SCORE BREAKDOWN */}
             <div className="evidence-panel-card risk-breakdown-card">
               <div className="card-header-bar">
-                <span className="card-header-icon">⚠️</span>
+                <span className="card-header-icon"><FontAwesomeIcon icon={faTriangleExclamation} /></span>
                 <span className="card-header-title">Investigation Risk Score Breakdown</span>
                 <span className="card-header-tag">Score: {riskScore}/100</span>
               </div>
@@ -630,7 +650,7 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
             {alert && (
               <div className="evidence-panel-card alert-actions-card">
                 <div className="card-header-bar">
-                  <span className="card-header-icon">🚨</span>
+                  <span className="card-header-icon"><FontAwesomeIcon icon={faTriangleExclamation} /></span>
                   <span className="card-header-title">Incident Lifecycle Management</span>
                   <span className={`status-badge-pill ${getAlertStatusBadgeClass(alert.status)}`}>
                     {alert.status}
@@ -665,14 +685,14 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
                           className="btn-action btn-ack"
                           onClick={() => handleActionClick('acknowledge')}
                         >
-                          ✓ Acknowledge Alert
+                          <FontAwesomeIcon icon={faCheck} /> Acknowledge Alert
                         </button>
                         <button
                           type="button"
                           className="btn-action btn-dismiss"
                           onClick={() => handleActionClick('dismiss')}
                         >
-                          ✕ Dismiss Alert
+                          <FontAwesomeIcon icon={faXmark} /> Dismiss Alert
                         </button>
                       </>
                     )}
@@ -684,14 +704,14 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
                           className="btn-action btn-investigate"
                           onClick={() => handleActionClick('investigate')}
                         >
-                          🔍 Start Active Investigation
+                          <FontAwesomeIcon icon={faMagnifyingGlass} /> Start Active Investigation
                         </button>
                         <button
                           type="button"
                           className="btn-action btn-resolve"
                           onClick={() => handleActionClick('resolve')}
                         >
-                          ✓ Mark Resolved
+                          <FontAwesomeIcon icon={faCircleCheck} /> Mark Resolved
                         </button>
                       </>
                     )}
@@ -702,13 +722,13 @@ export const InvestigationWorkspace: React.FC<InvestigationWorkspaceProps> = ({
                         className="btn-action btn-resolve"
                         onClick={() => handleActionClick('resolve')}
                       >
-                        ✓ Mark Investigation Resolved
+                        <FontAwesomeIcon icon={faCircleCheck} /> Mark Investigation Resolved
                       </button>
                     )}
 
                     {(alert.status === 'RESOLVED' || alert.status === 'DISMISSED') && (
                       <div className="terminal-status-notice">
-                        🔒 Incident is closed with terminal status [{alert.status}]. Audit record locked.
+                        <FontAwesomeIcon icon={faLock} /> Incident is closed with terminal status [{alert.status}]. Audit record locked.
                       </div>
                     )}
                   </div>

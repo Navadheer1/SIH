@@ -1,3 +1,17 @@
+import {
+  faBolt,
+  faCircle,
+  faCircleCheck,
+  faClock,
+  faEye,
+  faFileLines,
+  faIndustry,
+  faMagnifyingGlass,
+  faRobot,
+  faSatellite,
+  faTriangleExclamation,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React from 'react';
 import { ThermalAlert, Hotspot, PersistentCluster, FusedEvidenceResponse } from '../types/hotspot';
 
@@ -13,7 +27,7 @@ interface TimelineItem {
   stage: string;
   timestamp: string;
   status: 'completed' | 'active' | 'pending';
-  icon: string;
+  icon: React.ReactNode;
   description: string;
   badge?: string;
 }
@@ -45,7 +59,7 @@ export const InvestigationTimeline: React.FC<InvestigationTimelineProps> = ({
     stage: 'NASA FIRMS Sensor Ingestion',
     timestamp: obsTime,
     status: 'completed',
-    icon: '🛰️',
+    icon: <FontAwesomeIcon icon={faSatellite} />,
     description: `Thermal radiative anomaly captured by ${satelliteInstrument} sensor. Brightness: ${brightVal ? `${brightVal} K` : 'N/A'}, FRP: ${frpVal ? `${frpVal} MW` : 'N/A'}.`,
     badge: 'NASA FIRMS',
   });
@@ -62,7 +76,7 @@ export const InvestigationTimeline: React.FC<InvestigationTimelineProps> = ({
       stage: 'Spatiotemporal Clustering Engine',
       timestamp: pTime,
       status: 'completed',
-      icon: '⏳',
+      icon: <FontAwesomeIcon icon={faClock} />,
       description: `Cluster identified across ${obsCount} recurrent satellite observations spanning ${durHours.toFixed(1)} hours. Persistence Score: ${pScore}/100.`,
       badge: 'Persistence Engine',
     });
@@ -78,7 +92,7 @@ export const InvestigationTimeline: React.FC<InvestigationTimelineProps> = ({
     stage: 'Geospatial Context Discovery',
     timestamp: 'Query completed upon ingestion',
     status: 'completed',
-    icon: '🏭',
+    icon: <FontAwesomeIcon icon={faIndustry} />,
     description: facilityName && facilityName !== 'None identified'
       ? `Identified nearby industrial asset: "${facilityName}" located ${distanceKm !== null && distanceKm !== undefined ? `${distanceKm.toFixed(2)} km` : 'within 5 km'} from thermal epicenter (${osmContext || 'Industrial Zone'}).`
       : 'Geospatial search within 5 km radius: No registered heavy industrial facility found.',
@@ -93,7 +107,7 @@ export const InvestigationTimeline: React.FC<InvestigationTimelineProps> = ({
     stage: 'Multi-Feature Random Forest Classifier',
     timestamp: 'Evaluated upon feature extraction',
     status: 'completed',
-    icon: '🤖',
+    icon: <FontAwesomeIcon icon={faRobot} />,
     description: `Classified candidate event as "${aiClass.replace(/_/g, ' ')}" using ${modelSrc === 'ML_MODEL' ? 'Random Forest model' : 'Prototype Rule Engine fallback'}.`,
     badge: modelSrc,
   });
@@ -106,7 +120,7 @@ export const InvestigationTimeline: React.FC<InvestigationTimelineProps> = ({
       stage: 'Satellite Computer Vision & Grad-CAM',
       timestamp: satEvidence.captured_at ? `${satEvidence.captured_at} UTC` : 'Timestamp unavailable',
       status: satEvidence.image_available ? 'completed' : 'pending',
-      icon: '📡',
+      icon: <FontAwesomeIcon icon={faSatellite} />,
       description: satEvidence.image_available
         ? `Optical patch analyzed with PyTorch vision model (${satEvidence.model || 'ResNet-18'}). Predicted visual signature: ${(satEvidence.classification || 'UNKNOWN').replace(/_/g, ' ')} (${Math.round((satEvidence.confidence || 0) * 100)}% confidence). Grad-CAM visual explanation generated.`
         : 'Optical imagery retrieval not configured or unavailable for this coordinate.',
@@ -122,7 +136,7 @@ export const InvestigationTimeline: React.FC<InvestigationTimelineProps> = ({
     stage: 'Decision Prioritization Engine',
     timestamp: alert?.created_at ? new Date(alert.created_at).toUTCString() : 'Real-time calculation',
     status: 'completed',
-    icon: '⚡',
+    icon: <FontAwesomeIcon icon={faBolt} />,
     description: `Synthesized FIRMS (20%), OSM (15%), Persistence (15%), Base AI (35%), and Satellite CV (15%). Total Investigation Priority Score: ${riskScore} / 100 (${riskLevel}).`,
     badge: `${riskLevel} PRIORITY`,
   });
@@ -134,7 +148,7 @@ export const InvestigationTimeline: React.FC<InvestigationTimelineProps> = ({
       stage: 'Incident Management Lifecycle',
       timestamp: alert.created_at ? new Date(alert.created_at).toUTCString() : 'Timestamp unavailable',
       status: 'completed',
-      icon: '🚨',
+      icon: <FontAwesomeIcon icon={faTriangleExclamation} />,
       description: `High-priority incident record registered with initial status [NEW]. Priority Level: ${alert.risk_level}.`,
       badge: 'Alert Service',
     });
@@ -145,7 +159,7 @@ export const InvestigationTimeline: React.FC<InvestigationTimelineProps> = ({
         stage: 'Incident Management Lifecycle',
         timestamp: alert.acknowledged_at ? new Date(alert.acknowledged_at).toUTCString() : 'Timestamp unavailable',
         status: 'completed',
-        icon: '👁️',
+        icon: <FontAwesomeIcon icon={faEye} />,
         description: `Alert acknowledged by operator (${alert.acknowledged_by || 'Control Room Operator'}). Dispatched for active investigation.`,
         badge: 'ACKNOWLEDGED',
       });
@@ -157,7 +171,7 @@ export const InvestigationTimeline: React.FC<InvestigationTimelineProps> = ({
         stage: 'Incident Management Lifecycle',
         timestamp: alert.updated_at ? new Date(alert.updated_at).toUTCString() : 'Timestamp unavailable',
         status: alert.status === 'INVESTIGATING' ? 'active' : 'completed',
-        icon: '🔍',
+        icon: <FontAwesomeIcon icon={faMagnifyingGlass} />,
         description: 'Ground team / facility operator coordination underway. Analyzing cross-sensor visual and thermal telemetry.',
         badge: 'INVESTIGATING',
       });
@@ -169,7 +183,7 @@ export const InvestigationTimeline: React.FC<InvestigationTimelineProps> = ({
         stage: 'Incident Management Lifecycle',
         timestamp: alert.resolved_at ? new Date(alert.resolved_at).toUTCString() : alert.updated_at ? new Date(alert.updated_at).toUTCString() : 'Timestamp unavailable',
         status: 'completed',
-        icon: '✅',
+        icon: <FontAwesomeIcon icon={faCircleCheck} />,
         description: `Incident investigation concluded. Operator notes: "${alert.resolution_notes || 'Confirmed and addressed in accordance with standard operating procedure.'}"`,
         badge: 'RESOLVED',
       });
@@ -179,7 +193,7 @@ export const InvestigationTimeline: React.FC<InvestigationTimelineProps> = ({
         stage: 'Incident Management Lifecycle',
         timestamp: alert.resolved_at ? new Date(alert.resolved_at).toUTCString() : alert.updated_at ? new Date(alert.updated_at).toUTCString() : 'Timestamp unavailable',
         status: 'completed',
-        icon: '⚪',
+        icon: <FontAwesomeIcon icon={faCircle} />,
         description: `Incident marked non-actionable. Reason: "${alert.resolution_notes || 'Dismissed by operator following visual and spatial validation.'}"`,
         badge: 'DISMISSED',
       });
@@ -189,7 +203,7 @@ export const InvestigationTimeline: React.FC<InvestigationTimelineProps> = ({
   return (
     <div className="investigation-timeline-component">
       <div className="timeline-header">
-        <span className="timeline-title">📜 Chronological Investigation Audit Trail</span>
+        <span className="timeline-title"><FontAwesomeIcon icon={faFileLines} /> Chronological Investigation Audit Trail</span>
         <span className="timeline-subtitle">Defensible end-to-end provenance from satellite telemetry to resolution</span>
       </div>
 
@@ -209,7 +223,7 @@ export const InvestigationTimeline: React.FC<InvestigationTimelineProps> = ({
 
               <div className="step-meta-row">
                 <span className="step-stage">{item.stage}</span>
-                <span className="step-timestamp">⏱️ {item.timestamp}</span>
+                <span className="step-timestamp"><FontAwesomeIcon icon={faClock} className="mr-1" /> {item.timestamp}</span>
               </div>
 
               <p className="step-description">{item.description}</p>

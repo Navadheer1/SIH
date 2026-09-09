@@ -1,3 +1,10 @@
+import {
+  faArrowsRotate,
+  faIndustry,
+  faMagnifyingGlass,
+  faTriangleExclamation,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useState, useMemo } from 'react';
 import {
   Hotspot,
@@ -141,7 +148,7 @@ export function IncidentsView({
       {/* HEADER BAR */}
       <div className="incidents-view-header">
         <div>
-          <h2 className="view-title">🚨 Active Incidents & Thermal Triage Queue</h2>
+          <h2 className="view-title"><FontAwesomeIcon icon={faTriangleExclamation} /> Active Incidents & Thermal Triage Queue</h2>
           <p className="view-subtitle">
             Ranked queue of thermal anomalies prioritized by Operational Risk Score and industrial proximity.
           </p>
@@ -168,21 +175,21 @@ export function IncidentsView({
             className={`btn-tab ${activeTab === 'high_risk' ? 'active' : ''}`}
             onClick={() => setActiveTab('high_risk')}
           >
-            🚨 High Risk ({combinedList.filter(r => r.riskScore >= 0.70 || r.riskLevel === 'CRITICAL').length})
+            <FontAwesomeIcon icon={faTriangleExclamation} /> High Risk ({combinedList.filter(r => r.riskScore >= 0.70 || r.riskLevel === 'CRITICAL').length})
           </button>
           <button
             type="button"
             className={`btn-tab ${activeTab === 'industrial' ? 'active' : ''}`}
             onClick={() => setActiveTab('industrial')}
           >
-            🏭 Industrial Candidates ({combinedList.filter(r => r.distanceKm !== null && r.distanceKm <= 1.0).length})
+            <FontAwesomeIcon icon={faIndustry} /> Industrial Candidates ({combinedList.filter(r => r.distanceKm !== null && r.distanceKm <= 1.0).length})
           </button>
           <button
             type="button"
             className={`btn-tab ${activeTab === 'persistent' ? 'active' : ''}`}
             onClick={() => setActiveTab('persistent')}
           >
-            🔄 Persistent Sources ({combinedList.filter(r => r.obsCount > 1).length})
+            <FontAwesomeIcon icon={faArrowsRotate} /> Persistent Sources ({combinedList.filter(r => r.obsCount > 1).length})
           </button>
         </div>
 
@@ -190,7 +197,7 @@ export function IncidentsView({
           <input
             type="text"
             className="input-search-incidents"
-            placeholder="🔍 Search facility, ID, coordinates..."
+            placeholder="Search facility, ID, coordinates..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -213,7 +220,7 @@ export function IncidentsView({
       {/* INCIDENTS TABLE */}
       <div className="incidents-table-wrapper">
         {loading ? (
-          <div className="loading-state-box">⏳ Loading incident queue from PostgreSQL & FIRMS...</div>
+          <div className="loading-state-box"><FontAwesomeIcon icon={faArrowsRotate} spin className="mr-1 text-green" /> Loading incident queue from PostgreSQL & FIRMS...</div>
         ) : filteredRows.length === 0 ? (
           <div className="empty-state-box">No incidents found matching current filter criteria.</div>
         ) : (
@@ -315,7 +322,7 @@ export function IncidentsView({
                           else if (row.alertObj) onSelectAlert(row.alertObj);
                         }}
                       >
-                        🔍 Investigate
+                        <FontAwesomeIcon icon={faMagnifyingGlass} /> Investigate
                       </button>
                     </td>
                   </tr>

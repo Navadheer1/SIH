@@ -1,5 +1,18 @@
+import {
+  faBolt,
+  faBookOpen,
+  faFire,
+  faHospital,
+  faIndustry,
+  faMagnifyingGlass,
+  faMap,
+  faSatellite,
+  faTriangleExclamation,
+  faXmark,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Circle, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, Circle, Polyline, Popup, useMap } from 'react-leaflet';
 import {
   Hotspot,
   OsmFeature,
@@ -7,6 +20,7 @@ import {
   ThermalAlert,
   ThreatZonesResponse,
   ExposedAsset,
+  PriorityRankingItem,
 } from '../types/hotspot';
 
 interface FireMapProps {
@@ -24,10 +38,14 @@ interface FireMapProps {
   onSelectCluster?: (cluster: PersistentCluster) => void;
   selectedAlert?: ThermalAlert | null;
   onSelectAlert?: (alert: ThermalAlert) => void;
+  selectedPriorityIncident?: PriorityRankingItem | null;
+  onSelectPriorityIncident?: (incident: PriorityRankingItem) => void;
   nearbyFeatures?: OsmFeature[];
   threatZones?: ThreatZonesResponse | null;
   exposedAssets?: ExposedAsset[];
   onSelectAsset?: (asset: ExposedAsset) => void;
+  basemap?: 'standard' | 'satellite';
+  onBasemapChange?: (mode: 'standard' | 'satellite') => void;
 }
 
 const MapViewController: React.FC<{ center: [number, number]; zoom: number }> = ({ center, zoom }) => {
@@ -53,13 +71,31 @@ export const FireMap: React.FC<FireMapProps> = ({
   onSelectCluster = () => {},
   selectedAlert = null,
   onSelectAlert = () => {},
+  selectedPriorityIncident = null,
+  onSelectPriorityIncident: _onSelectPriorityIncident,
   nearbyFeatures: _nearbyFeatures = [],
   threatZones = null,
   exposedAssets = [],
   onSelectAsset,
+  basemap = 'standard',
+  onBasemapChange,
 }) => {
   const effectiveCenter: [number, number] = center || mapCenter || [20.5937, 78.9629];
   const effectiveZoom: number = zoom || mapZoom || 5;
+
+  // Basemap Switcher State (Standard vs Satellite)
+  const [internalBasemap, setInternalBasemap] = useState<'standard' | 'satellite'>(basemap);
+  const activeBasemap = basemap || internalBasemap;
+
+  const handleBasemapToggle = (mode: 'standard' | 'satellite') => {
+    setInternalBasemap(mode);
+    if (onBasemapChange) {
+      onBasemapChange(mode);
+    }
+  };
+
+  const mapboxToken = (import.meta as any).env?.VITE_MAPBOX_ACCESS_TOKEN || '';
+
   // Layer Toggles
   const [showThreatZones, setShowThreatZones] = useState<boolean>(true);
   const [showCriticalAssets, setShowCriticalAssets] = useState<boolean>(true);
@@ -100,84 +136,61 @@ export const FireMap: React.FC<FireMapProps> = ({
 
   const getAssetIcon = (category: string): string => {
     switch (category) {
-      case 'INDUSTRIAL': return '🏭';
-      case 'HEALTHCARE': return '🏥';
-      case 'EDUCATION': return '🎓';
-      case 'TRANSPORT': return '🚆';
-      case 'UTILITIES': return '⚡';
-      case 'PUBLIC': return '🏛️';
-      case 'SETTLEMENTS': return '🏘️';
-      default: return '📍';
+      case 'INDUSTRIAL': return 'Industrial';
+      case 'HEALTHCARE': return 'Healthcare';
+      case 'EDUCATION': return 'Education';
+      case 'TRANSPORT': return 'Transport';
+      case 'UTILITIES': return 'Utilities';
+      case 'PUBLIC': return 'Public';
+      case 'SETTLEMENTS': return 'Settlements';
+      default: return 'Asset';
     }
   };
 
-  // Selected Coordinates for Threat Zone Overlay
-  const selectedLat = selectedAlert?.latitude ?? selectedHotspot?.latitude ?? selectedCluster?.center_latitude;
-  const selectedLon = selectedAlert?.longitude ?? selectedHotspot?.longitude ?? selectedCluster?.center_longitude;
+  // Selected Coordinates for Threat Zone & 5 KM Threat Radius Overlay
+  const selectedLat = selectedPriorityIncident?.latitude ?? selectedAlert?.latitude ?? selectedHotspot?.latitude ?? selectedCluster?.center_latitude;
+  const selectedLon = selectedPriorityIncident?.longitude ?? selectedAlert?.longitude ?? selectedHotspot?.longitude ?? selectedCluster?.center_longitude;
 
-  const filteredAssets = exposedAssets.filter((asset) => {
-    if (!showCriticalAssets && (asset.category === 'HEALTHCARE' || asset.category === 'INDUSTRIAL' || asset.category === 'UTILITIES')) return false;
-    if (!showIndustrial && asset.category === 'INDUSTRIAL') return false;
-    if (!showHealthcare && asset.category === 'HEALTHCARE') return false;
-    if (!showTransport && asset.category === 'TRANSPORT') return false;
-    if (!showEducation && asset.category === 'EDUCATION') return false;
-    return true;
-  });
+  // Real 5 KM nearby features from Priority Incident or direct prop
+  const activeNearbyFeatures: OsmFeature[] = (selectedPriorityIncident?.nearby_features || _nearbyFeatures || []).filter(
+    (f) => f.distance_km <= 5.0 && f.latitude && f.longitude
+  );
+  const closestAsset = selectedPriorityIncident?.closest_critical_asset || (activeNearbyFeatures.length > 0 ? activeNearbyFeatures[0] : null);
+
+  const filteredAssets = exposedAssets;
 
   return (
     <div className="map-wrapper" style={{ position: 'relative' }}>
-      {/* MAP LAYER CONTROLS FLOATING BAR */}
+      {/* MAP LAYER & BASEMAP CONTROLS FLOATING BAR */}
       <div className="map-layer-toggles-bar">
-        <span className="layer-bar-title">MAP LAYERS:</span>
-        <button
-          type="button"
-          className={`layer-toggle-btn ${showThreatZones ? 'active' : ''}`}
-          onClick={() => setShowThreatZones(!showThreatZones)}
-        >
-          🎯 Threat Zones
-        </button>
-        <button
-          type="button"
-          className={`layer-toggle-btn ${showCriticalAssets ? 'active' : ''}`}
-          onClick={() => setShowCriticalAssets(!showCriticalAssets)}
-        >
-          ⚡ Critical Assets
-        </button>
-        <button
-          type="button"
-          className={`layer-toggle-btn ${showIndustrial ? 'active' : ''}`}
-          onClick={() => setShowIndustrial(!showIndustrial)}
-        >
-          🏭 Industrial
-        </button>
-        <button
-          type="button"
-          className={`layer-toggle-btn ${showHealthcare ? 'active' : ''}`}
-          onClick={() => setShowHealthcare(!showHealthcare)}
-        >
-          🏥 Healthcare
-        </button>
-        <button
-          type="button"
-          className={`layer-toggle-btn ${showTransport ? 'active' : ''}`}
-          onClick={() => setShowTransport(!showTransport)}
-        >
-          🛣️ Transport
-        </button>
-        <button
-          type="button"
-          className={`layer-toggle-btn ${showEducation ? 'active' : ''}`}
-          onClick={() => setShowEducation(!showEducation)}
-        >
-          🎓 Education
-        </button>
+        {/* BASEMAP SWITCHER */}
+        <div className="basemap-switch-controls" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+          <span className="layer-bar-title" style={{ fontWeight: 700, fontSize: '11px', color: '#334155' }}>BASEMAP:</span>
+          <button
+            type="button"
+            className={`layer-toggle-btn ${activeBasemap === 'standard' ? 'active' : ''}`}
+            onClick={() => handleBasemapToggle('standard')}
+            title="Switch to Standard Street Basemap"
+          >
+            <FontAwesomeIcon icon={faMap} /> STANDARD
+          </button>
+          <button
+            type="button"
+            className={`layer-toggle-btn ${activeBasemap === 'satellite' ? 'active' : ''}`}
+            onClick={() => handleBasemapToggle('satellite')}
+            title="Switch to Mapbox / Satellite Imagery"
+          >
+            <FontAwesomeIcon icon={faSatellite} /> SATELLITE
+          </button>
+        </div>
+
         <button
           type="button"
           className={`layer-toggle-btn ${showLegend ? 'active' : ''}`}
           onClick={() => setShowLegend(!showLegend)}
-          style={{ marginLeft: 'auto', background: showLegend ? '#1e3a8a' : '#1f2937', color: '#ffffff' }}
+          style={{ marginLeft: 'auto' }}
         >
-          📖 {showLegend ? 'Hide Legend' : 'Show Legend'}
+          <FontAwesomeIcon icon={faBookOpen} /> {showLegend ? 'Hide Legend' : 'Show Legend'}
         </button>
       </div>
 
@@ -189,10 +202,120 @@ export const FireMap: React.FC<FireMapProps> = ({
       >
         <MapViewController center={effectiveCenter} zoom={effectiveZoom} />
 
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Satellite: NASA FIRMS / Sentinel-2'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        {/* DYNAMIC BASEMAP TILE LAYER */}
+        {activeBasemap === 'standard' ? (
+          <TileLayer
+            key="standard-basemap"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            maxZoom={19}
+          />
+        ) : (
+          <>
+            <TileLayer
+              key="satellite-basemap"
+              attribution='Tiles &copy; Esri, Mapbox &mdash; DigitalGlobe, GeoEye, Earthstar Geographics'
+              url={
+                mapboxToken
+                  ? `https://api.mapbox.com/styles/v1/mapbox/standard-satellite/tiles/{z}/{x}/{y}?access_token=${mapboxToken}`
+                  : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+              }
+              maxZoom={19}
+            />
+            {!mapboxToken && (
+              <TileLayer
+                key="satellite-reference-labels"
+                attribution='&copy; Esri Reference'
+                url="https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
+                maxZoom={19}
+              />
+            )}
+          </>
+        )}
+
+        {/* 5 KM OPERATIONAL THREAT RADIUS BUFFER (Green dashed ring) */}
+        {selectedLat && selectedLon && (
+          <Circle
+            center={[selectedLat, selectedLon]}
+            radius={5000}
+            pathOptions={{
+              color: '#059669',
+              fillColor: '#10b981',
+              fillOpacity: 0.04,
+              weight: 1.5,
+              dashArray: '5 5',
+            }}
+          >
+            <Popup>
+              <div style={{ padding: '4px', minWidth: '180px' }}>
+                <strong style={{ color: '#059669', fontSize: '13px' }}>5.0 KM Threat Exposure Buffer</strong>
+                <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#475569' }}>
+                  Maximum operational analysis radius for critical infrastructure proximity evaluation.
+                </p>
+                {activeNearbyFeatures.length > 0 && (
+                  <div style={{ marginTop: '6px', fontSize: '11px', fontWeight: 600, color: '#0f172a' }}>
+                    {activeNearbyFeatures.length} verified infrastructure assets detected.
+                  </div>
+                )}
+              </div>
+            </Popup>
+          </Circle>
+        )}
+
+        {/* 5 KM NEARBY INFRASTRUCTURE MARKERS & PROXIMITY VECTORS */}
+        {activeNearbyFeatures.map((feat, fIdx) => {
+          const isClosest = closestAsset && (closestAsset.osm_id === feat.osm_id || closestAsset.name === feat.name);
+          const featColor = getAssetColor(feat.category);
+
+          return (
+            <React.Fragment key={`osm-feat-${feat.osm_id || fIdx}`}>
+              <CircleMarker
+                center={[feat.latitude, feat.longitude]}
+                radius={isClosest ? 8 : 6}
+                pathOptions={{
+                  color: isClosest ? '#ef4444' : '#ffffff',
+                  fillColor: featColor,
+                  fillOpacity: 0.9,
+                  weight: isClosest ? 2.5 : 1.5,
+                }}
+              >
+                <Popup>
+                  <div style={{ padding: '4px', minWidth: '190px' }}>
+                    <div style={{ fontWeight: 700, fontSize: '13px', color: featColor }}>
+                      {feat.name}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                      {feat.type} • {feat.category}
+                    </div>
+                    <div style={{ fontSize: '12px', fontWeight: 600, marginTop: '6px', color: '#0f172a' }}>
+                      Distance: <span style={{ color: '#dc2626' }}>{feat.distance_km.toFixed(2)} km</span> from hotspot
+                    </div>
+                    {isClosest && (
+                      <div style={{ marginTop: '4px', fontSize: '11px', color: '#b91c1c', fontWeight: 700 }}>
+                        Closest Critical Facility
+                      </div>
+                    )}
+                    <div style={{ marginTop: '6px', fontSize: '10px', color: '#94a3b8' }}>
+                      Source: OpenStreetMap Ground Truth
+                    </div>
+                  </div>
+                </Popup>
+              </CircleMarker>
+
+              {/* Proximity threat vectors: Dashed connection line from hotspot to critical asset */}
+              {isClosest && selectedLat && selectedLon && (
+                <Polyline
+                  positions={[[selectedLat, selectedLon], [feat.latitude, feat.longitude]]}
+                  pathOptions={{
+                    color: '#ef4444',
+                    weight: 2,
+                    dashArray: '4 4',
+                  }}
+                />
+              )}
+            </React.Fragment>
+          );
+        })}
 
         {/* DYNAMIC THREAT ZONE OVERLAYS (Phase 2 & Phase 6H) */}
         {showThreatZones && threatZones && selectedLat && selectedLon && (
@@ -319,7 +442,7 @@ export const FireMap: React.FC<FireMapProps> = ({
                       style={{ marginTop: '0.5rem', width: '100%' }}
                       onClick={() => onSelectAsset(asset)}
                     >
-                      🔍 Inspect Asset Details
+                      <FontAwesomeIcon icon={faMagnifyingGlass} /> Inspect Asset Details
                     </button>
                   )}
                 </div>
@@ -352,7 +475,7 @@ export const FireMap: React.FC<FireMapProps> = ({
               <Popup className="custom-popup">
                 <div className="popup-container">
                   <div className="popup-header" style={{ color: color }}>
-                    🚨 ACTIVE INCIDENT ALERT ({alt.alert_id})
+                    <FontAwesomeIcon icon={faTriangleExclamation} /> ACTIVE INCIDENT ALERT ({alt.alert_id})
                   </div>
                   <div className="popup-body">
                     <div className="popup-row">
@@ -378,7 +501,7 @@ export const FireMap: React.FC<FireMapProps> = ({
                       style={{ marginTop: '0.5rem', width: '100%' }}
                       onClick={() => onSelectAlert(alt)}
                     >
-                      ⚡ Open Incident & Impact Intelligence
+                      <FontAwesomeIcon icon={faBolt} /> Open Incident & Impact Intelligence
                     </button>
                   </div>
                 </div>
@@ -422,7 +545,7 @@ export const FireMap: React.FC<FireMapProps> = ({
                 <Popup className="custom-popup">
                   <div className="popup-container">
                     <div className="popup-header" style={{ color }}>
-                      🔥 THERMAL ANOMALY ({severity})
+                      <FontAwesomeIcon icon={faFire} /> THERMAL ANOMALY ({severity})
                     </div>
                     <div className="popup-body">
                       <div className="popup-row">
@@ -442,7 +565,7 @@ export const FireMap: React.FC<FireMapProps> = ({
                         style={{ marginTop: '0.6rem', width: '100%' }}
                         onClick={() => onSelectHotspot(spot)}
                       >
-                        ⚡ Open Incident & Impact Intelligence
+                        <FontAwesomeIcon icon={faBolt} /> Open Incident & Impact Intelligence
                       </button>
                     </div>
                   </div>
@@ -475,7 +598,7 @@ export const FireMap: React.FC<FireMapProps> = ({
               >
                 <Popup className="custom-popup">
                   <div className="popup-container">
-                    <div className="popup-header">📡 PERSISTENT CLUSTER</div>
+                    <div className="popup-header"><FontAwesomeIcon icon={faSatellite} /> PERSISTENT CLUSTER</div>
                     <div className="popup-body">
                       <div className="popup-row">
                         <span className="popup-label">Cluster ID:</span>
@@ -490,7 +613,7 @@ export const FireMap: React.FC<FireMapProps> = ({
                         style={{ marginTop: '0.5rem', width: '100%' }}
                         onClick={() => onSelectCluster(cluster)}
                       >
-                        ⚡ Open Incident & Impact Intelligence
+                        <FontAwesomeIcon icon={faBolt} /> Open Incident & Impact Intelligence
                       </button>
                     </div>
                   </div>
@@ -504,14 +627,14 @@ export const FireMap: React.FC<FireMapProps> = ({
       {showLegend && (
         <div className="map-legend-panel">
           <div className="legend-header">
-            <span className="legend-title">🗺️ EOC MAP LEGEND</span>
+            <span className="legend-title"><FontAwesomeIcon icon={faMap} /> EOC MAP LEGEND</span>
             <button
               type="button"
               className="legend-close-btn"
               onClick={() => setShowLegend(false)}
               title="Close Legend"
             >
-              ×
+                <FontAwesomeIcon icon={faXmark} />
             </button>
           </div>
           <div className="legend-content">
@@ -532,13 +655,13 @@ export const FireMap: React.FC<FireMapProps> = ({
 
             <div className="legend-section">
               <div className="legend-subtitle">CRITICAL INFRASTRUCTURE</div>
-              <div className="legend-item"><span className="legend-icon">🏭</span> Industrial / Fuel Depot</div>
-              <div className="legend-item"><span className="legend-icon">⚡</span> Power Substation</div>
-              <div className="legend-item"><span className="legend-icon">🏥</span> Hospital / Healthcare</div>
+              <div className="legend-item"><FontAwesomeIcon icon={faIndustry} className="mr-1" /> Industrial / Fuel Depot</div>
+              <div className="legend-item"><FontAwesomeIcon icon={faBolt} className="mr-1" /> Power Substation</div>
+              <div className="legend-item"><FontAwesomeIcon icon={faHospital} className="mr-1" /> Hospital / Healthcare</div>
             </div>
 
             <div className="legend-disclaimer">
-              ⚠️ Threat zones are simulation estimates — NOT official evacuation orders.
+              Threat zones are simulation estimates — NOT official evacuation orders.
             </div>
           </div>
         </div>

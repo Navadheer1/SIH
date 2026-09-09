@@ -1,3 +1,8 @@
+import {
+  faArrowsRotate,
+  faClock,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useState, useEffect } from 'react';
 import { TimeHorizonKey } from '../types/hotspot';
 
@@ -50,7 +55,7 @@ export const SpreadTimeline: React.FC<SpreadTimelineProps> = ({
     <div className="spread-timeline-dock">
       <div className="timeline-header-meta">
         <div className="tl-title-group">
-          <span className="tl-icon">⏱️</span>
+          <span className="tl-icon"><FontAwesomeIcon icon={faClock} /></span>
           <span className="tl-title font-bold">TIME-BASED THREAT PROJECTION HORIZON</span>
         </div>
         <div className="tl-badges-group">
@@ -87,7 +92,7 @@ export const SpreadTimeline: React.FC<SpreadTimelineProps> = ({
             }}
             title="Reset to NOW"
           >
-            🔄 RESET
+            <FontAwesomeIcon icon={faArrowsRotate} /> RESET
           </button>
         </div>
 

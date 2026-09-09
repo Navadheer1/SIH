@@ -1,123 +1,81 @@
 import React from 'react';
 import { AppView } from '../types/hotspot';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faFire,
+  faChartSimple,
+  faTriangleExclamation,
+  faMap,
+  faBolt,
+  faGear,
+} from '@fortawesome/free-solid-svg-icons';
 
 interface TopBarProps {
   currentView: AppView;
   onViewChange: (view: AppView) => void;
-  lastUpdated: string;
-  onRefresh: () => void;
-  refreshing: boolean;
-  onSelectDemoScenario?: (scenarioId: string) => void;
 }
 
-export const TopBar: React.FC<TopBarProps> = ({
-  currentView,
-  onViewChange,
-  lastUpdated,
-  onRefresh,
-  refreshing,
-  onSelectDemoScenario,
-}) => {
+export const TopBar: React.FC<TopBarProps> = ({ currentView, onViewChange }) => {
   return (
-    <header className="app-topbar">
-      {/* 1. BRAND & IDENTITY */}
-      <div className="topbar-brand">
-        <div className="brand-badge">
-          <span className="badge-sih">SIH 26162</span>
-        </div>
-        <div className="brand-titles">
-          <h1 className="brand-main-title">Industrial Fire Intelligence</h1>
-          <p className="brand-subtitle">
-            NASA FIRMS thermal anomaly detection with Sentinel-2 optical evidence and industrial context.
-          </p>
-        </div>
-      </div>
-
-      {/* 2. PRIMARY 5-TAB NAVIGATION */}
-      <nav className="topbar-nav" aria-label="Main Navigation">
-        <button
-          type="button"
-          className={`nav-tab ${currentView === 'dashboard' ? 'active' : ''}`}
-          onClick={() => onViewChange('dashboard')}
-        >
-          <span className="nav-icon">📊</span>
-          <span className="nav-label">DASHBOARD</span>
-        </button>
-
-        <button
-          type="button"
-          className={`nav-tab ${currentView === 'incidents' ? 'active' : ''}`}
-          onClick={() => onViewChange('incidents')}
-        >
-          <span className="nav-icon">🚨</span>
-          <span className="nav-label">INCIDENTS</span>
-        </button>
-
-        <button
-          type="button"
-          className={`nav-tab ${currentView === 'map' ? 'active' : ''}`}
-          onClick={() => onViewChange('map')}
-        >
-          <span className="nav-icon">🗺️</span>
-          <span className="nav-label">MAP</span>
-        </button>
-
-        <button
-          type="button"
-          className={`nav-tab ${currentView === 'status' ? 'active' : ''}`}
-          onClick={() => onViewChange('status')}
-        >
-          <span className="nav-icon">⚡</span>
-          <span className="nav-label">SYSTEM STATUS</span>
-        </button>
-
-        <button
-          type="button"
-          className={`nav-tab ${currentView === 'settings' ? 'active' : ''}`}
-          onClick={() => onViewChange('settings')}
-        >
-          <span className="nav-icon">⚙️</span>
-          <span className="nav-label">SETTINGS</span>
-        </button>
-      </nav>
-
-      {/* 3. SIH JUDGE DEMO SELECTOR & REFRESH */}
-      <div className="topbar-actions">
-        {onSelectDemoScenario && (
-          <div className="demo-selector-wrap" title="Quickly jump to pre-validated benchmark scenarios for live demonstration">
-            <span className="demo-selector-label">🎯 DEMO SCENARIO:</span>
-            <select
-              className="demo-scenarios-dropdown"
-              defaultValue=""
-              onChange={(e) => {
-                if (e.target.value) {
-                  onSelectDemoScenario(e.target.value);
-                  e.target.value = '';
-                }
-              }}
-            >
-              <option value="" disabled>Select Benchmark Case...</option>
-              <option value="demo_industrial_p1">🏭 P1 Critical — Petrochemical Flare</option>
-              <option value="demo_wildfire_p2">🌲 P2 High — Forest Wildfire</option>
-              <option value="demo_crop_burn_p4">🌾 P4 Low — Crop Residual Burn</option>
-              <option value="demo_degraded_cloud">☁️ P3 Guardrail — Cloud Degraded</option>
-            </select>
+    <header className="app-topbar-wrapper">
+      <div className="app-topbar">
+        {/* BRAND IDENTITY */}
+        <div className="topbar-brand" onClick={() => onViewChange('dashboard')} style={{ cursor: 'pointer' }}>
+          <div className="brand-icon-box">
+            <FontAwesomeIcon icon={faFire} className="brand-fa-icon" />
           </div>
-        )}
-
-        <div className="clock-badge">
-          <span className="clock-label">SYNC:</span>
-          <span className="clock-time">{lastUpdated}</span>
+          <div className="brand-titles">
+            <h1 className="brand-main-title">Industrial Fire Intelligence</h1>
+          </div>
         </div>
-        <button
-          type="button"
-          className="btn-refresh-top"
-          onClick={onRefresh}
-          disabled={refreshing}
-          title="Refresh real FIRMS observations and alerts"
-        >
-          {refreshing ? '🔄 Syncing...' : '🔄 Refresh'}
-        </button>
+
+        {/* NAVIGATION TABS */}
+        <nav className="topbar-nav" aria-label="Main Navigation">
+          <button
+            type="button"
+            className={`nav-tab ${currentView === 'dashboard' ? 'active' : ''}`}
+            onClick={() => onViewChange('dashboard')}
+          >
+            <FontAwesomeIcon icon={faChartSimple} className="nav-fa-icon" />
+            <span className="nav-label">Dashboard</span>
+          </button>
+
+          <button
+            type="button"
+            className={`nav-tab ${currentView === 'incidents' ? 'active' : ''}`}
+            onClick={() => onViewChange('incidents')}
+          >
+            <FontAwesomeIcon icon={faTriangleExclamation} className="nav-fa-icon" />
+            <span className="nav-label">Incidents</span>
+          </button>
+
+          <button
+            type="button"
+            className={`nav-tab ${currentView === 'map' ? 'active' : ''}`}
+            onClick={() => onViewChange('map')}
+          >
+            <FontAwesomeIcon icon={faMap} className="nav-fa-icon" />
+            <span className="nav-label">Map</span>
+          </button>
+
+          <button
+            type="button"
+            className={`nav-tab ${currentView === 'status' ? 'active' : ''}`}
+            onClick={() => onViewChange('status')}
+          >
+            <FontAwesomeIcon icon={faBolt} className="nav-fa-icon" />
+            <span className="nav-label">System Status</span>
+          </button>
+
+          <button
+            type="button"
+            className={`nav-tab ${currentView === 'settings' ? 'active' : ''}`}
+            onClick={() => onViewChange('settings')}
+          >
+            <FontAwesomeIcon icon={faGear} className="nav-fa-icon" />
+            <span className="nav-label">Settings</span>
+          </button>
+        </nav>
       </div>
     </header>
   );

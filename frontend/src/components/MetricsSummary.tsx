@@ -1,3 +1,11 @@
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faFire,
+  faArrowsRotate,
+  faIndustry,
+  faTriangleExclamation,
+} from '@fortawesome/free-solid-svg-icons';
+
 interface MetricsSummaryProps {
   totalHotspots: number;
   persistentCount: number;
@@ -18,78 +26,108 @@ export function MetricsSummary({
   activeFilter = 'all',
 }: MetricsSummaryProps) {
   return (
-    <div className="metrics-summary-grid">
-      {/* CARD 1: THERMAL ANOMALIES */}
-      <div
-        className={`metric-card metric-thermal ${activeFilter === 'all' ? 'active-filter' : ''}`}
-        onClick={() => onFilterClick && onFilterClick('all')}
-        role="button"
-        tabIndex={0}
-      >
-        <div className="metric-header">
-          <span className="metric-icon">🔥</span>
-          <span className="metric-label">Thermal Anomalies</span>
+    <section className="metrics-summary-section" aria-label="Thermal metrics summary">
+      <div className="metrics-summary-grid">
+        {/* CARD 1: THERMAL ANOMALIES */}
+        <div
+          className={`metric-kpi-card metric-card-thermal ${activeFilter === 'all' ? 'active-filter' : ''}`}
+          onClick={() => onFilterClick && onFilterClick('all')}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              onFilterClick && onFilterClick('all');
+            }
+          }}
+        >
+          <div className="kpi-card-header">
+            <div className="kpi-icon-container icon-thermal">
+              <FontAwesomeIcon icon={faFire} />
+            </div>
+            <span className="kpi-badge badge-firms">NASA FIRMS NRT</span>
+          </div>
+          <div className="kpi-value-row">
+            <span className="kpi-large-number">{loading ? '...' : totalHotspots}</span>
+          </div>
+          <div className="kpi-label-text">Thermal Anomalies</div>
+          <p className="kpi-description">Active near-real-time satellite detections</p>
         </div>
-        <div className="metric-value-row">
-          <span className="metric-value">{loading ? '...' : totalHotspots}</span>
-          <span className="metric-badge badge-firms">NASA FIRMS NRT</span>
-        </div>
-        <div className="metric-subtext">Active Near-Real-Time satellite detections</div>
-      </div>
 
-      {/* CARD 2: PERSISTENT SOURCES */}
-      <div
-        className={`metric-card metric-persistent ${activeFilter === 'persistent' ? 'active-filter' : ''}`}
-        onClick={() => onFilterClick && onFilterClick('persistent')}
-        role="button"
-        tabIndex={0}
-      >
-        <div className="metric-header">
-          <span className="metric-icon">🔄</span>
-          <span className="metric-label">Persistent Sources</span>
+        {/* CARD 2: PERSISTENT SOURCES */}
+        <div
+          className={`metric-kpi-card metric-card-persistent ${activeFilter === 'persistent' ? 'active-filter' : ''}`}
+          onClick={() => onFilterClick && onFilterClick('persistent')}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              onFilterClick && onFilterClick('persistent');
+            }
+          }}
+        >
+          <div className="kpi-card-header">
+            <div className="kpi-icon-container icon-persistent">
+              <FontAwesomeIcon icon={faArrowsRotate} />
+            </div>
+            <span className="kpi-badge badge-persistent">Recurrent / Flare</span>
+          </div>
+          <div className="kpi-value-row">
+            <span className="kpi-large-number">{loading ? '...' : persistentCount}</span>
+          </div>
+          <div className="kpi-label-text">Persistent Sources</div>
+          <p className="kpi-description">Multi-day clusters & industrial flare pits</p>
         </div>
-        <div className="metric-value-row">
-          <span className="metric-value">{loading ? '...' : persistentCount}</span>
-          <span className="metric-badge badge-persistent">Recurrent / Flare</span>
-        </div>
-        <div className="metric-subtext">Multi-day clusters & industrial flare pits</div>
-      </div>
 
-      {/* CARD 3: INDUSTRIAL CANDIDATES */}
-      <div
-        className={`metric-card metric-industrial ${activeFilter === 'industrial' ? 'active-filter' : ''}`}
-        onClick={() => onFilterClick && onFilterClick('industrial')}
-        role="button"
-        tabIndex={0}
-      >
-        <div className="metric-header">
-          <span className="metric-icon">🏭</span>
-          <span className="metric-label">Industrial Candidates</span>
+        {/* CARD 3: INDUSTRIAL CANDIDATES */}
+        <div
+          className={`metric-kpi-card metric-card-industrial ${activeFilter === 'industrial' ? 'active-filter' : ''}`}
+          onClick={() => onFilterClick && onFilterClick('industrial')}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              onFilterClick && onFilterClick('industrial');
+            }
+          }}
+        >
+          <div className="kpi-card-header">
+            <div className="kpi-icon-container icon-industrial">
+              <FontAwesomeIcon icon={faIndustry} />
+            </div>
+            <span className="kpi-badge badge-industrial">≤ 1.0 km Facility</span>
+          </div>
+          <div className="kpi-value-row">
+            <span className="kpi-large-number">{loading ? '...' : industrialCandidatesCount}</span>
+          </div>
+          <div className="kpi-label-text">Industrial Candidates</div>
+          <p className="kpi-description">Proximity to refineries, power plants & mills</p>
         </div>
-        <div className="metric-value-row">
-          <span className="metric-value">{loading ? '...' : industrialCandidatesCount}</span>
-          <span className="metric-badge badge-industrial">≤ 1.0 km Facility</span>
-        </div>
-        <div className="metric-subtext">Proximity to refineries, power plants & mills</div>
-      </div>
 
-      {/* CARD 4: HIGH RISK INCIDENTS */}
-      <div
-        className={`metric-card metric-high-risk ${activeFilter === 'high_risk' ? 'active-filter' : ''}`}
-        onClick={() => onFilterClick && onFilterClick('high_risk')}
-        role="button"
-        tabIndex={0}
-      >
-        <div className="metric-header">
-          <span className="metric-icon">🚨</span>
-          <span className="metric-label">High Risk Incidents</span>
+        {/* CARD 4: HIGH RISK INCIDENTS */}
+        <div
+          className={`metric-kpi-card metric-card-high-risk ${activeFilter === 'high_risk' ? 'active-filter' : ''}`}
+          onClick={() => onFilterClick && onFilterClick('high_risk')}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              onFilterClick && onFilterClick('high_risk');
+            }
+          }}
+        >
+          <div className="kpi-card-header">
+            <div className="kpi-icon-container icon-risk">
+              <FontAwesomeIcon icon={faTriangleExclamation} />
+            </div>
+            <span className="kpi-badge badge-critical">Risk ≥ 0.70</span>
+          </div>
+          <div className="kpi-value-row">
+            <span className="kpi-large-number">{loading ? '...' : highRiskCount}</span>
+          </div>
+          <div className="kpi-label-text">High Risk Incidents</div>
+          <p className="kpi-description">Urgent operational triage required</p>
         </div>
-        <div className="metric-value-row">
-          <span className="metric-value">{loading ? '...' : highRiskCount}</span>
-          <span className="metric-badge badge-critical">Risk ≥ 0.70</span>
-        </div>
-        <div className="metric-subtext">Urgent operational triage required</div>
       </div>
-    </div>
+    </section>
   );
 }

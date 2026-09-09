@@ -1,3 +1,9 @@
+import {
+  faLock,
+  faScaleBalanced,
+  faXmark,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React from 'react';
 import { SimulationResultResponse } from '../types/hotspot';
 
@@ -20,17 +26,17 @@ export const ScenarioComparisonModal: React.FC<ScenarioComparisonModalProps> = (
       <div className="scenario-modal-content">
         <div className="scenario-modal-header">
           <div className="title-group">
-            <span className="header-icon">⚖️</span>
+            <span className="header-icon"><FontAwesomeIcon icon={faScaleBalanced} /></span>
             <h3 className="modal-title">Scenario Comparison: Live Conditions vs Simulated Scenario</h3>
           </div>
           <button type="button" className="btn-close-modal" onClick={onClose}>
-            ✕
+            <FontAwesomeIcon icon={faXmark} />
           </button>
         </div>
 
         <div className="scenario-modal-body">
           <div className="isolation-notice">
-            🔒 <strong>Simulation Verification:</strong> Live data remains untouched. This delta evaluation provides decision support for potential extreme weather and fire escalation scenarios.
+            <FontAwesomeIcon icon={faLock} /> <strong>Simulation Verification:</strong> Live data remains untouched. This delta evaluation provides decision support for potential extreme weather and fire escalation scenarios.
           </div>
 
           <table className="comparison-table">

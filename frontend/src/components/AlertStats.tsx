@@ -1,3 +1,7 @@
+import {
+  faCircle,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React from 'react';
 import { AlertStats as AlertStatsType } from '../types/hotspot';
 
@@ -23,12 +27,12 @@ export const AlertStats: React.FC<AlertStatsProps> = ({ stats, loading }) => {
       </div>
 
       <div className="stat-pill pill-critical">
-        <span className="stat-label">🔴 Critical:</span>
+        <span className="stat-label"><FontAwesomeIcon icon={faCircle} style={{ color: "#dc2626", marginRight: "4px" }} /> Critical:</span>
         <span className="stat-num">{stats.critical_alerts}</span>
       </div>
 
       <div className="stat-pill pill-high">
-        <span className="stat-label">🟠 High:</span>
+        <span className="stat-label"><FontAwesomeIcon icon={faCircle} style={{ color: "#ea580c", marginRight: "4px" }} /> High:</span>
         <span className="stat-num">{stats.high_alerts}</span>
       </div>
 

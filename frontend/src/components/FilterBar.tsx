@@ -1,3 +1,9 @@
+import {
+  faArrowsRotate,
+  faFire,
+  faSatellite,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React from 'react';
 
 interface FilterBarProps {
@@ -33,13 +39,13 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           className={`btn mode-btn ${viewMode === 'hotspots' ? 'active-mode' : 'inactive-mode'}`}
           onClick={() => onViewModeChange('hotspots')}
         >
-          🔥 Single Hotspots View
+          <FontAwesomeIcon icon={faFire} /> Single Hotspots View
         </button>
         <button
           className={`btn mode-btn ${viewMode === 'clusters' ? 'active-mode' : 'inactive-mode'}`}
           onClick={() => onViewModeChange('clusters')}
         >
-          🔴 Persistent Clusters View
+          <FontAwesomeIcon icon={faSatellite} /> Persistent Clusters View
         </button>
       </div>
 
@@ -78,7 +84,13 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
       <div className="filter-actions">
         <button className="btn btn-primary" onClick={onRefresh} disabled={loading}>
-          {loading ? 'Syncing...' : '🔄 Refresh Data'}
+          {loading ? (
+            'Syncing...'
+          ) : (
+            <>
+              <FontAwesomeIcon icon={faArrowsRotate} /> Refresh Data
+            </>
+          )}
         </button>
 
         <div className="count-badge">

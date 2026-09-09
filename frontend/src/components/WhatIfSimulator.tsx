@@ -1,3 +1,10 @@
+import {
+  faArrowsRotate,
+  faChartSimple,
+  faFlask,
+  faLock,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useState } from 'react';
 import { SimulationResultResponse } from '../types/hotspot';
 
@@ -52,13 +59,13 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
   return (
     <div className="whatif-simulator-card">
       <div className="sim-card-header">
-        <span className="sim-icon">🧪</span>
+        <span className="sim-icon"><FontAwesomeIcon icon={faFlask} /></span>
         <h4 className="sim-title">WHAT-IF SCENARIO SIMULATOR</h4>
         <span className="isolation-badge">ISOLATED SIMULATION</span>
       </div>
 
       <div className="sim-isolation-banner">
-        🔒 <em><strong>Simulation Isolation Guarantee:</strong> Runs model-based what-if scenarios in memory. Does NOT modify live alerts or backend state.</em>
+        <FontAwesomeIcon icon={faLock} /> <em><strong>Simulation Isolation Guarantee:</strong> Runs model-based what-if scenarios in memory. Does NOT modify live alerts or backend state.</em>
       </div>
 
       <form onSubmit={handleSubmit} className="sim-form-grid">
@@ -137,10 +144,10 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
         {/* Actions Row */}
         <div className="sim-actions-row">
           <button type="submit" className="btn-run-sim" disabled={loading}>
-            {loading ? '⚡ Running What-If Model...' : '🚀 RUN WHAT-IF SIMULATION'}
+            {loading ? 'Running What-If Model...' : 'RUN WHAT-IF SIMULATION'}
           </button>
           <button type="button" className="btn-reset-sim" onClick={onResetSimulation}>
-            🔄 RESET TO LIVE
+            <FontAwesomeIcon icon={faArrowsRotate} /> RESET TO LIVE
           </button>
         </div>
       </form>
@@ -149,9 +156,9 @@ export const WhatIfSimulator: React.FC<WhatIfSimulatorProps> = ({
       {simulationResult && (
         <div className="sim-results-summary-card">
           <div className="summary-header">
-            <span className="res-title">📊 SIMULATED SCENARIO RESULTS (+3H)</span>
+            <span className="res-title"><FontAwesomeIcon icon={faChartSimple} /> SIMULATED SCENARIO RESULTS (+3H)</span>
             <span className={`escalation-badge ${simulationResult.comparison_summary.deltas.impact_escalated ? 'escalated' : 'stable'}`}>
-              {simulationResult.comparison_summary.deltas.impact_escalated ? '🚨 IMPACT ESCALATED' : '✓ STABLE THREAT'}
+              {simulationResult.comparison_summary.deltas.impact_escalated ? 'IMPACT ESCALATED' : 'STABLE THREAT'}
             </span>
           </div>
 

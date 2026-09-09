@@ -1,3 +1,6 @@
+import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faLandmark, faFire, faSatellite, faIndustry, faTriangleExclamation, faTruckMedical, faFileLines, faChartSimple, faGear } from '@fortawesome/free-solid-svg-icons';
 import React from 'react';
 
 export type SidebarNavView =
@@ -28,16 +31,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   criticalAlertsCount,
   resolvedIncidentsCount,
 }) => {
-  const navItems: { id: SidebarNavView; label: string; icon: string; badge?: number; badgeType?: 'critical' | 'normal' }[] = [
-    { id: 'command_center', label: 'Command Center', icon: '🏛️' },
-    { id: 'live_incidents', label: 'Live Incidents', icon: '🔥', badge: activeIncidentsCount, badgeType: 'critical' },
-    { id: 'hotspot_intelligence', label: 'Hotspot Intelligence', icon: '🛰️', badge: hotspotsCount },
-    { id: 'impact_analysis', label: 'Impact Analysis', icon: '🏭' },
-    { id: 'alerts', label: 'Alerts', icon: '🚨', badge: criticalAlertsCount, badgeType: 'critical' },
-    { id: 'response_operations', label: 'Response Operations', icon: '🚒' },
-    { id: 'incident_history', label: 'Incident History', icon: '📜', badge: resolvedIncidentsCount },
-    { id: 'analytics', label: 'Analytics', icon: '📊' },
-    { id: 'settings', label: 'Settings', icon: '⚙️' },
+  const navItems: { id: SidebarNavView; label: string; icon: IconDefinition; badge?: number; badgeType?: 'critical' | 'normal' }[] = [
+    { id: 'command_center', label: 'Command Center', icon: faLandmark },
+    { id: 'live_incidents', label: 'Live Incidents', icon: faFire, badge: activeIncidentsCount, badgeType: 'critical' },
+    { id: 'hotspot_intelligence', label: 'Hotspot Intelligence', icon: faSatellite, badge: hotspotsCount },
+    { id: 'impact_analysis', label: 'Impact Analysis', icon: faIndustry },
+    { id: 'alerts', label: 'Alerts', icon: faTriangleExclamation, badge: criticalAlertsCount, badgeType: 'critical' },
+    { id: 'response_operations', label: 'Response Operations', icon: faTruckMedical },
+    { id: 'incident_history', label: 'Incident History', icon: faFileLines, badge: resolvedIncidentsCount },
+    { id: 'analytics', label: 'Analytics', icon: faChartSimple },
+    { id: 'settings', label: 'Settings', icon: faGear },
   ];
 
   return (
@@ -53,7 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
               onClick={() => onViewChange(item.id)}
             >
-              <span className="nav-icon">{item.icon}</span>
+              <FontAwesomeIcon icon={item.icon} className="nav-icon" />
               <span className="nav-label">{item.label}</span>
               {item.badge !== undefined && item.badge > 0 && (
                 <span className={`nav-badge ${item.badgeType === 'critical' ? 'badge-critical' : 'badge-subtle'}`}>

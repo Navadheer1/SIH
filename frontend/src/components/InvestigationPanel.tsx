@@ -1,3 +1,21 @@
+import {
+  faArrowsRotate,
+  faBolt,
+  faCheck,
+  faCircleCheck,
+  faEye,
+  faFileLines,
+  faFire,
+  faIndustry,
+  faInfoCircle,
+  faMagnifyingGlass,
+  faRobot,
+  faSatellite,
+  faScaleBalanced,
+  faTriangleExclamation,
+  faXmark,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   InvestigationResponse,
@@ -8,6 +26,7 @@ import {
 import { getInvestigation } from '../config/api';
 import { SatelliteEvidenceCard } from './SatelliteEvidenceCard';
 import { DecisionSupportPanel } from './DecisionSupportPanel';
+import { ErrorBoundary } from './ErrorBoundary';
 
 export interface InvestigationPanelProps {
   observationId?: string | null;
@@ -202,11 +221,11 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
             </h2>
 
             <div className="drawer-subtitle">
-              <span>📍 {lat.toFixed(4)}°N, {lon.toFixed(4)}°E</span>
+              <span>{lat.toFixed(4)}°N, {lon.toFixed(4)}°E</span>
               <span className="dot-sep">•</span>
-              <span>🛰️ {data?.detection?.satellite || hotspot?.satellite || 'NASA FIRMS'}</span>
+              <span>{data?.detection?.satellite || hotspot?.satellite || 'NASA FIRMS'}</span>
               <span className="dot-sep">•</span>
-              <span>🕒 {formatUtcDate(data?.detection?.acquired_at || hotspot?.acquired_at)}</span>
+              <span>{formatUtcDate(data?.detection?.acquired_at || hotspot?.acquired_at)}</span>
             </div>
           </div>
 
@@ -218,7 +237,7 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
               disabled={loading || refreshing}
               title="Query live services and force fresh evidence fusion"
             >
-              {refreshing ? '⏳ Refreshing...' : '🔄 Refresh Evidence'}
+              {refreshing ? 'Refreshing...' : 'Refresh Evidence'}
             </button>
             <button
               type="button"
@@ -226,12 +245,12 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
               onClick={onClose}
               aria-label="Close"
             >
-              ✕
+              <FontAwesomeIcon icon={faXmark} />
             </button>
           </div>
         </div>
 
-        {actionSuccess && <div className="action-success-banner">✅ {actionSuccess}</div>}
+        {actionSuccess && <div className="action-success-banner"><FontAwesomeIcon icon={faCircleCheck} /> {actionSuccess}</div>}
 
         {/* WORKFLOW TAB SWITCHER: INVESTIGATE <-> DECIDE */}
         <div className="incident-workflow-tabs-bar">
@@ -240,14 +259,14 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
             className={`workflow-tab-btn ${activeWorkflowTab === 'INVESTIGATE' ? 'active' : ''}`}
             onClick={() => setActiveWorkflowTab('INVESTIGATE')}
           >
-            🔍 1. INVESTIGATE EVIDENCE
+            <FontAwesomeIcon icon={faMagnifyingGlass} /> 1. INVESTIGATE EVIDENCE
           </button>
           <button
             type="button"
             className={`workflow-tab-btn ${activeWorkflowTab === 'DECIDE' ? 'active' : ''}`}
             onClick={() => setActiveWorkflowTab('DECIDE')}
           >
-            ⚖️ 2. DECISION SUPPORT & PRIORITIZATION
+            <FontAwesomeIcon icon={faScaleBalanced} /> 2. DECISION SUPPORT & PRIORITIZATION
           </button>
         </div>
 
@@ -256,14 +275,16 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
           {/* ACTIVE TAB: DECISION SUPPORT & PRIORITIZATION */}
           {/* ========================================================================= */}
           {activeWorkflowTab === 'DECIDE' && (
-            <DecisionSupportPanel
-              observationId={cleanObservationId}
-              hotspot={hotspot}
-              cluster={cluster}
-              alert={alert}
-              onClose={onClose}
-              onStatusChange={onStatusChange}
-            />
+            <ErrorBoundary fallbackTitle="Decision Support Temporarily Unavailable">
+              <DecisionSupportPanel
+                observationId={cleanObservationId}
+                hotspot={hotspot}
+                cluster={cluster}
+                alert={alert}
+                onClose={onClose}
+                onStatusChange={onStatusChange}
+              />
+            </ErrorBoundary>
           )}
 
           {/* ========================================================================= */}
@@ -281,11 +302,11 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
               </div>
               <div className="skeleton-steps-list">
                 <div className="skeleton-step step-done">
-                  <span className="step-icon">✓</span>
+                  <span className="step-icon"><FontAwesomeIcon icon={faCheck} /></span>
                   <span>NASA FIRMS Radiometric Anomaly</span>
                 </div>
                 <div className="skeleton-step step-done">
-                  <span className="step-icon">✓</span>
+                  <span className="step-icon"><FontAwesomeIcon icon={faCheck} /></span>
                   <span>Multi-Pass Spatial-Temporal Persistence</span>
                 </div>
                 <div className="skeleton-step step-active">
@@ -305,7 +326,7 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
           {/* ========================================================================= */}
           {!loading && error && (
             <div className="investigation-error-banner" role="alert">
-              <div className="error-icon">⚠️</div>
+              <div className="error-icon"><FontAwesomeIcon icon={faTriangleExclamation} /></div>
               <div className="error-content">
                 <h4 className="error-heading">Investigation Temporarily Unavailable</h4>
                 <p className="error-message">{error}</p>
@@ -315,14 +336,14 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
                     className="btn-retry-investigation"
                     onClick={() => fetchInvestigationData(false)}
                   >
-                    🔄 Retry Investigation
+                    <FontAwesomeIcon icon={faArrowsRotate} /> Retry Investigation
                   </button>
                   <button
                     type="button"
                     className="btn-retry-force"
                     onClick={() => fetchInvestigationData(true)}
                   >
-                    ⚡ Force Live Query
+                    <FontAwesomeIcon icon={faBolt} /> Force Live Query
                   </button>
                 </div>
               </div>
@@ -338,7 +359,7 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
               {data.warnings && data.warnings.length > 0 && (
                 <div className="investigation-system-warnings" role="alert">
                   <div className="warning-banner-header">
-                    <span className="warning-icon">⚠️</span>
+                    <span className="warning-icon"><FontAwesomeIcon icon={faTriangleExclamation} /></span>
                     <strong>System Operational Warnings ({data.warnings.length}):</strong>
                   </div>
                   <ul className="warnings-list">
@@ -355,7 +376,7 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
               {data.fusion.conflict_detected && (
                 <div className="investigation-conflict-banner" role="alert">
                   <div className="conflict-banner-header">
-                    <span className="conflict-icon">⚡</span>
+                    <span className="conflict-icon"><FontAwesomeIcon icon={faBolt} /></span>
                     <strong>Evidence Conflict Detected</strong>
                   </div>
                   <div className="conflict-banner-body">
@@ -370,7 +391,7 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
               <div className="investigation-section fusion-highlight-section">
                 <div className="section-header">
                   <span className="section-number">AI</span>
-                  <span className="section-icon">🤖</span>
+                  <span className="section-icon"><FontAwesomeIcon icon={faRobot} /></span>
                   <h3 className="section-title">AI CANDIDATE CLASSIFICATION</h3>
                   <span className={`section-tag ${getCandidateBadgeClass(data.fusion.candidate_class)}`}>
                     Candidate Output
@@ -413,19 +434,19 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
                   {data.fusion.contributing_factors && (
                     <div className="fusion-contributors-row">
                       <div className="contributor-item">
-                        <span className="c-label">🔥 Thermal Radiance:</span>
+                        <span className="c-label"><FontAwesomeIcon icon={faFire} /> Thermal Radiance:</span>
                         <strong className="c-val">{((data.fusion.contributing_factors.thermal_anomaly ?? 0) * 100).toFixed(0)}%</strong>
                       </div>
                       <div className="contributor-item">
-                        <span className="c-label">🔄 Persistence:</span>
+                        <span className="c-label"><FontAwesomeIcon icon={faArrowsRotate} /> Persistence:</span>
                         <strong className="c-val">{((data.fusion.contributing_factors.persistence ?? 0) * 100).toFixed(0)}%</strong>
                       </div>
                       <div className="contributor-item">
-                        <span className="c-label">🏭 Industrial Context:</span>
+                        <span className="c-label"><FontAwesomeIcon icon={faIndustry} /> Industrial Context:</span>
                         <strong className="c-val">{((data.fusion.contributing_factors.industrial_context ?? 0) * 100).toFixed(0)}%</strong>
                       </div>
                       <div className="contributor-item">
-                        <span className="c-label">🛰️ Sentinel-2 CNN:</span>
+                        <span className="c-label"><FontAwesomeIcon icon={faSatellite} /> Sentinel-2 CNN:</span>
                         <strong className="c-val">{((data.fusion.contributing_factors.sentinel2_cnn ?? 0) * 100).toFixed(0)}%</strong>
                       </div>
                     </div>
@@ -453,13 +474,13 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
               <div className="investigation-section">
                 <div className="section-header">
                   <span className="section-number">1</span>
-                  <span className="section-icon">🔥</span>
+                  <span className="section-icon"><FontAwesomeIcon icon={faFire} /></span>
                   <h3 className="section-title">NEAR-REAL-TIME SATELLITE THERMAL ANOMALY DETECTION</h3>
                   <span className="section-tag tag-firms">NASA FIRMS</span>
                 </div>
 
                 <div className="firms-explanation-tooltip">
-                  ℹ️ FIRMS detects thermal anomalies from satellite observations. A thermal anomaly is not necessarily an industrial fire.
+                  <FontAwesomeIcon icon={faInfoCircle} className="mr-1 text-green" /> FIRMS detects thermal anomalies from satellite observations. A thermal anomaly is not necessarily an industrial fire.
                 </div>
 
                 <div className="section-grid-3">
@@ -494,7 +515,7 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
               <div className="investigation-section">
                 <div className="section-header">
                   <span className="section-number">2</span>
-                  <span className="section-icon">🔄</span>
+                  <span className="section-icon"><FontAwesomeIcon icon={faArrowsRotate} /></span>
                   <h3 className="section-title">PERSISTENCE & REPEATED DETECTIONS</h3>
                   <span className={`section-tag ${data.persistence.observation_count > 1 ? 'tag-persistent' : 'tag-transient'}`}>
                     {data.persistence.observation_count > 1 ? 'Recurrent Multi-Pass' : 'Single Detection'}
@@ -532,7 +553,7 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
                   </div>
                   <div className="meter-caption">
                     {(data.persistence.score ?? 0) >= 60
-                      ? '⚠️ High recurrence signature across multiple satellite orbits, characteristic of continuous industrial operations (flares/kilns) or prolonged burns.'
+                      ? 'High recurrence signature across multiple satellite orbits, characteristic of continuous industrial operations (flares/kilns) or prolonged burns.'
                       : (data.persistence.score ?? 0) >= 30
                       ? 'Moderate recurrence signature across 24h window.'
                       : 'Low persistence score; transient thermal signature or single satellite pass.'}
@@ -546,7 +567,7 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
               <div className="investigation-section">
                 <div className="section-header">
                   <span className="section-number">3</span>
-                  <span className="section-icon">🏭</span>
+                  <span className="section-icon"><FontAwesomeIcon icon={faIndustry} /></span>
                   <h3 className="section-title">INDUSTRIAL CONTEXT</h3>
                   <span className="section-tag tag-osm">OpenStreetMap 5km</span>
                 </div>
@@ -554,7 +575,7 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
                 <div className="industrial-context-content">
                   <div className="facility-highlight-card">
                     <div className="facility-headline">
-                      <span className="facility-icon">🏭</span>
+                      <span className="facility-icon"><FontAwesomeIcon icon={faIndustry} /></span>
                       <div>
                         <h4 className="facility-name">
                           {data.industrial_context.nearest_facility || 'No nearby mapped industrial infrastructure'}
@@ -601,7 +622,7 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
               <div className="investigation-section">
                 <div className="section-header">
                   <span className="section-number">4</span>
-                  <span className="section-icon">🛰️</span>
+                  <span className="section-icon"><FontAwesomeIcon icon={faSatellite} /></span>
                   <h3 className="section-title">SENTINEL-2 MULTISPECTRAL OPTICAL EVIDENCE</h3>
                   <span className="section-tag tag-copernicus">Copernicus Sentinel-2</span>
                 </div>
@@ -620,7 +641,7 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
               <div className="investigation-section">
                 <div className="section-header">
                   <span className="section-number">5</span>
-                  <span className="section-icon">⚖️</span>
+                  <span className="section-icon"><FontAwesomeIcon icon={faScaleBalanced} /></span>
                   <h3 className="section-title">OPERATIONAL RISK ASSESSMENT</h3>
                   <span className={`section-tag ${getRiskBadgeClass(data.risk.risk_level)}`}>
                     {data.risk.risk_level} RISK
@@ -668,7 +689,7 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
                   aria-expanded={provenanceExpanded}
                 >
                   <span className="section-number">6</span>
-                  <span className="section-icon">📜</span>
+                  <span className="section-icon"><FontAwesomeIcon icon={faFileLines} /></span>
                   <h3 className="section-title">EVIDENCE PROVENANCE & AUDIT TRAIL</h3>
                   <span className="expand-indicator">{provenanceExpanded ? '▲ Collapse' : '▼ Expand'}</span>
                 </div>
@@ -709,7 +730,7 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
                           <th>Synthetic Imagery Safety Flag</th>
                           <td>
                             <span className={data.sentinel2.is_synthetic ? 'flag-bad' : 'flag-good'}>
-                              {data.sentinel2.is_synthetic ? '⚠️ TRUE (Synthetic Data)' : '✓ FALSE (Genuine Data Only)'}
+                              {data.sentinel2.is_synthetic ? 'TRUE (Synthetic Data)' : 'FALSE (Genuine Data Only)'}
                             </span>
                           </td>
                         </tr>
@@ -732,7 +753,7 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
               {/* ========================================================================= */}
               <div className="investigation-disclaimers-card">
                 <div className="disclaimer-header">
-                  <span>ℹ️</span>
+                  <span><FontAwesomeIcon icon={faInfoCircle} /></span>
                   <strong>Regulatory & Operational Disclaimers</strong>
                 </div>
                 <div className="disclaimers-body">
@@ -765,28 +786,28 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
                     className="btn-action btn-acknowledge"
                     onClick={() => handleAction('ACKNOWLEDGED')}
                   >
-                    👁️ Acknowledge
+                    <FontAwesomeIcon icon={faEye} /> Acknowledge
                   </button>
                   <button
                     type="button"
                     className="btn-action btn-investigate"
                     onClick={() => handleAction('INVESTIGATING')}
                   >
-                    🔍 Mark Investigating
+                    <FontAwesomeIcon icon={faMagnifyingGlass} /> Mark Investigating
                   </button>
                   <button
                     type="button"
                     className="btn-action btn-resolve"
                     onClick={() => handleAction('RESOLVED')}
                   >
-                    ✅ Mark Resolved
+                    <FontAwesomeIcon icon={faCircleCheck} /> Mark Resolved
                   </button>
                   <button
                     type="button"
                     className="btn-action btn-dismiss"
                     onClick={() => handleAction('DISMISSED')}
                   >
-                    ✕ Dismiss
+                    <FontAwesomeIcon icon={faXmark} /> Dismiss
                   </button>
                 </div>
               </div>

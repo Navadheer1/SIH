@@ -1,3 +1,15 @@
+import {
+  faBolt,
+  faCheck,
+  faCircleCheck,
+  faClock,
+  faFileLines,
+  faLocationDot,
+  faMagnifyingGlass,
+  faRobot,
+  faXmark,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useState, useEffect } from 'react';
 import { ThermalAlert, FusedEvidenceResponse } from '../types/hotspot';
 import { getApiUrl } from '../config/api';
@@ -105,7 +117,7 @@ export const AlertDetailPanel: React.FC<AlertDetailPanelProps> = ({
           <p className="panel-subtitle">ID: {alert.alert_id}</p>
         </div>
         <button className="panel-close-btn" onClick={onClose}>
-          ✕
+          <FontAwesomeIcon icon={faXmark} />
         </button>
       </div>
 
@@ -133,7 +145,7 @@ export const AlertDetailPanel: React.FC<AlertDetailPanelProps> = ({
             className="btn-open-workspace"
             onClick={() => onOpenInvestigation(alert)}
           >
-            ⚡ Open Full Investigation Workspace
+            <FontAwesomeIcon icon={faBolt} /> Open Full Investigation Workspace
           </button>
         )}
 
@@ -146,7 +158,7 @@ export const AlertDetailPanel: React.FC<AlertDetailPanelProps> = ({
 
         {/* Classification Card */}
         <div className="alert-section-box">
-          <div className="box-title">🤖 AI Candidate Classification</div>
+          <div className="box-title"><FontAwesomeIcon icon={faRobot} /> AI Candidate Classification</div>
           <div className="box-content">
             <div className="highlight-text">{alert.classification.replace(/_/g, ' ')}</div>
             <div className="small-meta">Model Source: {alert.model_source}</div>
@@ -155,7 +167,7 @@ export const AlertDetailPanel: React.FC<AlertDetailPanelProps> = ({
 
         {/* Location & Facility Context */}
         <div className="alert-section-box">
-          <div className="box-title">📍 Location & Infrastructure Proximity</div>
+          <div className="box-title"><FontAwesomeIcon icon={faLocationDot} /> Location & Infrastructure Proximity</div>
           <div className="box-content">
             <div className="meta-row">
               <span>Coordinates:</span>
@@ -176,7 +188,7 @@ export const AlertDetailPanel: React.FC<AlertDetailPanelProps> = ({
 
         {/* Persistence Metrics */}
         <div className="alert-section-box">
-          <div className="box-title">🕐 Spatial-Temporal Persistence</div>
+          <div className="box-title"><FontAwesomeIcon icon={faClock} /> Spatial-Temporal Persistence</div>
           <div className="box-content">
             <div className="meta-row">
               <span>Persistence Score:</span>
@@ -195,11 +207,11 @@ export const AlertDetailPanel: React.FC<AlertDetailPanelProps> = ({
 
         {/* Supporting Evidence List */}
         <div className="alert-section-box">
-          <div className="box-title">📋 Supporting Evidence Rationale</div>
+          <div className="box-title"><FontAwesomeIcon icon={faFileLines} /> Supporting Evidence Rationale</div>
           <ul className="alert-evidence-list">
             {alert.evidence.map((ev, idx) => (
               <li key={`ev-${idx}`} className="evidence-item">
-                ✓ {ev}
+                <FontAwesomeIcon icon={faCheck} className="mr-1" /> {ev}
               </li>
             ))}
           </ul>
@@ -233,10 +245,10 @@ export const AlertDetailPanel: React.FC<AlertDetailPanelProps> = ({
               {alert.status === 'NEW' && (
                 <>
                   <button className="btn btn-primary" onClick={() => handleActionClick('acknowledge')}>
-                    ✓ Acknowledge Alert
+                    <FontAwesomeIcon icon={faCheck} /> Acknowledge Alert
                   </button>
                   <button className="btn btn-secondary" onClick={() => handleActionClick('dismiss')}>
-                    ✕ Dismiss
+                    <FontAwesomeIcon icon={faXmark} /> Dismiss
                   </button>
                 </>
               )}
@@ -244,13 +256,13 @@ export const AlertDetailPanel: React.FC<AlertDetailPanelProps> = ({
               {alert.status === 'ACKNOWLEDGED' && (
                 <>
                   <button className="btn btn-primary" onClick={() => handleActionClick('investigate')}>
-                    🔍 Start Investigation
+                    <FontAwesomeIcon icon={faMagnifyingGlass} /> Start Investigation
                   </button>
                   <button className="btn btn-secondary" onClick={() => handleActionClick('resolve')}>
-                    ✅ Resolve Alert
+                    <FontAwesomeIcon icon={faCircleCheck} /> Resolve Alert
                   </button>
                   <button className="btn btn-secondary" onClick={() => handleActionClick('dismiss')}>
-                    ✕ Dismiss
+                    <FontAwesomeIcon icon={faXmark} /> Dismiss
                   </button>
                 </>
               )}
@@ -258,10 +270,10 @@ export const AlertDetailPanel: React.FC<AlertDetailPanelProps> = ({
               {alert.status === 'INVESTIGATING' && (
                 <>
                   <button className="btn btn-primary" onClick={() => handleActionClick('resolve')}>
-                    ✅ Mark as Resolved
+                    <FontAwesomeIcon icon={faCircleCheck} /> Mark as Resolved
                   </button>
                   <button className="btn btn-secondary" onClick={() => handleActionClick('dismiss')}>
-                    ✕ Dismiss
+                    <FontAwesomeIcon icon={faXmark} /> Dismiss
                   </button>
                 </>
               )}

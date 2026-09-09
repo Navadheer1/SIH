@@ -418,5 +418,65 @@
         }
       }
     ]
+  },
+  "04e53a2f16d0d665": {
+    "state": {
+      "observation_id": "04e53a2f16d0d665",
+      "status": "NEW",
+      "priority_level": "LOW",
+      "priority_index": "P4",
+      "assigned_agency": null,
+      "last_updated_at": "2026-09-09T07:41:34.814379+00:00",
+      "last_updated_by": "System Pipeline",
+      "total_actions_count": 1
+    },
+    "audit_trail": [
+      {
+        "id": "AUDIT-INIT-974A8FF5",
+        "observation_id": "04e53a2f16d0d665",
+        "timestamp": "2026-09-09T07:41:34.814379+00:00",
+        "actor": "System Pipeline",
+        "actor_type": "AUTOMATED_PIPELINE",
+        "action": "HOTSPOT_DETECTED",
+        "previous_status": null,
+        "new_status": "NEW",
+        "target_agency": null,
+        "notes": "Radiometric thermal anomaly ingested from NASA FIRMS sensor stream.",
+        "metadata": {
+          "source": "NASA FIRMS",
+          "lifecycle_stage": "DETECT"
+        }
+      }
+    ]
+  },
+  "1415461f261aac2e": {
+    "state": {
+      "observation_id": "1415461f261aac2e",
+      "status": "NEW",
+      "priority_level": "LOW",
+      "priority_index": "P4",
+      "assigned_agency": null,
+      "last_updated_at": "2026-09-09T08:40:52.740179+00:00",
+      "last_updated_by": "System Pipeline",
+      "total_actions_count": 1
+    },
+    "audit_trail": [
+      {
+        "id": "AUDIT-INIT-AF8DBDB6",
+        "observation_id": "1415461f261aac2e",
+        "timestamp": "2026-09-09T08:40:52.740179+00:00",
+        "actor": "System Pipeline",
+        "actor_type": "AUTOMATED_PIPELINE",
+        "action": "HOTSPOT_DETECTED",
+        "previous_status": null,
+        "new_status": "NEW",
+        "target_agency": null,
+        "notes": "Radiometric thermal anomaly ingested from NASA FIRMS sensor stream.",
+        "metadata": {
+          "source": "NASA FIRMS",
+          "lifecycle_stage": "DETECT"
+        }
+      }
+    ]
   }
 }

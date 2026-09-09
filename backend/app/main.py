@@ -29,7 +29,7 @@ from app.services.firms_ingestion_service import (
     load_stored_observations,
     get_latest_firms_observation,
 )
-from app.services.osm_service import fetch_hotspot_osm_context, DEFAULT_SEARCH_RADIUS_KM
+from app.services.osm_service import fetch_hotspot_osm_context, get_cached_osm_context, DEFAULT_SEARCH_RADIUS_KM
 from app.services.persistence_service import detect_persistent_clusters, DEFAULT_CLUSTER_RADIUS_KM
 from app.ml.classifier import classify_thermal_event
 from app.services.risk_service import calculate_risk_score
@@ -543,69 +543,191 @@ async def get_hotspot_risk(
 @app.get("/api/hotspots/priority-ranking")
 async def get_priority_ranking(
     region: str = Query("india", description="Predefined region: 'india' or 'andhra_pradesh'"),
-    limit: int = Query(10, description="Number of top priority items to return")
+    limit: int = Query(10, description="Number of top priority items to return"),
+    enrich: bool = Query(False, description="Attempt live OSM enrichment for uncached candidates (capped at 1.0s)")
 ):
     """
-    Highest Risk Thermal Events Leaderboard.
-    Ranks spatial-temporal clusters by investigation priority score (0 - 100).
+    Real Geospatial Proximity-Based Threat Prioritization Engine.
+    NON-BLOCKING:
+      - Uses genuine FIRMS thermal hotspots / persistent clusters.
+      - Uses fast in-memory OSM cache if available.
+      - Never blocks or hangs on external network calls.
+      - Deterministic multi-factor risk scoring based on available thermal & geospatial ground truth.
     """
     try:
-        clusters_res = await detect_persistent_clusters(region=region, min_score=20.0)
+        # 1. Fetch clusters and top thermal observations
+        clusters_res = await detect_persistent_clusters(region=region, min_score=0.0)
         clusters_list = clusters_res.get("clusters", [])
 
-        if len(clusters_list) < limit:
-            clusters_res_all = await detect_persistent_clusters(region=region, min_score=0.0)
-            clusters_list = clusters_res_all.get("clusters", [])
+        # If zero clusters, fallback to raw FIRMS hotspots
+        raw_candidates = []
+        if clusters_list:
+            sorted_clusters = sorted(
+                clusters_list,
+                key=lambda c: (c.get("persistence_score", 0), c.get("observation_count", 0)),
+                reverse=True
+            )[:min(8, limit)]
+            raw_candidates = sorted_clusters
+        else:
+            raw_firms = await fetch_firms_hotspots(region=region)
+            hotspots_list = raw_firms.get("hotspots", [])
+            for idx, h in enumerate(hotspots_list[:min(8, limit)]):
+                raw_candidates.append({
+                    "cluster_id": h.get("observation_id") or f"hotspot_{idx + 1}",
+                    "center_latitude": h["latitude"],
+                    "center_longitude": h["longitude"],
+                    "observations": [h],
+                    "observation_count": 1,
+                    "duration_hours": 0.0,
+                    "spatial_radius_km": 0.0,
+                    "persistence_score": 15.0,
+                })
 
-        sorted_candidates = sorted(
-            clusters_list,
-            key=lambda c: (c.get("persistence_score", 0), c.get("observation_count", 0)),
-            reverse=True
-        )[:limit * 2]
+        # 2. Resolve OSM context: Check fast cache first; query live ONLY if enrich=True with strict 1.0s timeout
+        osm_contexts = []
+        uncached_candidates = []
+        for cl in raw_candidates:
+            c_lat = cl.get("center_latitude") or cl.get("latitude")
+            c_lon = cl.get("center_longitude") or cl.get("longitude")
+            cached_ctx = get_cached_osm_context(c_lat, c_lon, radius_km=5.0)
+            if cached_ctx:
+                osm_contexts.append(cached_ctx)
+            else:
+                osm_contexts.append(None)
+                uncached_candidates.append((len(osm_contexts) - 1, cl, c_lat, c_lon))
 
+        if enrich and uncached_candidates:
+            async def fast_fetch(idx, lat, lon):
+                try:
+                    res = await fetch_hotspot_osm_context(lat=lat, lon=lon, radius_km=5.0)
+                    return idx, res
+                except Exception:
+                    return idx, None
+
+            try:
+                tasks = [fast_fetch(idx, lat, lon) for idx, _, lat, lon in uncached_candidates]
+                results = await asyncio.wait_for(asyncio.gather(*tasks), timeout=1.0)
+                for idx, res in results:
+                    if res:
+                        osm_contexts[idx] = res
+            except Exception as e:
+                logger.info(f"Live OSM enrichment timed out or skipped: {e}")
+
+        # 3. Calculate deterministic threat risk and assemble rich priority incidents
         ranked_items = []
-        for cl in sorted_candidates:
-            c_lat = cl["center_latitude"]
-            c_lon = cl["center_longitude"]
-            top_obs = cl["observations"][0] if cl["observations"] else {}
+        priority_weights = {"CRITICAL": 4, "HIGH": 3, "MODERATE": 2, "LOW": 1}
+
+        for cl, osm_ctx in zip(raw_candidates, osm_contexts):
+            c_lat = cl.get("center_latitude") or cl.get("latitude")
+            c_lon = cl.get("center_longitude") or cl.get("longitude")
+            top_obs = cl["observations"][0] if cl.get("observations") else {}
+
+            frp_val = float(top_obs.get("frp") or 0.0)
+            bright_val = float(top_obs.get("brightness") or 320.0)
+            conf_val = top_obs.get("confidence", "nominal")
+
+            # Fallback structure if OSM context unavailable
+            if not osm_ctx:
+                osm_ctx = {
+                    "nearby_features": [],
+                    "context_classification": "UNCLASSIFIED",
+                    "closest_critical_asset": None,
+                    "closest_industrial": None,
+                    "category_summary": {},
+                    "facility_count": 0,
+                    "data_status": "OSM_UNAVAILABLE"
+                }
 
             spot_dict = {
                 "latitude": c_lat,
                 "longitude": c_lon,
-                "frp": top_obs.get("frp", 0.0),
-                "brightness": top_obs.get("brightness", 320.0),
-                "confidence": top_obs.get("confidence", "nominal"),
-                "observation_count": cl["observation_count"],
-                "duration_hours": cl["duration_hours"],
-                "spatial_radius_km": cl["spatial_radius_km"],
-                "persistence_score": cl["persistence_score"],
-                "industrial_context": cl.get("industrial_context")
+                "frp": frp_val,
+                "brightness": bright_val,
+                "confidence": conf_val,
+                "observation_count": cl.get("observation_count", 1),
+                "duration_hours": cl.get("duration_hours", 0.0),
+                "spatial_radius_km": cl.get("spatial_radius_km", 0.0),
+                "persistence_score": cl.get("persistence_score", 15.0),
+                "industrial_context": osm_ctx
             }
 
-            ai_res = classify_thermal_event(spot_dict, osm_context=cl.get("industrial_context"))
-            risk_res = calculate_risk_score(spot_dict, osm_context=cl.get("industrial_context"), ai_classification=ai_res)
+            # Deterministic multi-factor risk calculation
+            risk_res = calculate_risk_score(spot_dict, osm_context=osm_ctx)
 
-            ind_ctx = cl.get("industrial_context") or {}
-            facility_name = ind_ctx.get("nearby_facility") or "None"
-            dist_km = ind_ctx.get("distance_km")
+            # Extract features strictly within 5 km
+            nearby_features = [f for f in osm_ctx.get("nearby_features", []) if f.get("distance_km", 999) <= 5.0]
+            closest_crit = risk_res.get("closest_critical_asset") or osm_ctx.get("closest_critical_asset")
+            closest_ind = osm_ctx.get("closest_industrial")
+
+            facility_name = None
+            facility_dist = None
+            if closest_crit:
+                facility_name = closest_crit.get("name")
+                facility_dist = closest_crit.get("distance_km")
+            elif closest_ind:
+                facility_name = closest_ind.get("name")
+                facility_dist = closest_ind.get("distance_km")
+            elif osm_ctx.get("context_classification") == "FOREST":
+                facility_name = "Forest / Woodland Terrain (No mapped facilities within 5 km)"
+            elif osm_ctx.get("context_classification") == "AGRICULTURAL":
+                facility_name = "Agricultural Farmland (No mapped facilities within 5 km)"
+            else:
+                facility_name = "Thermal Anomaly (5 KM enrichment pending)"
+
+            # Recommended action based on deterministic priority
+            pri_level = risk_res["risk_level"]
+            if pri_level == "CRITICAL":
+                rec_action = "Immediate multi-agency emergency response & field verification required"
+            elif pri_level == "HIGH":
+                rec_action = "Priority operational assessment & local authority notification"
+            elif pri_level == "MODERATE":
+                rec_action = "Routine satellite surveillance & automated trajectory monitoring"
+            else:
+                rec_action = "Periodic monitoring; no immediate intervention required"
+
+            data_status = osm_ctx.get("data_status") or ("READY" if nearby_features else "OSM_UNAVAILABLE")
 
             ranked_items.append({
                 "rank": 0,
-                "cluster_id": cl["cluster_id"],
+                "cluster_id": cl.get("cluster_id") or f"hotspot_{c_lat}_{c_lon}",
+                "hotspot_id": top_obs.get("observation_id") or cl.get("cluster_id"),
                 "latitude": c_lat,
                 "longitude": c_lon,
+                "frp": frp_val,
+                "brightness": bright_val,
+                "confidence": conf_val,
                 "risk_score": risk_res["risk_score"],
-                "risk_level": risk_res["risk_level"],
-                "classification": ai_res["classification"],
+                "risk_level": pri_level,
+                "priority": pri_level,
+                "classification": risk_res["classification"].replace("_", " ").title(),
                 "industrial_facility": facility_name,
-                "industrial_distance_km": dist_km,
-                "persistence_score": cl["persistence_score"],
-                "observation_count": cl["observation_count"],
-                "duration_hours": cl["duration_hours"],
-                "reasons": risk_res["reasons"]
+                "industrial_distance_km": facility_dist,
+                "closest_critical_asset": closest_crit,
+                "exposed_assets_count": len(nearby_features),
+                "exposure_summary": osm_ctx.get("category_summary", {}),
+                "nearby_features": nearby_features,
+                "data_status": data_status,
+                "persistence_score": cl.get("persistence_score", 15.0),
+                "observation_count": cl.get("observation_count", 1),
+                "duration_hours": cl.get("duration_hours", 0.0),
+                "reasons": risk_res["reasons"],
+                "recommended_action": rec_action,
+                "components": risk_res.get("components", {}),
+                "data_source": "NASA FIRMS" + (" & OpenStreetMap" if nearby_features else "")
             })
 
-        ranked_items.sort(key=lambda x: x["risk_score"], reverse=True)
+        # 4. Strict multi-criteria sorting:
+        #    a. Priority level (CRITICAL > HIGH > MODERATE > LOW)
+        #    b. Risk score descending
+        #    c. Closest critical exposure distance ascending
+        ranked_items.sort(
+            key=lambda x: (
+                priority_weights.get(x["risk_level"], 0),
+                x["risk_score"],
+                -(x["industrial_distance_km"] if x["industrial_distance_km"] is not None else 999.0)
+            ),
+            reverse=True
+        )
 
         final_top = ranked_items[:limit]
         for i, item in enumerate(final_top):
@@ -614,13 +736,52 @@ async def get_priority_ranking(
         return {
             "region": region,
             "total_ranked": len(final_top),
-            "priority_events": final_top
+            "priority_events": final_top,
+            "rankings": final_top
         }
     except Exception as e:
+        logger.error(f"Priority ranking error: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Priority ranking error: {str(e)}"
         )
+
+
+@app.get("/api/hotspots/{hotspot_id}/enrich-osm")
+async def enrich_hotspot_osm(
+    hotspot_id: str,
+    lat: float = Query(..., description="Latitude of hotspot"),
+    lon: float = Query(..., description="Longitude of hotspot"),
+    radius_km: float = Query(5.0, description="Analysis radius <= 5.0 km")
+):
+    """
+    On-demand 5 KM OpenStreetMap geospatial proximity enrichment for a selected hotspot.
+    Strictly bounded with timeout; populates in-memory cache upon completion.
+    """
+    try:
+        ctx = await asyncio.wait_for(fetch_hotspot_osm_context(lat=lat, lon=lon, radius_km=radius_km), timeout=2.0)
+        return {
+            "hotspot_id": hotspot_id,
+            "latitude": lat,
+            "longitude": lon,
+            "data_status": ctx.get("data_status", "OSM_UNAVAILABLE"),
+            "facility_count": ctx.get("facility_count", 0),
+            "nearby_features": ctx.get("nearby_features", []),
+            "closest_critical_asset": ctx.get("closest_critical_asset"),
+            "category_summary": ctx.get("category_summary", {}),
+        }
+    except Exception as e:
+        logger.warning(f"On-demand OSM enrichment failed for {hotspot_id}: {e}")
+        return {
+            "hotspot_id": hotspot_id,
+            "latitude": lat,
+            "longitude": lon,
+            "data_status": "OSM_UNAVAILABLE",
+            "facility_count": 0,
+            "nearby_features": [],
+            "closest_critical_asset": None,
+            "category_summary": {},
+        }
 
 
 # =====================================================================

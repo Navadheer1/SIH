@@ -1,3 +1,13 @@
+import {
+  faCheck,
+  faFire,
+  faInfoCircle,
+  faMagnifyingGlass,
+  faSatellite,
+  faTriangleExclamation,
+  faXmark,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useState } from 'react';
 import { FusedEvidenceResponse, SatelliteEvidence } from '../types/hotspot';
 import { getAssetUrl } from '../config/api';
@@ -48,7 +58,7 @@ export const SatelliteEvidenceCard: React.FC<SatelliteEvidenceCardProps> = ({
     return (
       <div className="satellite-evidence-card loading-skeleton">
         <div className="skeleton-title">
-          <span>🛰️</span> Querying Copernicus STAC Catalog & Sentinel Hub...
+          <FontAwesomeIcon icon={faSatellite} spin className="mr-2" /> Querying Copernicus STAC Catalog & Sentinel Hub...
         </div>
       </div>
     );
@@ -117,7 +127,7 @@ export const SatelliteEvidenceCard: React.FC<SatelliteEvidenceCardProps> = ({
         {/* CARD TOP BAR */}
         <div className="sat-card-header">
           <div className="sat-title-group">
-            <span className="sat-icon">🛰️</span>
+            <span className="sat-icon"><FontAwesomeIcon icon={faSatellite} /></span>
             <div className="sat-title-column">
               <h4 className="sat-title-text">SENTINEL-2 OPTICAL EVIDENCE</h4>
               <span className="sat-provenance-sub">
@@ -129,15 +139,15 @@ export const SatelliteEvidenceCard: React.FC<SatelliteEvidenceCardProps> = ({
           <div className="sat-status-badge-container">
             {isAvailable && !isSynthetic ? (
               <span className="sat-badge-available">
-                ✓ REAL IMAGE AVAILABLE
+                <FontAwesomeIcon icon={faCheck} className="mr-1" /> REAL IMAGE AVAILABLE
               </span>
             ) : isSynthetic ? (
               <span className="sat-badge-synthetic">
-                ⚠️ SYNTHETIC TEST DATA
+                <FontAwesomeIcon icon={faTriangleExclamation} className="mr-1" /> SYNTHETIC TEST DATA
               </span>
             ) : (
               <span className="sat-badge-unavailable">
-                ✖ NOT AVAILABLE
+                <FontAwesomeIcon icon={faXmark} className="mr-1" /> NOT AVAILABLE
               </span>
             )}
           </div>
@@ -198,7 +208,7 @@ export const SatelliteEvidenceCard: React.FC<SatelliteEvidenceCardProps> = ({
               {showGradCam && (
                 <div className="gradcam-overlay-sim">
                   <div className="gradcam-core-pulse" />
-                  <span className="gradcam-tag">🔥 Thermal Focus Overlay</span>
+                  <span className="gradcam-tag"><FontAwesomeIcon icon={faFire} className="mr-1" /> Thermal Focus Overlay</span>
                 </div>
               )}
             </div>
@@ -209,7 +219,7 @@ export const SatelliteEvidenceCard: React.FC<SatelliteEvidenceCardProps> = ({
                 className="btn-open-full-image"
                 onClick={() => setIsModalOpen(true)}
               >
-                🔍 Open Full Image
+                <FontAwesomeIcon icon={faMagnifyingGlass} className="mr-1" /> Open Full Image
               </button>
 
               {sat?.gradcam_overlay_path && (
@@ -218,14 +228,14 @@ export const SatelliteEvidenceCard: React.FC<SatelliteEvidenceCardProps> = ({
                   className="btn-toggle-gradcam"
                   onClick={() => setShowGradCam(!showGradCam)}
                 >
-                  {showGradCam ? '👁️ Raw Optical' : '🔥 Focus Heatmap'}
+                  {showGradCam ? 'Raw Optical' : 'Focus Heatmap'}
                 </button>
               )}
             </div>
           </div>
         ) : (
           <div className="sat-unavailable-presentation-box">
-            <div className="unavail-icon">🛰️</div>
+            <div className="unavail-icon"><FontAwesomeIcon icon={faSatellite} /></div>
             <div className="unavail-title">NOT AVAILABLE</div>
             <p className="unavail-message">
               {sat?.error_message ||
@@ -242,7 +252,7 @@ export const SatelliteEvidenceCard: React.FC<SatelliteEvidenceCardProps> = ({
             <span className="distinction-pill pill-not-thermal">Not a thermal fire confirmation</span>
           </div>
           <div className="distinction-expl-text">
-            ℹ️ <strong>NASA FIRMS</strong> provides the thermal anomaly detection. <strong>Sentinel-2</strong> provides optical imagery for visual context.
+            <FontAwesomeIcon icon={faInfoCircle} className="mr-1 text-green" /> <strong>NASA FIRMS</strong> provides the thermal anomaly detection. <strong>Sentinel-2</strong> provides optical imagery for visual context.
           </div>
         </div>
       </div>
@@ -253,7 +263,7 @@ export const SatelliteEvidenceCard: React.FC<SatelliteEvidenceCardProps> = ({
           <div className="sat-lightbox-modal" onClick={(e) => e.stopPropagation()}>
             <div className="lightbox-header">
               <div className="lightbox-title-group">
-                <span className="lightbox-icon">🛰️</span>
+                <span className="lightbox-icon"><FontAwesomeIcon icon={faSatellite} /></span>
                 <div>
                   <h3 className="lightbox-title">SENTINEL-2 OPTICAL EVIDENCE</h3>
                   <span className="lightbox-subtitle">{providerName} • {productName}</span>
@@ -265,7 +275,7 @@ export const SatelliteEvidenceCard: React.FC<SatelliteEvidenceCardProps> = ({
                 onClick={() => setIsModalOpen(false)}
                 aria-label="Close modal"
               >
-                ✕
+                <FontAwesomeIcon icon={faXmark} />
               </button>
             </div>
 
@@ -323,12 +333,12 @@ export const SatelliteEvidenceCard: React.FC<SatelliteEvidenceCardProps> = ({
 
                 {cloudStatus && cloudStatus.level === 'HIGH' && (
                   <div className="lightbox-cloud-alert">
-                    ⚠️ <strong>HIGH CLOUD COVER ({cloudCover?.toFixed(1)}%):</strong> {cloudStatus.warning} Visual optical features may be obscured.
+                    <FontAwesomeIcon icon={faTriangleExclamation} /> <strong>HIGH CLOUD COVER ({cloudCover?.toFixed(1)}%):</strong> {cloudStatus.warning} Visual optical features may be obscured.
                   </div>
                 )}
 
                 <div className="lightbox-disclaimer-box">
-                  <strong>ℹ️ Critical Evidence Distinction:</strong>
+                  <strong><FontAwesomeIcon icon={faInfoCircle} className="mr-1 text-green" /> Critical Evidence Distinction:</strong>
                   <p>
                     This Sentinel-2 True-Color image represents reflected sunlight captured during daylight overpass. It is provided strictly as <em>visual supporting context</em> for surface features and land use. Thermal detection and radiative energy are measured independently by <strong>NASA FIRMS</strong> (VIIRS/MODIS sensors).
                   </p>
