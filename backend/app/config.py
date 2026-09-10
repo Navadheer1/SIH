@@ -92,6 +92,13 @@ SATELLITE_METRICS_DIR = os.path.join(PROJECT_ROOT, os.getenv("SATELLITE_METRICS_
 # Runtime Environment (development, staging, production, test)
 ENVIRONMENT = os.getenv("ENVIRONMENT", os.getenv("APP_ENV", "development")).strip() or "development"
 
+# Anomaly Intelligence Agent Configuration (Phase 1, 2, 3)
+GEMINI_API_KEY = (os.getenv("GEMINI_API_KEY") or os.getenv("LLM_API_KEY", "")).strip()
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
+GROQ_API_KEY = (os.getenv("GROQ_API_KEY") or "").strip()
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b").strip()
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini" if GEMINI_API_KEY else ("groq" if GROQ_API_KEY else "gemini")).strip().lower()
+AGENT_MAX_TOOL_CALLS = int(os.getenv("AGENT_MAX_TOOL_CALLS", "6"))
 
 
 def get_config_status() -> dict:
@@ -99,6 +106,7 @@ def get_config_status() -> dict:
     Returns a safe dictionary summarizing configuration status.
     Never exposes API keys or secret tokens.
     """
+    is_configured = bool(GROQ_API_KEY) if LLM_PROVIDER == "groq" else bool(GEMINI_API_KEY)
     return {
         "nasa_firms_map_key_configured": bool(NASA_FIRMS_MAP_KEY),
         "firms_ingest_interval_minutes": FIRMS_INGEST_INTERVAL_MINUTES,
@@ -110,6 +118,9 @@ def get_config_status() -> dict:
         "satellite_max_cloud_cover": SATELLITE_MAX_CLOUD_COVER,
         "satellite_classifier": SATELLITE_CLASSIFIER,
         "environment": ENVIRONMENT,
+        "agent_llm_provider": LLM_PROVIDER,
+        "agent_llm_configured": is_configured,
+        "agent_max_tool_calls": AGENT_MAX_TOOL_CALLS,
     }
 
 

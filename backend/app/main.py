@@ -82,6 +82,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount Anomaly Intelligence Agent router (Phase 1)
+app.include_router(agent_router, prefix="/api/agent", tags=["Anomaly Intelligence Agent"])
+
 
 @app.on_event("startup")
 async def startup_event():

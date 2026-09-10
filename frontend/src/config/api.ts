@@ -6,7 +6,7 @@
  */
 
 export const API_BASE_URL: string = (
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+  (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.VITE_API_BASE_URL) || 'http://localhost:8000'
 ).replace(/\/+$/, '');
 
 /**
@@ -70,8 +70,8 @@ export async function getInvestigation(
 
   const cleanId = observationId.trim();
 
-  // If not forcing refresh and an identical request is in flight, reuse the promise
-  if (!forceRefresh && inFlightInvestigations.has(cleanId)) {
+  // If not forcing refresh, no signal passed or signal not aborted, and an identical request is in flight, reuse the promise
+  if (!forceRefresh && !signal?.aborted && inFlightInvestigations.has(cleanId)) {
     return inFlightInvestigations.get(cleanId)!;
   }
 
@@ -103,6 +103,9 @@ export async function getInvestigation(
 
       const data: import('../types/hotspot').InvestigationResponse = await response.json();
       return data;
+    } catch (err) {
+      inFlightInvestigations.delete(cleanId);
+      throw err;
     } finally {
       // Clean up in-flight registry
       inFlightInvestigations.delete(cleanId);
