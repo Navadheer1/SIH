@@ -751,7 +751,7 @@ export const FireMap: React.FC<FireMapProps> = ({
       <div className="map-layer-toggles-bar">
         {/* BASEMAP SWITCHER */}
         <div className="basemap-switch-controls" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-          <span className="layer-bar-title" style={{ fontWeight: 700, fontSize: '11px', color: '#94a3b8' }}>BASEMAP:</span>
+          <span className="layer-bar-title" style={{ fontWeight: 700, fontSize: '11px', color: '#475569' }}>BASEMAP:</span>
           <button
             type="button"
             className={`layer-toggle-btn ${activeBasemap === 'satellite' ? 'active' : ''}`}
@@ -778,7 +778,7 @@ export const FireMap: React.FC<FireMapProps> = ({
             onClick={() => setRiskDisplayMode('ai_risk')}
             title="AI 2D Risk Propagation Field"
           >
-            <Flame size={12} className="text-orange-400" /> AI Risk Field
+            <Flame size={12} className="text-orange-600" /> AI Risk Field
           </button>
           <button
             type="button"
@@ -786,7 +786,7 @@ export const FireMap: React.FC<FireMapProps> = ({
             onClick={() => setRiskDisplayMode('thermal_field')}
             title="Radiometric Thermal Intensity Field"
           >
-            <Activity size={12} className="text-amber-400" /> Thermal Field
+            <Activity size={12} className="text-amber-600" /> Thermal Field
           </button>
         </div>
 
@@ -798,7 +798,7 @@ export const FireMap: React.FC<FireMapProps> = ({
             onClick={handleIndiaFocus}
             title="Focus camera on Indian subcontinent"
           >
-            <MapPin size={12} className="text-emerald-400" /> India Focus
+            <MapPin size={12} className="text-emerald-600" /> India Focus
           </button>
           <button
             type="button"
@@ -806,7 +806,7 @@ export const FireMap: React.FC<FireMapProps> = ({
             onClick={handleGlobalView}
             title="Global Earth View"
           >
-            <Globe size={12} className="text-blue-400" /> Global View
+            <Globe size={12} className="text-blue-600" /> Global View
           </button>
         </div>
 
@@ -819,7 +819,7 @@ export const FireMap: React.FC<FireMapProps> = ({
               onClick={() => setShowOperationalBuffer(!showOperationalBuffer)}
               title="Toggle 5.0 KM Operational Threat Buffer"
             >
-              <CircleDot size={12} className="text-cyan-400" /> 5km Buffer
+              <CircleDot size={12} className="text-cyan-600" /> 5km Buffer
             </button>
             {threatZones && (
               <button
@@ -828,7 +828,7 @@ export const FireMap: React.FC<FireMapProps> = ({
                 onClick={() => setShowThreatZones(!showThreatZones)}
                 title="Toggle Threat Dispersion Zones"
               >
-                <Shield size={12} className="text-indigo-400" /> Threat Zones
+                <Shield size={12} className="text-indigo-600" /> Threat Zones
               </button>
             )}
           </div>
@@ -1259,7 +1259,7 @@ export const FireMap: React.FC<FireMapProps> = ({
                 <div className="hud-container">
                   <div className="hud-header">
                     <div className="hud-header-title">
-                      <Activity size={13} className="text-cyan-400" />
+                      <Activity size={13} className="text-cyan-600" />
                       <span>INCIDENT TELEMETRY</span>
                     </div>
                     <span className={`hud-badge hud-badge-${(alt.risk_level || 'critical').toLowerCase()}`}>
@@ -1287,7 +1287,7 @@ export const FireMap: React.FC<FireMapProps> = ({
                     </div>
                     <div className="hud-cell hud-cell-full">
                       <span className="hud-cell-label">COORDINATES</span>
-                      <span className="hud-cell-val font-mono text-cyan-300">
+                      <span className="hud-cell-val font-mono text-slate-800">
                         {alt.latitude.toFixed(4)}°N, {alt.longitude.toFixed(4)}°E
                       </span>
                     </div>
@@ -1299,7 +1299,7 @@ export const FireMap: React.FC<FireMapProps> = ({
                     </div>
                     <div className="hud-cell">
                       <span className="hud-cell-label">STATUS</span>
-                      <span className="hud-cell-val text-slate-200">
+                      <span className="hud-cell-val text-slate-700">
                         {alt.status}
                       </span>
                     </div>
@@ -1360,7 +1360,7 @@ export const FireMap: React.FC<FireMapProps> = ({
                   <div className="hud-container">
                     <div className="hud-header">
                       <div className="hud-header-title">
-                        <Flame size={13} className="text-amber-400" />
+                        <Flame size={13} className="text-amber-600" />
                         <span>THERMAL TELEMETRY HUD</span>
                       </div>
                       <span className={`hud-badge hud-badge-${severity.toLowerCase()}`}>
@@ -1388,7 +1388,7 @@ export const FireMap: React.FC<FireMapProps> = ({
                       </div>
                       <div className="hud-cell hud-cell-full">
                         <span className="hud-cell-label">COORDINATES</span>
-                        <span className="hud-cell-val font-mono text-cyan-300">
+                        <span className="hud-cell-val font-mono text-slate-800">
                           {spot.latitude.toFixed(4)}°N, {spot.longitude.toFixed(4)}°E
                         </span>
                       </div>
@@ -1457,7 +1457,7 @@ export const FireMap: React.FC<FireMapProps> = ({
                   <div className="hud-container">
                     <div className="hud-header">
                       <div className="hud-header-title">
-                        <LucideSatellite size={13} className="text-red-400" />
+                        <LucideSatellite size={13} className="text-red-600" />
                         <span>CLUSTER TELEMETRY HUD</span>
                       </div>
                       <span className="hud-badge hud-badge-critical">
@@ -1485,7 +1485,7 @@ export const FireMap: React.FC<FireMapProps> = ({
                       </div>
                       <div className="hud-cell hud-cell-full">
                         <span className="hud-cell-label">COORDINATES</span>
-                        <span className="hud-cell-val font-mono text-cyan-300">
+                        <span className="hud-cell-val font-mono text-slate-800">
                           {cluster.center_latitude.toFixed(4)}°N, {cluster.center_longitude.toFixed(4)}°E
                         </span>
                       </div>
