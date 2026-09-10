@@ -500,4 +500,72 @@ export const DEMO_SCENARIO_PRESETS: import('../types/hotspot').DemoScenarioPrese
   },
 ];
 
+export interface SatelliteOrbitTelemetryResponse {
+  satellite: string;
+  instrument: string;
+  norad_id: number;
+  cospar_id: string;
+  epoch_utc: string;
+  orbital_elements: {
+    altitude_km: number;
+    inclination_deg: number;
+    period_minutes: number;
+    velocity_km_s: number;
+    orbit_type: string;
+  };
+  sub_satellite_point: {
+    latitude: number;
+    longitude: number;
+    altitude_km: number;
+  };
+  sensor_telemetry: {
+    swath_width_km: number;
+    swath_radius_km: number;
+    status: string;
+    acquisition_state: string;
+    is_over_india: boolean;
+  };
+  ground_track: Array<{
+    latitude: number;
+    longitude: number;
+    altitude_km: number;
+    offset_minutes: number;
+  }>;
+  disclaimer: string;
+}
+
+/**
+ * Retrieves live or deterministic orbital telemetry and ground track coordinates for NOAA-21 VIIRS.
+ */
+export async function fetchSatelliteOrbitTelemetry(): Promise<SatelliteOrbitTelemetryResponse> {
+  const response = await fetch(getApiUrl('/api/satellite/orbit/telemetry'));
+  if (!response.ok) {
+    throw new Error(`Failed to fetch satellite orbit telemetry: HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
+ * Dynamic Threat Zone Boundaries caller.
+ */
+export async function fetchThreatZones(
+  frp: number,
+  riskScore = 50.0,
+  severity = 'MODERATE',
+  classification = 'THERMAL_EVENT'
+): Promise<import('../types/hotspot').ThreatZonesResponse> {
+  const params = new URLSearchParams({
+    frp: String(frp),
+    risk_score: String(riskScore),
+    severity,
+    classification,
+  });
+  const response = await fetch(getApiUrl(`/api/threat-zones?${params.toString()}`));
+  if (!response.ok) {
+    throw new Error(`Failed to fetch threat zones: HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
+
 

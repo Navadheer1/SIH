@@ -62,7 +62,7 @@ from app.services.impact_service import calculate_impact_assessment
 from app.services.fire_spread_service import calculate_spread_projection
 from app.services.future_impact_service import calculate_future_impact_forecast
 from app.services.simulation_service import run_what_if_simulation
-from app.agent.router import router as agent_router
+from app.services.satellite_orbit_service import get_orbital_telemetry
 
 logger = logging.getLogger("sih_backend")
 
@@ -1847,6 +1847,18 @@ def get_incident_threat_zone(
     Returns Inner, Secondary, and Monitoring threat zone radii definitions.
     """
     return calculate_threat_zones(frp=frp, risk_score=risk_score, severity=severity, classification=classification)
+
+
+@app.get("/api/satellite/orbit/telemetry")
+async def get_satellite_orbit_telemetry(
+    timestamp: float = Query(None, description="Optional UNIX epoch seconds to compute satellite position at")
+):
+    """
+    Real-time Orbital Telemetry & Ground Track Endpoint.
+    Returns NOAA-21 VIIRS state vectors, sub-satellite coordinates, active India pass status,
+    ground tracks, and radiometric sensor characteristics.
+    """
+    return get_orbital_telemetry(epoch_override=timestamp)
 
 
 @app.get("/api/incidents/priority")

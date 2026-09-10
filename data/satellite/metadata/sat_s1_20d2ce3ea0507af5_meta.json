@@ -1,0 +1,20 @@
+{
+  "product_id": "S1D_IW_GRDH_1SDV_20260905T002024_20260905T002049_004435_00837B_7657_COG.SAFE",
+  "satellite_acquired_at": "2026-09-05 00:20:24 UTC",
+  "retrieved_at": "2026-09-09T16:11:50.877906+00:00",
+  "time_difference_hours": 55.31,
+  "polarization": [
+    "VV",
+    "VH"
+  ],
+  "orbit_direction": "descending",
+  "acquisition_mode": "IW",
+  "latitude": 22.3571,
+  "longitude": 82.30258,
+  "bbox": [
+    82.292867,
+    22.348117,
+    82.312293,
+    22.366083
+  ]
+}
