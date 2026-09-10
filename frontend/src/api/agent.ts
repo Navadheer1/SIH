@@ -3,7 +3,7 @@
  * Connects to /api/agent/chat and /api/agent/capabilities
  */
 
-import { getApiUrl } from '../config/api.ts';
+import { getApiUrl, apiFetch } from '../config/api.ts';
 import type {
   AgentChatRequest,
   AgentChatResponse,
@@ -42,7 +42,7 @@ export async function sendAgentChatMessage(
   request: AgentChatRequest
 ): Promise<AgentChatResponse> {
   try {
-    const response = await fetch(getApiUrl('/api/agent/chat'), {
+    const response = await apiFetch(getApiUrl('/api/agent/chat'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

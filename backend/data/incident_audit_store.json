@@ -302,13 +302,13 @@
   "423f0b1ad50facd6": {
     "state": {
       "observation_id": "423f0b1ad50facd6",
-      "status": "DISPATCHED",
+      "status": "ACKNOWLEDGED",
       "priority_level": "LOW",
       "priority_index": "P4",
       "assigned_agency": "Industrial Fire Brigade 1",
-      "last_updated_at": "2026-09-08T13:14:52.336089+00:00",
-      "last_updated_by": "Final Verification Dispatcher",
-      "total_actions_count": 2
+      "last_updated_at": "2026-09-10T04:26:58.835759+00:00",
+      "last_updated_by": "sarah.connor@eoc.gov",
+      "total_actions_count": 10
     },
     "audit_trail": [
       {
@@ -338,6 +338,126 @@
         "new_status": "DISPATCHED",
         "target_agency": "Industrial Fire Brigade 1",
         "notes": "Final integration verification test run",
+        "metadata": {
+          "priority_override": null
+        }
+      },
+      {
+        "id": "AUDIT-1789011404036-A58053",
+        "observation_id": "423f0b1ad50facd6",
+        "timestamp": "2026-09-10T03:36:44.036372+00:00",
+        "actor": "sarah.connor@eoc.gov",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "ACKNOWLEDGE",
+        "previous_status": "DISPATCHED",
+        "new_status": "ACKNOWLEDGED",
+        "target_agency": null,
+        "notes": "Dispatched tactical suppression",
+        "metadata": {
+          "priority_override": null
+        }
+      },
+      {
+        "id": "AUDIT-1789011571035-177CBD",
+        "observation_id": "423f0b1ad50facd6",
+        "timestamp": "2026-09-10T03:39:31.035546+00:00",
+        "actor": "sarah.connor@eoc.gov",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "ACKNOWLEDGE",
+        "previous_status": "ACKNOWLEDGED",
+        "new_status": "ACKNOWLEDGED",
+        "target_agency": null,
+        "notes": "Dispatched tactical suppression",
+        "metadata": {
+          "priority_override": null
+        }
+      },
+      {
+        "id": "AUDIT-1789011958805-11C981",
+        "observation_id": "423f0b1ad50facd6",
+        "timestamp": "2026-09-10T03:45:58.805067+00:00",
+        "actor": "sarah.connor@eoc.gov",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "ACKNOWLEDGE",
+        "previous_status": "ACKNOWLEDGED",
+        "new_status": "ACKNOWLEDGED",
+        "target_agency": null,
+        "notes": "Dispatched tactical suppression",
+        "metadata": {
+          "priority_override": null
+        }
+      },
+      {
+        "id": "AUDIT-1789012965268-964F1A",
+        "observation_id": "423f0b1ad50facd6",
+        "timestamp": "2026-09-10T04:02:45.268006+00:00",
+        "actor": "sarah.connor@eoc.gov",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "ACKNOWLEDGE",
+        "previous_status": "ACKNOWLEDGED",
+        "new_status": "ACKNOWLEDGED",
+        "target_agency": null,
+        "notes": "Dispatched tactical suppression",
+        "metadata": {
+          "priority_override": null
+        }
+      },
+      {
+        "id": "AUDIT-1789013210196-DCCFC4",
+        "observation_id": "423f0b1ad50facd6",
+        "timestamp": "2026-09-10T04:06:50.196670+00:00",
+        "actor": "test_diagnostic_12345@gmail.com",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "ACKNOWLEDGE",
+        "previous_status": "ACKNOWLEDGED",
+        "new_status": "ACKNOWLEDGED",
+        "target_agency": null,
+        "notes": "Live test triage",
+        "metadata": {
+          "priority_override": null
+        }
+      },
+      {
+        "id": "AUDIT-1789013291203-00EED9",
+        "observation_id": "423f0b1ad50facd6",
+        "timestamp": "2026-09-10T04:08:11.203135+00:00",
+        "actor": "test_diagnostic_12345@gmail.com",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "ACKNOWLEDGE",
+        "previous_status": "ACKNOWLEDGED",
+        "new_status": "ACKNOWLEDGED",
+        "target_agency": null,
+        "notes": "Live test triage",
+        "metadata": {
+          "priority_override": null
+        }
+      },
+      {
+        "id": "AUDIT-1789014363981-36ECF4",
+        "observation_id": "423f0b1ad50facd6",
+        "timestamp": "2026-09-10T04:26:03.981273+00:00",
+        "actor": "test_diagnostic_12345@gmail.com",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "ACKNOWLEDGE",
+        "previous_status": "ACKNOWLEDGED",
+        "new_status": "ACKNOWLEDGED",
+        "target_agency": null,
+        "notes": "Automated diagnosis test",
+        "metadata": {
+          "priority_override": null
+        }
+      },
+      {
+        "id": "AUDIT-1789014418835-90E8A7",
+        "observation_id": "423f0b1ad50facd6",
+        "timestamp": "2026-09-10T04:26:58.835759+00:00",
+        "actor": "sarah.connor@eoc.gov",
+        "actor_type": "HUMAN_DISPATCHER",
+        "action": "ACKNOWLEDGE",
+        "previous_status": "ACKNOWLEDGED",
+        "new_status": "ACKNOWLEDGED",
+        "target_agency": null,
+        "notes": "Dispatched tactical suppression",
         "metadata": {
           "priority_override": null
         }

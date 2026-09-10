@@ -5,6 +5,8 @@
  * Defaults to 'http://localhost:8000' for local development.
  */
 
+import { getAccessToken } from '../lib/supabase.ts';
+
 export const API_BASE_URL: string = (
   (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.VITE_API_BASE_URL) || 'http://localhost:8000'
 ).replace(/\/+$/, '');
@@ -18,6 +20,21 @@ export const API_BASE_URL: string = (
 export function getApiUrl(path: string): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   return `${API_BASE_URL}${normalizedPath}`;
+}
+
+/**
+ * Central authenticated fetch wrapper that attaches the active Supabase JWT Bearer token.
+ */
+export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const token = await getAccessToken();
+  const headers = new Headers(init?.headers);
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+  return fetch(input, {
+    ...init,
+    headers,
+  });
 }
 
 /**
@@ -39,7 +56,7 @@ export function getAssetUrl(path?: string | null): string | null {
  * Fetches the newest real NASA FIRMS observation with data freshness categorization.
  */
 export async function fetchLatestFirmsObservation(): Promise<import('../types/hotspot').LatestFirmsResponse> {
-  const response = await fetch(getApiUrl('/api/firms/latest'));
+  const response = await apiFetch(getApiUrl('/api/firms/latest'));
   if (!response.ok) {
     throw new Error(`Failed to fetch latest FIRMS observation: HTTP ${response.status}`);
   }
@@ -80,7 +97,7 @@ export async function getInvestigation(
 
   const fetchPromise = (async () => {
     try {
-      const response = await fetch(url, {
+      const response = await apiFetch(url, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
@@ -152,7 +169,7 @@ export async function getDecisionSupport(
 
   const fetchPromise = (async () => {
     try {
-      const response = await fetch(url, {
+      const response = await apiFetch(url, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
@@ -344,7 +361,7 @@ export async function recordIncidentAction(
   const cleanId = observationId.trim();
   const url = getApiUrl(`/api/incidents/${encodeURIComponent(cleanId)}/action`);
 
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -383,7 +400,7 @@ export async function getIncidentAuditTrail(
   const cleanId = observationId.trim();
   const url = getApiUrl(`/api/incidents/${encodeURIComponent(cleanId)}/audit-trail?descending=${descending}`);
 
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     method: 'GET',
     headers: { 'Accept': 'application/json' },
   });
@@ -409,7 +426,7 @@ export async function getIncidentAuditTrail(
  */
 export async function getIncidentOperationalSummary(): Promise<import('../types/hotspot').IncidentOperationalSummary> {
   const url = getApiUrl('/api/incidents/operational-summary');
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     method: 'GET',
     headers: { 'Accept': 'application/json' },
   });
