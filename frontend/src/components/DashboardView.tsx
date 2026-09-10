@@ -24,9 +24,9 @@ import {
   faIndustry,
   faTriangleExclamation,
   faFilter,
-  faLocationDot,
   faGlobe,
 } from '@fortawesome/free-solid-svg-icons';
+import { Zap, ChevronRight, MapPin } from 'lucide-react';
 
 interface DashboardViewProps {
   hotspots: Hotspot[];
@@ -365,7 +365,7 @@ export function DashboardView({
                 title="Primary 2D Top-Down Earth Observation Satellite Map with AI Risk Field & NASA FIRMS"
               >
                 <FontAwesomeIcon icon={faSatellite} className="mr-1 text-emerald" />
-                <span>🛰️ 2D Satellite Map</span>
+                <span>2D Satellite Map</span>
               </button>
               <button
                 type="button"
@@ -374,7 +374,7 @@ export function DashboardView({
                 title="Secondary 3D Orbital Perspective"
               >
                 <FontAwesomeIcon icon={faGlobe} className="mr-1 text-cyan" />
-                <span>🌍 3D Globe View</span>
+                <span>3D Globe View</span>
               </button>
             </div>
 
@@ -560,9 +560,14 @@ export function DashboardView({
                     }}
                   >
                     <div className="card-top-row">
-                      <span className={`severity-badge ${getSeverityBadgeClass(inc.risk_level)}`}>
-                        {inc.risk_level}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span className={`severity-badge ${getSeverityBadgeClass(inc.risk_level)}`}>
+                          {inc.risk_level}
+                        </span>
+                        <span className="incident-class-name font-medium">
+                          {inc.classification.replace(/_/g, ' ')}
+                        </span>
+                      </div>
                       <span className="incident-risk-score font-mono font-bold" style={{ color: inc.risk_level === 'CRITICAL' ? '#dc2626' : inc.risk_level === 'HIGH' ? '#ea580c' : '#475569' }}>
                         Risk: {scoreDisplay}/100
                       </span>
@@ -577,9 +582,9 @@ export function DashboardView({
                           {dispSecondary}
                         </div>
                       )}
-                      <p className="incident-coords-text">
-                        <FontAwesomeIcon icon={faLocationDot} className="mr-1 text-muted" />
-                        {inc.latitude.toFixed(3)}°N, {inc.longitude.toFixed(3)}°E
+                      <p className="incident-coords-text font-mono">
+                        <MapPin size={11} className="mr-1 inline-block text-slate-400" />
+                        {inc.latitude.toFixed(4)}°N, {inc.longitude.toFixed(4)}°E
                         {inc.industrial_distance_km !== null && inc.industrial_distance_km !== undefined
                           ? ` • ${Number(inc.industrial_distance_km).toFixed(2)} km`
                           : ''}
@@ -611,12 +616,23 @@ export function DashboardView({
                     )}
 
                     <div className="card-bottom-row">
-                      <span className="incident-class-name font-medium">
-                        {inc.classification.replace(/_/g, ' ')}
-                      </span>
                       <span className="incident-time-tag">
                         {inc.id.slice(0, 14)}
                       </span>
+                      <button
+                        type="button"
+                        className="btn-card-open-incident"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleIncidentClick(inc);
+                          onOpenInvestigation && onOpenInvestigation();
+                        }}
+                        title="Open Incident in Investigation Panel"
+                      >
+                        <Zap size={11} />
+                        <span>Open Incident</span>
+                        <ChevronRight size={12} />
+                      </button>
                     </div>
                   </div>
                 );

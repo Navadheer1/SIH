@@ -6505,13 +6505,13 @@ body::-webkit-scrollbar {
   align-items: center;
   gap: 0.35rem;
   flex-wrap: wrap;
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  padding: 0.3rem 0.6rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid rgba(226, 232, 228, 0.9);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  background: rgba(15, 23, 42, 0.90) !important; /* bg-slate-900/90 */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid rgba(30, 41, 59, 0.9) !important; /* border-slate-800 */
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
   max-width: calc(100% - 70px);
   pointer-events: none;
 }
@@ -6528,7 +6528,7 @@ body::-webkit-scrollbar {
 .layer-bar-title {
   font-size: 0.68rem;
   font-weight: 800;
-  color: var(--text-muted);
+  color: #94a3b8;
   letter-spacing: 0.05em;
   margin-right: 0.15rem;
 }
@@ -6536,11 +6536,11 @@ body::-webkit-scrollbar {
 .layer-toggle-btn {
   font-size: 0.72rem;
   font-weight: 600;
-  padding: 0.22rem 0.55rem;
+  padding: 0.25rem 0.55rem;
   border-radius: 5px;
-  border: 1px solid var(--border-color);
-  background-color: #FFFFFF;
-  color: var(--text-sub);
+  border: 1px solid rgba(51, 65, 85, 0.7); /* border-slate-700/70 */
+  background-color: rgba(30, 41, 59, 0.75); /* bg-slate-800/75 */
+  color: #cbd5e1; /* text-slate-300 */
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -6549,16 +6549,17 @@ body::-webkit-scrollbar {
 }
 
 .layer-toggle-btn:hover {
-  background-color: #F0FDF4;
-  border-color: #2F8F46;
-  color: #166534;
+  background-color: rgba(51, 65, 85, 0.9);
+  border-color: #38bdf8;
+  color: #ffffff;
 }
 
 .layer-toggle-btn.active {
-  background-color: #EAF7ED;
-  border-color: #2F8F46;
-  color: #166534;
+  background-color: rgba(14, 116, 144, 0.4);
+  border-color: #06b6d4;
+  color: #38bdf8;
   font-weight: 700;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.25);
 }
 
 /* --- 5. FLOATING MAP LEGEND (CLEAN LIGHT REDESIGN) --- */
@@ -10568,3 +10569,268 @@ input, select, textarea {
 .leaflet-control {
   pointer-events: auto !important;
 }
+
+/* =========================================================================
+   TELEMETRY HUD INSPECTION POPUP (DARK TACTICAL AEROSPACE THEME)
+   ========================================================================= */
+
+.telemetry-hud-popup .leaflet-popup-content-wrapper {
+  background: rgba(15, 23, 42, 0.96) !important; /* bg-slate-900/96 */
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  color: #f1f5f9 !important;
+  border: 1px solid rgba(51, 65, 85, 0.85) !important; /* border-slate-700 */
+  border-radius: 8px !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65), 0 0 1px 1px rgba(56, 189, 248, 0.2) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.telemetry-hud-popup .leaflet-popup-tip {
+  background: #0f172a !important;
+  border: 1px solid rgba(51, 65, 85, 0.85) !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4) !important;
+}
+
+.telemetry-hud-popup .leaflet-popup-content {
+  margin: 0 !important;
+  padding: 12px 14px !important;
+  line-height: 1.4 !important;
+  font-family: inherit !important;
+  min-width: 270px !important;
+  max-width: 320px !important;
+}
+
+.telemetry-hud-popup .leaflet-popup-close-button {
+  color: #94a3b8 !important;
+  top: 8px !important;
+  right: 10px !important;
+  padding: 2px !important;
+  font-size: 16px !important;
+  transition: color 0.15s ease;
+}
+
+.telemetry-hud-popup .leaflet-popup-close-button:hover {
+  color: #f8fafc !important;
+}
+
+.hud-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: inherit;
+}
+
+.hud-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.6);
+  padding-bottom: 6px;
+  margin-bottom: 2px;
+}
+
+.hud-header-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #f8fafc;
+  text-transform: uppercase;
+}
+
+.hud-badge {
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 1.5px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.hud-badge-critical {
+  background: rgba(220, 38, 38, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.45);
+}
+
+.hud-badge-high {
+  background: rgba(234, 88, 12, 0.2);
+  color: #fb923c;
+  border: 1px solid rgba(249, 115, 22, 0.45);
+}
+
+.hud-badge-moderate,
+.hud-badge-medium {
+  background: rgba(234, 179, 8, 0.2);
+  color: #facc15;
+  border: 1px solid rgba(234, 179, 8, 0.45);
+}
+
+.hud-badge-low {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.45);
+}
+
+.hud-subhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+
+.hud-id-tag {
+  font-family: monospace;
+  color: #64748b;
+  font-size: 0.68rem;
+}
+
+.hud-type-tag {
+  font-weight: 600;
+  color: #cbd5e1;
+  font-size: 0.68rem;
+}
+
+.hud-telemetry-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin: 4px 0 8px 0;
+}
+
+.hud-cell {
+  background: rgba(30, 41, 59, 0.65);
+  border: 1px solid rgba(51, 65, 85, 0.6);
+  border-radius: 4px;
+  padding: 5px 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hud-cell-full {
+  grid-column: 1 / -1;
+}
+
+.hud-cell-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.hud-cell-val {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.hud-cell-val.highlight-amber {
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+.hud-cell-val.highlight-red {
+  color: #f87171;
+  font-weight: 700;
+}
+
+.hud-action-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 7px 12px;
+  border-radius: 5px;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-top: 2px;
+}
+
+.hud-action-btn:hover {
+  background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+  border-color: #38bdf8;
+  box-shadow: 0 4px 18px rgba(56, 189, 248, 0.5);
+  transform: translateY(-0.5px);
+}
+
+.hud-action-btn:active {
+  transform: translateY(0);
+}
+
+/* =========================================================================
+   PRIORITY INCIDENT CARD 'OPEN INCIDENT' ACTION BUTTON & LOCATION HIERARCHY
+   ========================================================================= */
+
+.btn-card-open-incident {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  border-radius: 4px;
+  background: rgba(14, 116, 144, 0.08);
+  border: 1px solid rgba(14, 116, 144, 0.25);
+  color: #0e7490;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-card-open-incident:hover {
+  background: #0e7490;
+  color: #ffffff;
+  border-color: #0e7490;
+  box-shadow: 0 2px 8px rgba(14, 116, 144, 0.25);
+}
+
+.btn-card-open-incident svg {
+  flex-shrink: 0;
+}
+
+.incident-list-card .incident-facility-name {
+  font-size: 0.86rem !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  line-height: 1.25 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  margin: 0 !important;
+}
+
+.incident-list-card .incident-locality-subtext {
+  font-size: 0.72rem !important;
+  font-weight: 500 !important;
+  color: #64748b !important;
+  line-height: 1.2 !important;
+  margin-top: 1px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.incident-list-card .incident-coords-text {
+  font-size: 0.70rem !important;
+  color: #64748b !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  margin: 2px 0 0 0 !important;
+  display: flex !important;
+  align-items: center !important;
+}
+

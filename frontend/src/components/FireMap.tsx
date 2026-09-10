@@ -1,16 +1,34 @@
 import {
   faBolt,
   faBookOpen,
-  faFire,
   faHospital,
   faIndustry,
   faMagnifyingGlass,
   faMap,
-  faSatellite,
-  faTriangleExclamation,
   faXmark,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  Flame,
+  Activity,
+  MapPin,
+  Globe,
+  CircleDot,
+  Shield,
+  Satellite as LucideSatellite,
+  Map as LucideMap,
+  BookOpen as LucideBookOpen,
+  Maximize2,
+  Minimize2,
+  X as LucideX,
+  Zap,
+  Factory,
+  TreePine,
+  ShieldCheck,
+  AlertTriangle,
+  FileText,
+  Radio,
+} from 'lucide-react';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Circle, Polyline, Popup, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import {
@@ -733,14 +751,14 @@ export const FireMap: React.FC<FireMapProps> = ({
       <div className="map-layer-toggles-bar">
         {/* BASEMAP SWITCHER */}
         <div className="basemap-switch-controls" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-          <span className="layer-bar-title" style={{ fontWeight: 700, fontSize: '11px', color: '#64748b' }}>BASEMAP:</span>
+          <span className="layer-bar-title" style={{ fontWeight: 700, fontSize: '11px', color: '#94a3b8' }}>BASEMAP:</span>
           <button
             type="button"
             className={`layer-toggle-btn ${activeBasemap === 'satellite' ? 'active' : ''}`}
             onClick={() => handleBasemapToggle('satellite')}
             title="Switch to Real Satellite Imagery"
           >
-            <FontAwesomeIcon icon={faSatellite} /> SATELLITE
+            <LucideSatellite size={12} /> SATELLITE
           </button>
           <button
             type="button"
@@ -748,7 +766,7 @@ export const FireMap: React.FC<FireMapProps> = ({
             onClick={() => handleBasemapToggle('standard')}
             title="Switch to Standard Basemap"
           >
-            <FontAwesomeIcon icon={faMap} /> STANDARD
+            <LucideMap size={12} /> STANDARD
           </button>
         </div>
 
@@ -760,7 +778,7 @@ export const FireMap: React.FC<FireMapProps> = ({
             onClick={() => setRiskDisplayMode('ai_risk')}
             title="AI 2D Risk Propagation Field"
           >
-            🔥 AI Risk Field
+            <Flame size={12} className="text-orange-400" /> AI Risk Field
           </button>
           <button
             type="button"
@@ -768,7 +786,7 @@ export const FireMap: React.FC<FireMapProps> = ({
             onClick={() => setRiskDisplayMode('thermal_field')}
             title="Radiometric Thermal Intensity Field"
           >
-            🌡️ Thermal Field
+            <Activity size={12} className="text-amber-400" /> Thermal Field
           </button>
         </div>
 
@@ -780,7 +798,7 @@ export const FireMap: React.FC<FireMapProps> = ({
             onClick={handleIndiaFocus}
             title="Focus camera on Indian subcontinent"
           >
-            🇮🇳 India Focus
+            <MapPin size={12} className="text-emerald-400" /> India Focus
           </button>
           <button
             type="button"
@@ -788,7 +806,7 @@ export const FireMap: React.FC<FireMapProps> = ({
             onClick={handleGlobalView}
             title="Global Earth View"
           >
-            🌍 Global View
+            <Globe size={12} className="text-blue-400" /> Global View
           </button>
         </div>
 
@@ -801,7 +819,7 @@ export const FireMap: React.FC<FireMapProps> = ({
               onClick={() => setShowOperationalBuffer(!showOperationalBuffer)}
               title="Toggle 5.0 KM Operational Threat Buffer"
             >
-              ⭕ 5km Buffer
+              <CircleDot size={12} className="text-cyan-400" /> 5km Buffer
             </button>
             {threatZones && (
               <button
@@ -810,53 +828,25 @@ export const FireMap: React.FC<FireMapProps> = ({
                 onClick={() => setShowThreatZones(!showThreatZones)}
                 title="Toggle Threat Dispersion Zones"
               >
-                🛡️ Threat Zones
+                <Shield size={12} className="text-indigo-400" /> Threat Zones
               </button>
             )}
           </div>
         )}
 
-        {/* OPEN INCIDENT & RESET SELECTION BUTTONS */}
-        {selectedLat && selectedLon && (
-          <>
-            <button
-              type="button"
-              className="layer-toggle-btn active"
-              onClick={() => {
-                if (onOpenInvestigation) {
-                  onOpenInvestigation();
-                } else {
-                  handleOpenIncident();
-                }
-              }}
-              title="Open Incident Intelligence Command Panel (Split Workspace)"
-              style={{
-                marginLeft: '6px',
-                background: '#0284c7',
-                borderColor: '#0284c7',
-                color: '#ffffff',
-                fontWeight: 700,
-              }}
-            >
-              ⚡ OPEN INCIDENT
-            </button>
-            {onMapBackgroundClick && (
-              <button
-                type="button"
-                className="layer-toggle-btn"
-                onClick={onMapBackgroundClick}
-                title="Deselect incident and reset camera to India view"
-                style={{
-                  marginLeft: '4px',
-                  background: '#f1f5f9',
-                  borderColor: '#cbd5e1',
-                  color: '#64748b',
-                }}
-              >
-                <FontAwesomeIcon icon={faXmark} /> Reset Selection
-              </button>
-            )}
-          </>
+        {/* RESET SELECTION BUTTON (Floating Open Incident removed per specification) */}
+        {selectedLat && selectedLon && onMapBackgroundClick && (
+          <button
+            type="button"
+            className="layer-toggle-btn"
+            onClick={onMapBackgroundClick}
+            title="Deselect incident and reset camera to India view"
+            style={{
+              marginLeft: '6px',
+            }}
+          >
+            <LucideX size={12} /> Reset Selection
+          </button>
         )}
 
         <button
@@ -865,7 +855,7 @@ export const FireMap: React.FC<FireMapProps> = ({
           onClick={() => setShowLegend(!showLegend)}
           style={{ marginLeft: 'auto' }}
         >
-          <FontAwesomeIcon icon={faBookOpen} /> {showLegend ? 'Hide Legend' : 'Legend'}
+          <LucideBookOpen size={12} /> {showLegend ? 'Hide Legend' : 'Legend'}
         </button>
 
         <button
@@ -876,7 +866,7 @@ export const FireMap: React.FC<FireMapProps> = ({
           aria-label={isFullscreen ? 'Exit full screen' : 'Enter full screen'}
           style={{ marginLeft: '6px' }}
         >
-          <span style={{ fontSize: '12px' }}>⛶</span> {isFullscreen ? 'EXIT FULL SCREEN' : 'FULL SCREEN'}
+          {isFullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />} {isFullscreen ? 'EXIT FULL SCREEN' : 'FULL SCREEN'}
         </button>
       </div>
 
@@ -973,7 +963,10 @@ export const FireMap: React.FC<FireMapProps> = ({
           >
             <Tooltip permanent={false} direction="top" offset={[0, -20]} className="risk-field-disclaimer-tooltip">
               <div style={{ textAlign: 'center', fontSize: '10px', fontWeight: 700, color: '#dc2626' }}>
-                <div>🔥 AI ESTIMATED RISK FIELD: {calculatedRiskRadiusKm} KM</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                  <Flame size={11} className="text-orange-500" />
+                  <span>AI ESTIMATED RISK FIELD: {calculatedRiskRadiusKm} KM</span>
+                </div>
                 <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 500 }}>
                   [ AI estimated risk propagation — NOT physical fire boundary ]
                 </div>
@@ -1018,8 +1011,10 @@ export const FireMap: React.FC<FireMapProps> = ({
               }}
             >
               <Tooltip permanent={false} direction="center" className="proximity-vector-tooltip">
-                <span style={{ fontSize: '10px', fontWeight: 700, color: '#0284c7' }}>
-                  🔥 ── {industrialFacility.distance_km.toFixed(1)} KM ── 🏭
+                <span style={{ fontSize: '10px', fontWeight: 700, color: '#0284c7', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <Flame size={10} className="text-orange-500" />
+                  <span>── {industrialFacility.distance_km.toFixed(1)} KM ──</span>
+                  <Factory size={10} className="text-blue-500" />
                 </span>
               </Tooltip>
             </Polyline>
@@ -1036,8 +1031,9 @@ export const FireMap: React.FC<FireMapProps> = ({
               }}
             >
               <Tooltip permanent={false} direction="right" offset={[10, 0]} className="industrial-facility-tooltip">
-                <span style={{ fontSize: '10px', fontWeight: 700, color: '#b45309' }}>
-                  🏭 {industrialFacility.name} ({industrialFacility.distance_km.toFixed(1)} KM)
+                <span style={{ fontSize: '10px', fontWeight: 700, color: '#b45309', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <Factory size={11} className="text-amber-600" />
+                  <span>{industrialFacility.name} ({industrialFacility.distance_km.toFixed(1)} KM)</span>
                 </span>
               </Tooltip>
             </CircleMarker>
@@ -1259,42 +1255,68 @@ export const FireMap: React.FC<FireMapProps> = ({
                 weight: isSelected ? 3 : 1.5,
               }}
             >
-              <Popup className="custom-popup">
-                <div className="popup-container">
-                  <div className="popup-header" style={{ color: color }}>
-                    <FontAwesomeIcon icon={faTriangleExclamation} /> ACTIVE INCIDENT ALERT ({alt.alert_id})
+              <Popup className="telemetry-hud-popup">
+                <div className="hud-container">
+                  <div className="hud-header">
+                    <div className="hud-header-title">
+                      <Activity size={13} className="text-cyan-400" />
+                      <span>INCIDENT TELEMETRY</span>
+                    </div>
+                    <span className={`hud-badge hud-badge-${(alt.risk_level || 'critical').toLowerCase()}`}>
+                      {alt.risk_level || 'CRITICAL'}
+                    </span>
                   </div>
-                  <div className="popup-body">
-                    <div className="popup-row">
-                      <span className="popup-label">Risk Priority:</span>
-                      <span className="popup-val highlight-frp">{alt.risk_score} / 100 ({alt.risk_level})</span>
-                    </div>
-                    {alt.impact_score !== undefined && (
-                      <div className="popup-row">
-                        <span className="popup-label">Impact Score:</span>
-                        <span className="popup-val highlight-frp">{alt.impact_score} / 100 ({alt.priority_index || 'P1'})</span>
-                      </div>
-                    )}
-                    <div className="popup-row">
-                      <span className="popup-label">Classification:</span>
-                      <span className="popup-val">{alt.classification.replace(/_/g, ' ')}</span>
-                    </div>
-                    <div className="popup-row">
-                      <span className="popup-label">Status:</span>
-                      <span className="popup-val">{alt.status}</span>
-                    </div>
-                    <button
-                      className="btn btn-primary btn-sm"
-                      style={{ marginTop: '0.5rem', width: '100%' }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectAlert(alt);
-                        onOpenInvestigation && onOpenInvestigation();
-                      }}
-                    >
-                      <FontAwesomeIcon icon={faBolt} /> Open Incident & Impact Intelligence
-                    </button>
+
+                  <div className="hud-subhead">
+                    <span className="hud-id-tag">ID: {alt.alert_id.slice(0, 16)}</span>
+                    <span className="hud-type-tag">{alt.classification.replace(/_/g, ' ')}</span>
                   </div>
+
+                  <div className="hud-telemetry-grid">
+                    <div className="hud-cell">
+                      <span className="hud-cell-label">RADIATIVE POWER</span>
+                      <span className="hud-cell-val highlight-amber">
+                        {alt.frp ? `${alt.frp.toFixed(1)} MW` : (alt.features?.frp ? `${Number(alt.features.frp).toFixed(1)} MW` : 'Active Core')}
+                      </span>
+                    </div>
+                    <div className="hud-cell">
+                      <span className="hud-cell-label">PERSISTENCE / PASSES</span>
+                      <span className="hud-cell-val">
+                        {alt.observation_count || 1} Passes {alt.duration_hours ? `(${alt.duration_hours.toFixed(1)}h)` : ''}
+                      </span>
+                    </div>
+                    <div className="hud-cell hud-cell-full">
+                      <span className="hud-cell-label">COORDINATES</span>
+                      <span className="hud-cell-val font-mono text-cyan-300">
+                        {alt.latitude.toFixed(4)}°N, {alt.longitude.toFixed(4)}°E
+                      </span>
+                    </div>
+                    <div className="hud-cell">
+                      <span className="hud-cell-label">RISK SCORE</span>
+                      <span className="hud-cell-val highlight-red font-mono">
+                        {alt.risk_score} / 100
+                      </span>
+                    </div>
+                    <div className="hud-cell">
+                      <span className="hud-cell-label">STATUS</span>
+                      <span className="hud-cell-val text-slate-200">
+                        {alt.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="hud-action-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectAlert(alt);
+                      onOpenInvestigation && onOpenInvestigation();
+                    }}
+                  >
+                    <Zap size={13} />
+                    <span>Open Incident &amp; Impact Intelligence</span>
+                  </button>
                 </div>
               </Popup>
             </CircleMarker>
@@ -1334,36 +1356,70 @@ export const FireMap: React.FC<FireMapProps> = ({
                   weight: isSelected ? 2.5 : 1,
                 }}
               >
-                <Popup className="custom-popup">
-                  <div className="popup-container">
-                    <div className="popup-header" style={{ color }}>
-                      <FontAwesomeIcon icon={faFire} /> THERMAL ANOMALY ({severity})
+                <Popup className="telemetry-hud-popup">
+                  <div className="hud-container">
+                    <div className="hud-header">
+                      <div className="hud-header-title">
+                        <Flame size={13} className="text-amber-400" />
+                        <span>THERMAL TELEMETRY HUD</span>
+                      </div>
+                      <span className={`hud-badge hud-badge-${severity.toLowerCase()}`}>
+                        {severity}
+                      </span>
                     </div>
-                    <div className="popup-body">
-                      <div className="popup-row">
-                        <span className="popup-label">Severity Level:</span>
-                        <span className="popup-val highlight-frp">{severity}</span>
-                      </div>
-                      <div className="popup-row">
-                        <span className="popup-label">Radiative Power:</span>
-                        <span className="popup-val highlight-frp">{spot.frp.toFixed(1)} MW</span>
-                      </div>
-                      <div className="popup-row">
-                        <span className="popup-label">Coordinates:</span>
-                        <span className="popup-val">{spot.latitude.toFixed(3)}°N, {spot.longitude.toFixed(3)}°E</span>
-                      </div>
-                      <button
-                        className="btn btn-primary btn-sm"
-                        style={{ marginTop: '0.6rem', width: '100%' }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectHotspot(spot);
-                          onOpenInvestigation && onOpenInvestigation();
-                        }}
-                      >
-                        <FontAwesomeIcon icon={faBolt} /> Open Incident & Impact Intelligence
-                      </button>
+
+                    <div className="hud-subhead">
+                      <span className="hud-id-tag">SAT: {spot.satellite || 'VIIRS'}</span>
+                      <span className="hud-type-tag">{spot.confidence}% Conf</span>
                     </div>
+
+                    <div className="hud-telemetry-grid">
+                      <div className="hud-cell">
+                        <span className="hud-cell-label">RADIATIVE POWER</span>
+                        <span className="hud-cell-val highlight-amber font-mono">
+                          {spot.frp.toFixed(1)} MW
+                        </span>
+                      </div>
+                      <div className="hud-cell">
+                        <span className="hud-cell-label">PERSISTENCE / PASSES</span>
+                        <span className="hud-cell-val">
+                          1 Pass ({spot.acq_date ? `${spot.acq_date} ${spot.acq_time || ''}`.trim() : 'Active'})
+                        </span>
+                      </div>
+                      <div className="hud-cell hud-cell-full">
+                        <span className="hud-cell-label">COORDINATES</span>
+                        <span className="hud-cell-val font-mono text-cyan-300">
+                          {spot.latitude.toFixed(4)}°N, {spot.longitude.toFixed(4)}°E
+                        </span>
+                      </div>
+                      {spot.brightness ? (
+                        <div className="hud-cell">
+                          <span className="hud-cell-label">BRIGHTNESS TEMP</span>
+                          <span className="hud-cell-val font-mono">
+                            {spot.brightness.toFixed(1)} K
+                          </span>
+                        </div>
+                      ) : null}
+                      <div className={spot.brightness ? 'hud-cell' : 'hud-cell hud-cell-full'}>
+                        <span className="hud-cell-label">SEVERITY LEVEL</span>
+                        <span className={`hud-cell-val ${severity === 'CRITICAL' ? 'highlight-red' : 'highlight-amber'}`}>
+                          {severity}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="hud-action-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectHotspot(spot);
+                        onOpenInvestigation && onOpenInvestigation();
+                      }}
+                    >
+                      <Zap size={13} />
+                      <span>Open Incident &amp; Impact Intelligence</span>
+                    </button>
                   </div>
                 </Popup>
               </CircleMarker>
@@ -1397,30 +1453,68 @@ export const FireMap: React.FC<FireMapProps> = ({
                   weight: isSelected ? 2.5 : 1.5,
                 }}
               >
-                <Popup className="custom-popup">
-                  <div className="popup-container">
-                    <div className="popup-header"><FontAwesomeIcon icon={faSatellite} /> PERSISTENT CLUSTER</div>
-                    <div className="popup-body">
-                      <div className="popup-row">
-                        <span className="popup-label">Cluster ID:</span>
-                        <span className="popup-val">{cluster.cluster_id}</span>
+                <Popup className="telemetry-hud-popup">
+                  <div className="hud-container">
+                    <div className="hud-header">
+                      <div className="hud-header-title">
+                        <LucideSatellite size={13} className="text-red-400" />
+                        <span>CLUSTER TELEMETRY HUD</span>
                       </div>
-                      <div className="popup-row">
-                        <span className="popup-label">Detections:</span>
-                        <span className="popup-val">{cluster.observation_count} observations</span>
-                      </div>
-                      <button
-                        className="btn btn-primary btn-sm"
-                        style={{ marginTop: '0.5rem', width: '100%' }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectCluster(cluster);
-                          onOpenInvestigation && onOpenInvestigation();
-                        }}
-                      >
-                        <FontAwesomeIcon icon={faBolt} /> Open Incident & Impact Intelligence
-                      </button>
+                      <span className="hud-badge hud-badge-critical">
+                        {cluster.classification}
+                      </span>
                     </div>
+
+                    <div className="hud-subhead">
+                      <span className="hud-id-tag">CLUSTER: {cluster.cluster_id.slice(0, 16)}</span>
+                      <span className="hud-type-tag">{cluster.observation_count} DETECTIONS</span>
+                    </div>
+
+                    <div className="hud-telemetry-grid">
+                      <div className="hud-cell">
+                        <span className="hud-cell-label">RADIATIVE POWER</span>
+                        <span className="hud-cell-val highlight-amber font-mono">
+                          {cluster.total_frp ? `${cluster.total_frp.toFixed(1)} MW` : 'Cumulative'}
+                        </span>
+                      </div>
+                      <div className="hud-cell">
+                        <span className="hud-cell-label">PERSISTENCE / PASSES</span>
+                        <span className="hud-cell-val">
+                          {cluster.observation_count} Passes ({cluster.duration_hours.toFixed(1)}h)
+                        </span>
+                      </div>
+                      <div className="hud-cell hud-cell-full">
+                        <span className="hud-cell-label">COORDINATES</span>
+                        <span className="hud-cell-val font-mono text-cyan-300">
+                          {cluster.center_latitude.toFixed(4)}°N, {cluster.center_longitude.toFixed(4)}°E
+                        </span>
+                      </div>
+                      <div className="hud-cell">
+                        <span className="hud-cell-label">SPATIAL RADIUS</span>
+                        <span className="hud-cell-val font-mono">
+                          {cluster.spatial_radius_km.toFixed(2)} km
+                        </span>
+                      </div>
+                      <div className="hud-cell">
+                        <span className="hud-cell-label">PERSISTENCE SCORE</span>
+                        <span className="hud-cell-val highlight-red font-mono">
+                          {Math.round(cluster.persistence_score * 100)}%
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="hud-action-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectCluster(cluster);
+                        onOpenInvestigation && onOpenInvestigation();
+                      }}
+                    >
+                      <Zap size={13} />
+                      <span>Open Incident &amp; Impact Intelligence</span>
+                    </button>
                   </div>
                 </Popup>
               </CircleMarker>
@@ -1478,11 +1572,13 @@ export const FireMap: React.FC<FireMapProps> = ({
               if (onOpenInvestigation) {
                 onOpenInvestigation();
               } else {
-                setWorkspaceState('INCIDENT_SPLIT_VIEW');
+                handleOpenIncident();
               }
             }}
           >
-            <span>⚡ OPEN INCIDENT</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <Zap size={12} /> OPEN INCIDENT
+            </span>
             <span className="cta-arrow">&rarr;</span>
           </button>
         </div>
@@ -1680,7 +1776,7 @@ export const FireMap: React.FC<FireMapProps> = ({
               {industrialFacility ? (
                 <div className="facility-context-card">
                   <div className="facility-head-row">
-                    <span className="fac-icon">🏭</span>
+                    <span className="fac-icon"><Factory size={16} className="text-slate-600" /></span>
                     <div className="fac-details">
                       <span className="fac-name">{industrialFacility.name}</span>
                       <span className="fac-type">{industrialFacility.type} • {industrialFacility.category}</span>
@@ -1688,7 +1784,7 @@ export const FireMap: React.FC<FireMapProps> = ({
                     <span className="fac-distance-badge">{industrialFacility.distance_km.toFixed(1)} KM</span>
                   </div>
                   <div className={`proximity-alert-box ${industrialFacility.distance_km <= 2.0 ? 'critical' : 'warning'}`}>
-                    <span>⚠️</span>
+                    <AlertTriangle size={14} className="shrink-0 text-amber-500" />
                     <span>
                       {industrialFacility.distance_km <= 2.0
                         ? 'Direct threat exposure: Industrial facility in active thermal influence corridor.'
@@ -1700,7 +1796,9 @@ export const FireMap: React.FC<FireMapProps> = ({
                 <div className="facility-context-card empty-context" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px' }}>
                   <div className="facility-head-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span className="fac-icon" style={{ fontSize: '18px' }}>🌿</span>
+                      <span className="fac-icon" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                        <TreePine size={18} className="text-emerald-600" />
+                      </span>
                       <div className="fac-details">
                         <span className="fac-name" style={{ color: '#059669', fontWeight: 700, fontSize: '12px' }}>
                           {selectedPriorityIncident?.display_locality
@@ -1719,7 +1817,7 @@ export const FireMap: React.FC<FireMapProps> = ({
                     </span>
                   </div>
                   <div className="proximity-alert-box safe" style={{ background: '#f0fdf4', borderColor: '#bbf7d0', color: '#166534', marginTop: '8px', fontSize: '11px', padding: '6px 8px', borderRadius: '4px', display: 'flex', gap: '6px', alignItems: 'center' }}>
-                    <span>🛡️</span>
+                    <ShieldCheck size={14} className="shrink-0 text-emerald-600" />
                     <span>No hazardous industrial infrastructure detected within 5.0 KM operational radius.</span>
                   </div>
                 </div>
@@ -1801,7 +1899,7 @@ export const FireMap: React.FC<FireMapProps> = ({
                   className="btn-operational-action alert-btn"
                   onClick={() => handleDispatchAction('dispatch')}
                 >
-                  <span className="btn-icon">🚒</span>
+                  <span className="btn-icon"><Flame size={16} className="text-red-400" /></span>
                   <div className="btn-text-block">
                     <span className="btn-main-label">DISPATCH UNITS</span>
                     <span className="btn-sub-label">Hazmat & Fire Squad</span>
@@ -1813,7 +1911,7 @@ export const FireMap: React.FC<FireMapProps> = ({
                   className="btn-operational-action task-btn"
                   onClick={() => handleDispatchAction('tasking')}
                 >
-                  <span className="btn-icon">🛰️</span>
+                  <span className="btn-icon"><LucideSatellite size={16} className="text-cyan-400" /></span>
                   <div className="btn-text-block">
                     <span className="btn-main-label">SATELLITE TASKING</span>
                     <span className="btn-sub-label">High-Res S2 Pass</span>
@@ -1825,7 +1923,7 @@ export const FireMap: React.FC<FireMapProps> = ({
                   className="btn-operational-action brief-btn"
                   onClick={() => handleDispatchAction('brief')}
                 >
-                  <span className="btn-icon">📋</span>
+                  <span className="btn-icon"><FileText size={16} className="text-amber-400" /></span>
                   <div className="btn-text-block">
                     <span className="btn-main-label">ISSUE BRIEFING</span>
                     <span className="btn-sub-label">EOC Evacuation Buffer</span>
@@ -1837,7 +1935,7 @@ export const FireMap: React.FC<FireMapProps> = ({
                   className="btn-operational-action notify-btn"
                   onClick={() => handleDispatchAction('notify')}
                 >
-                  <span className="btn-icon">📢</span>
+                  <span className="btn-icon"><Radio size={16} className="text-emerald-400" /></span>
                   <div className="btn-text-block">
                     <span className="btn-main-label">BROADCAST ADVISORY</span>
                     <span className="btn-sub-label">District Fire Control</span>
