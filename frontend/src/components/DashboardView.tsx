@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Hotspot,
   PersistentCluster,
@@ -11,6 +11,11 @@ import { FireMap } from './FireMap';
 import { SatelliteIntelligenceGlobe } from './globe/SatelliteIntelligenceGlobe';
 import type { IncidentDrawerData } from './IncidentEvidenceDrawer';
 import { RecentActivitySection } from './RecentActivitySection';
+import {
+  resolveLocationName,
+  getCachedLocationName,
+  LocationResolution,
+} from '../api/reverseGeocode';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faSatellite,
@@ -82,6 +87,7 @@ export function DashboardView({
   const [mapLayerMode, setMapLayerMode] = useState<'all' | 'hotspots' | 'clusters' | 'industrial'>('all');
   const [severityFilter, setSeverityFilter] = useState<'ALL' | 'CRITICAL' | 'HIGH' | 'MODERATE'>('ALL');
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
+  const [resolvedLocations, setResolvedLocations] = useState<Record<string, LocationResolution>>({});
   const [activeMapCoords, setActiveMapCoords] = useState<[number, number] | null>(null);
   const [activeMapZoom, setActiveMapZoom] = useState<number>(5);
   const [displayMode, setDisplayMode] = useState<'3d_globe' | '2d_map'>('2d_map');
@@ -111,29 +117,35 @@ export function DashboardView({
     let list: IncidentDrawerData[] = [];
 
     if (priorityItems.length > 0) {
-      list = priorityItems.map((p, idx) => ({
-        id: p.cluster_id || p.hotspot_id || `priority_${idx + 1}`,
-        rank: p.rank || idx + 1,
-        latitude: p.latitude,
-        longitude: p.longitude,
-        risk_score: p.risk_score,
-        risk_level: p.risk_level || p.priority || 'MODERATE',
-        classification: p.classification || 'Industrial Fire Candidate',
-        industrial_facility: p.industrial_facility || (p.display_locality ? `Unclassified Open Land (${p.display_locality})` : 'Unclassified Open Land'),
-        industrial_distance_km: p.industrial_distance_km ?? null,
-        closest_critical_asset: p.closest_critical_asset ?? null,
-        exposed_assets_count: p.exposed_assets_count ?? (p.nearby_features ? p.nearby_features.length : 0),
-        exposure_summary: p.exposure_summary ?? {},
-        nearby_features: p.nearby_features ?? [],
-        data_status: p.data_status ?? 'OSM_UNAVAILABLE',
-        persistence_score: p.persistence_score,
-        observation_count: p.observation_count,
-        duration_hours: p.duration_hours,
-        frp: p.frp,
-        brightness: p.brightness,
-        reasons: p.reasons || [],
-        recommended_action: p.recommended_action,
-      }));
+      list = priorityItems.map((p, idx) => {
+        const prim = p.primary_name || p.nearest_facility?.name || p.industrial_facility || (p.display_locality ? p.display_locality.split(',')[0] : 'Thermal Anomaly');
+        const sec = p.secondary_locality || p.display_locality || 'India';
+        return {
+          id: p.cluster_id || p.hotspot_id || `priority_${idx + 1}`,
+          rank: p.rank || idx + 1,
+          latitude: p.latitude,
+          longitude: p.longitude,
+          risk_score: p.risk_score,
+          risk_level: p.risk_level || p.priority || 'MODERATE',
+          classification: p.classification || 'Industrial Fire Candidate',
+          primary_name: prim,
+          secondary_locality: sec,
+          industrial_facility: p.industrial_facility || prim,
+          industrial_distance_km: p.industrial_distance_km ?? null,
+          closest_critical_asset: p.closest_critical_asset ?? null,
+          exposed_assets_count: p.exposed_assets_count ?? (p.nearby_features ? p.nearby_features.length : 0),
+          exposure_summary: p.exposure_summary ?? {},
+          nearby_features: p.nearby_features ?? [],
+          data_status: p.data_status ?? 'OSM_UNAVAILABLE',
+          persistence_score: p.persistence_score,
+          observation_count: p.observation_count,
+          duration_hours: p.duration_hours,
+          frp: p.frp,
+          brightness: p.brightness,
+          reasons: p.reasons || [],
+          recommended_action: p.recommended_action,
+        };
+      });
     } else if (clusters.length > 0) {
       list = [...clusters]
         .sort((a, b) => (b.total_frp || 0) - (a.total_frp || 0))
@@ -143,6 +155,9 @@ export function DashboardView({
           const level: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW' =
             score >= 0.7 ? 'CRITICAL' : score >= 0.4 ? 'HIGH' : score >= 0.2 ? 'MODERATE' : 'LOW';
 
+          const prim = c.industrial_context?.nearby_facility || 'Persistent Thermal Source';
+          const sec = (c.industrial_context as any)?.display_locality || 'India';
+
           return {
             id: c.cluster_id,
             rank: idx + 1,
@@ -151,6 +166,8 @@ export function DashboardView({
             risk_score: score,
             risk_level: level,
             classification: c.classification || 'Persistent Thermal Source',
+            primary_name: prim,
+            secondary_locality: sec,
             industrial_facility: c.industrial_context?.nearby_facility || 'Unclassified Open Land',
             industrial_distance_km: c.industrial_context?.distance_km ?? null,
             persistence_score: c.persistence_score || (c.observation_count > 1 ? 75 : 15),
@@ -174,6 +191,8 @@ export function DashboardView({
           risk_score: score,
           risk_level: level,
           classification: 'NASA FIRMS Detection',
+          primary_name: 'Thermal Anomaly',
+          secondary_locality: `${h.latitude.toFixed(2)}°N, ${h.longitude.toFixed(2)}°E`,
           industrial_facility: 'Unclassified Open Land',
           industrial_distance_km: null,
           persistence_score: 15,
@@ -196,10 +215,66 @@ export function DashboardView({
     });
   }, [priorityItems, clusters, hotspots, severityFilter]);
 
+  // Synchronize selection from parent / map / alerts / priority incidents and resolve OSM location
+  useEffect(() => {
+    let targetId: string | null = null;
+    let targetLat: number | null = null;
+    let targetLon: number | null = null;
+
+    if (selectedPriorityIncident) {
+      targetId = selectedPriorityIncident.cluster_id || selectedPriorityIncident.hotspot_id || null;
+      targetLat = selectedPriorityIncident.latitude;
+      targetLon = selectedPriorityIncident.longitude;
+    } else if (selectedHotspot) {
+      const match = triageIncidents.find(
+        (inc) =>
+          inc.id === selectedHotspot.observation_id ||
+          (Math.abs(inc.latitude - selectedHotspot.latitude) < 0.005 &&
+           Math.abs(inc.longitude - selectedHotspot.longitude) < 0.005)
+      );
+      targetId = match ? match.id : (selectedHotspot.observation_id || null);
+      targetLat = selectedHotspot.latitude;
+      targetLon = selectedHotspot.longitude;
+    } else if (selectedCluster) {
+      targetId = selectedCluster.cluster_id;
+      targetLat = selectedCluster.center_latitude;
+      targetLon = selectedCluster.center_longitude;
+    } else if (selectedAlert) {
+      targetId = (selectedAlert.cluster_id || selectedAlert.alert_id) ?? null;
+      targetLat = selectedAlert.latitude;
+      targetLon = selectedAlert.longitude;
+    }
+
+    if (targetId) {
+      setSelectedIncidentId(targetId);
+      if (targetLat !== null && targetLon !== null) {
+        const idForState = targetId;
+        const cached = getCachedLocationName(targetLat, targetLon);
+        if (cached) {
+          setResolvedLocations((prev) => ({ ...prev, [idForState]: cached }));
+        } else {
+          resolveLocationName(targetLat, targetLon).then((res) => {
+            setResolvedLocations((prev) => ({ ...prev, [idForState]: res }));
+          });
+        }
+      }
+    }
+  }, [selectedPriorityIncident, selectedHotspot, selectedCluster, selectedAlert, triageIncidents]);
+
   const handleIncidentClick = (item: IncidentDrawerData) => {
     setSelectedIncidentId(item.id);
     setActiveMapCoords([item.latitude, item.longitude]);
     setActiveMapZoom(12);
+
+    // Fast cache check or fetch with coordinate caching
+    const cached = getCachedLocationName(item.latitude, item.longitude);
+    if (cached) {
+      setResolvedLocations((prev) => ({ ...prev, [item.id]: cached }));
+    } else {
+      resolveLocationName(item.latitude, item.longitude).then((res) => {
+        setResolvedLocations((prev) => ({ ...prev, [item.id]: res }));
+      });
+    }
 
     const matchingPri = priorityItems.find((p) => (p.cluster_id || p.hotspot_id) === item.id);
     if (matchingPri && onSelectPriorityIncident) {
@@ -468,6 +543,10 @@ export function DashboardView({
                 const scoreDisplay = inc.risk_score <= 1.0 ? Math.round(inc.risk_score * 100) : Math.round(inc.risk_score);
                 const hasNearbyFeatures = inc.nearby_features && inc.nearby_features.length > 0;
 
+                const resolved = resolvedLocations[inc.id] || getCachedLocationName(inc.latitude, inc.longitude);
+                const dispPrimary = resolved?.primary_name || inc.primary_name || inc.industrial_facility || 'Thermal Anomaly';
+                const dispSecondary = resolved?.secondary_locality || inc.secondary_locality || inc.display_locality || null;
+
                 return (
                   <div
                     key={inc.id}
@@ -490,9 +569,14 @@ export function DashboardView({
                     </div>
 
                     <div className="card-mid-row">
-                      <h4 className="incident-facility-name">
-                        {inc.industrial_facility || 'Unclassified Open Land'}
+                      <h4 className="incident-facility-name" title={dispPrimary}>
+                        {dispPrimary}
                       </h4>
+                      {dispSecondary && (
+                        <div className="incident-locality-subtext" title={dispSecondary}>
+                          {dispSecondary}
+                        </div>
+                      )}
                       <p className="incident-coords-text">
                         <FontAwesomeIcon icon={faLocationDot} className="mr-1 text-muted" />
                         {inc.latitude.toFixed(3)}°N, {inc.longitude.toFixed(3)}°E

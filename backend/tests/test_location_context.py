@@ -374,3 +374,62 @@ def test_osm_failure_does_not_break_api_status_200():
         data = resp.json()
         assert data["observation_id"] == "38cb8f6cd5acfc82"
         assert "location_context" in data
+
+
+# ==============================================================================
+# 5. PRIORITY INCIDENTS OSM HIERARCHY & REVERSE GEOCODE TESTS
+# ==============================================================================
+
+def test_resolve_osm_locality_named_facility():
+    """
+    Test 12: Anomaly located at named facility (e.g. Tata Steel) resolves facility as Primary Name.
+    Hierarchy:
+      - Line 1 (Primary Name): Tata Steel
+      - Line 2 (Locality / State): Locality and State (e.g. Duburi, Odisha or Odisha)
+    """
+    from app.services.osm_service import resolve_osm_locality
+    res = asyncio.run(resolve_osm_locality(20.96, 86.01))
+    assert res is not None
+    assert res.get("primary_name") == "TATA Steel"
+    assert "Odisha" in (res.get("secondary_locality") or "")
+    assert res.get("facility_name") == "TATA Steel"
+
+
+def test_resolve_osm_locality_administrative_fallback():
+    """
+    Test 13: Anomaly with no named facility falls back to administrative hierarchy (City/Town/Suburb).
+    """
+    from app.services.osm_service import resolve_osm_locality
+    res = asyncio.run(resolve_osm_locality(16.30, 80.44))
+    assert res is not None
+    assert res.get("primary_name") is not None
+    assert res.get("primary_name") != "Tata Steel"
+    assert "Andhra Pradesh" in (res.get("secondary_locality") or "")
+
+
+def test_resolve_osm_locality_caching():
+    """
+    Test 14: Repeated calls for the same coordinates hit the in-memory cache.
+    """
+    from app.services.osm_service import resolve_osm_locality, _nominatim_cache
+    lat, lon = 20.96, 86.01
+    nom_key = (round(lat, 3), round(lon, 3))
+    assert nom_key in _nominatim_cache
+
+    res1 = asyncio.run(resolve_osm_locality(lat, lon))
+    res2 = asyncio.run(resolve_osm_locality(lat, lon))
+    assert res1 == res2
+
+
+def test_reverse_geocode_api_endpoint():
+    """
+    Test 15: /api/hotspots/reverse-geocode endpoint returns primary_name and secondary_locality.
+    """
+    resp = client.get("/api/hotspots/reverse-geocode?lat=20.96&lon=86.01")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["latitude"] == 20.96
+    assert data["longitude"] == 86.01
+    assert data["primary_name"] == "TATA Steel"
+    assert "Odisha" in data["secondary_locality"]
+

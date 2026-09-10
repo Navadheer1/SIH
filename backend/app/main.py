@@ -29,7 +29,12 @@ from app.services.firms_ingestion_service import (
     load_stored_observations,
     get_latest_firms_observation,
 )
-from app.services.osm_service import fetch_hotspot_osm_context, get_cached_osm_context, DEFAULT_SEARCH_RADIUS_KM
+from app.services.osm_service import (
+    fetch_hotspot_osm_context,
+    get_cached_osm_context,
+    resolve_osm_locality,
+    DEFAULT_SEARCH_RADIUS_KM
+)
 from app.services.persistence_service import detect_persistent_clusters, DEFAULT_CLUSTER_RADIUS_KM
 from app.ml.classifier import classify_thermal_event
 from app.services.risk_service import calculate_risk_score
@@ -449,6 +454,68 @@ async def get_hotspot_context(
         )
 
 
+@app.get("/api/hotspots/reverse-geocode")
+async def reverse_geocode_hotspot(
+    lat: float = Query(..., description="Latitude of hotspot"),
+    lon: float = Query(..., description="Longitude of hotspot")
+):
+    """
+    On-demand OpenStreetMap reverse geocoding with caching and full facility / locality hierarchy.
+    Returns:
+      - Line 1 (Primary Name): Facility name (e.g. Tata Steel) or City / Locality if no facility name exists
+      - Line 2 (Locality / State): Locality and State (e.g. Guntur, Andhra Pradesh or Andhra Pradesh)
+    """
+    if not (-90.0 <= lat <= 90.0) or not (-180.0 <= lon <= 180.0):
+        raise HTTPException(status_code=400, detail="Invalid latitude or longitude coordinates")
+
+    try:
+        # Check if already in Overpass context cache for any known named facilities
+        cached_ctx = get_cached_osm_context(lat, lon, radius_km=5.0)
+        elements = cached_ctx.get("nearby_features", []) if cached_ctx else None
+
+        loc_info = await resolve_osm_locality(lat, lon, elements=elements)
+
+        prim = loc_info.get("primary_name")
+        sec = loc_info.get("secondary_locality")
+        fac = loc_info.get("facility_name")
+
+        # If cached context has a close named facility, prioritize it
+        if cached_ctx and cached_ctx.get("nearest_facility"):
+            n_fac = cached_ctx["nearest_facility"]
+            if n_fac.get("name") and n_fac.get("distance_km", 99) <= 2.5:
+                fac = n_fac["name"]
+                prim = n_fac["name"]
+
+        return {
+            "latitude": lat,
+            "longitude": lon,
+            "primary_name": prim or loc_info.get("locality") or loc_info.get("district") or loc_info.get("state") or "Thermal Anomaly",
+            "secondary_locality": sec or (f"{loc_info.get('district')}, {loc_info.get('state')}" if loc_info.get('district') and loc_info.get('state') else (loc_info.get('state') or "India")),
+            "facility_name": fac,
+            "locality": loc_info.get("locality"),
+            "city": loc_info.get("city"),
+            "district": loc_info.get("district"),
+            "state": loc_info.get("state"),
+            "country": loc_info.get("country", "India"),
+            "display_name": loc_info.get("display_name"),
+        }
+    except Exception as e:
+        logger.warning(f"Reverse geocode error for ({lat}, {lon}): {e}")
+        return {
+            "latitude": lat,
+            "longitude": lon,
+            "primary_name": "Thermal Anomaly",
+            "secondary_locality": "India",
+            "facility_name": None,
+            "locality": None,
+            "city": None,
+            "district": None,
+            "state": None,
+            "country": "India",
+            "display_name": None,
+        }
+
+
 @app.get("/api/persistent-hotspots")
 async def get_persistent_hotspots(
     region: str = Query("india", description="Predefined region: 'india' or 'andhra_pradesh'"),
@@ -740,6 +807,21 @@ async def get_priority_ranking(
 
             data_status = osm_ctx.get("data_status") or ("READY" if nearby_features else "OSM_UNAVAILABLE")
 
+            prim_disp = (
+                (nearest_fac or {}).get("name")
+                or (closest_ind or {}).get("name")
+                or osm_ctx.get("primary_name")
+                or osm_ctx.get("locality")
+                or osm_ctx.get("district")
+                or osm_ctx.get("state")
+                or facility_name
+            )
+            sec_disp = (
+                osm_ctx.get("secondary_locality")
+                or osm_ctx.get("display_locality")
+                or (f"{osm_ctx.get('district')}, {osm_ctx.get('state')}" if osm_ctx.get('district') and osm_ctx.get('state') else (osm_ctx.get('state') or "India"))
+            )
+
             ranked_items.append({
                 "rank": 0,
                 "cluster_id": cl.get("cluster_id") or f"hotspot_{c_lat}_{c_lon}",
@@ -756,6 +838,8 @@ async def get_priority_ranking(
                 "industrial_facility": facility_name,
                 "industrial_distance_km": facility_dist,
                 "nearest_facility": nearest_fac or closest_ind,
+                "primary_name": prim_disp,
+                "secondary_locality": sec_disp,
                 "display_locality": osm_ctx.get("display_locality"),
                 "closest_critical_asset": closest_crit,
                 "exposed_assets_count": len(nearby_features),
@@ -829,6 +913,8 @@ async def enrich_hotspot_osm(
             "category_summary": ctx.get("category_summary", {}),
             "context": ctx.get("context"),
             "context_classification": ctx.get("context_classification"),
+            "primary_name": ctx.get("primary_name"),
+            "secondary_locality": ctx.get("secondary_locality"),
             "display_locality": ctx.get("display_locality"),
             "district": ctx.get("district"),
             "state": ctx.get("state"),
@@ -849,6 +935,8 @@ async def enrich_hotspot_osm(
             "category_summary": {},
             "context": "UNCLASSIFIED_OPEN_LAND",
             "context_classification": "UNCLASSIFIED_OPEN_LAND",
+            "primary_name": None,
+            "secondary_locality": None,
             "display_locality": None,
             "district": None,
             "state": None,

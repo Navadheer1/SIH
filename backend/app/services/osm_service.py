@@ -243,18 +243,48 @@ def _resolve_locality_from_elements(elements: List[Dict[str, Any]], lat: float, 
     if settlements:
         closest_name = settlements[0][1]
         disp = f"{closest_name}, {st}" if st else closest_name
-        return {"locality": closest_name, "district": None, "state": st, "country": "India", "display_name": disp}
+        return {
+            "facility_name": None,
+            "primary_name": closest_name,
+            "secondary_locality": f"{closest_name}, {st}" if st else (st or "India"),
+            "locality": closest_name,
+            "district": None,
+            "state": st,
+            "country": "India",
+            "display_name": disp,
+        }
     if st:
-        return {"locality": None, "district": None, "state": st, "country": "India", "display_name": st}
-    return {"locality": None, "district": None, "state": None, "country": "India", "display_name": None}
+        return {
+            "facility_name": None,
+            "primary_name": st,
+            "secondary_locality": f"{st}, India",
+            "locality": None,
+            "district": None,
+            "state": st,
+            "country": "India",
+            "display_name": st,
+        }
+    return {
+        "facility_name": None,
+        "primary_name": "Thermal Anomaly",
+        "secondary_locality": "India",
+        "locality": None,
+        "district": None,
+        "state": None,
+        "country": "India",
+        "display_name": None,
+    }
 
 
 async def resolve_osm_locality(lat: float, lon: float, client: Optional[httpx.AsyncClient] = None, elements: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
     """
-    Dynamically resolves true village, town, district, and state using Nominatim reverse-geocoding (with cache).
+    Dynamically resolves true facility name, village, town, district, and state using Nominatim reverse-geocoding (with cache).
+    Implements the strict OpenStreetMap hierarchy:
+      1. Facility / Place Name (e.g. Tata Steel, power plants, industrial facilities)
+      2. Locality / Administrative Fallback (City, Town, Village/Suburb, District, State)
     Never returns hardcoded or fabricated place names.
     """
-    nom_key = (round(lat, 2), round(lon, 2))
+    nom_key = (round(lat, 3), round(lon, 3))
     if nom_key in _nominatim_cache:
         return _nominatim_cache[nom_key]
 
@@ -263,7 +293,11 @@ async def resolve_osm_locality(lat: float, lon: float, client: Optional[httpx.As
     timeout = httpx.Timeout(3.0, connect=1.5)
 
     loc_info = {
+        "facility_name": None,
+        "primary_name": None,
+        "secondary_locality": None,
         "locality": None,
+        "city": None,
         "district": None,
         "state": None,
         "country": "India",
@@ -280,23 +314,96 @@ async def resolve_osm_locality(lat: float, lon: float, client: Optional[httpx.As
         if resp.status_code == 200:
             data = resp.json()
             addr = data.get("address", {})
+            raw_name = (data.get("name") or "").strip()
+
+            # 1. Facility / Place Name Detection
+            fac_keys = [
+                "industrial", "amenity", "building", "commercial", "factory",
+                "works", "operator", "office", "power", "aeroway", "railway",
+                "shop", "tourism", "leisure", "craft", "man_made"
+            ]
+            fac_name = None
+            for k in fac_keys:
+                v = addr.get(k)
+                if v and str(v).lower() not in ["yes", "no", "true", "false", "unnamed", "none", "unknown"]:
+                    fac_name = str(v).strip()
+                    break
+
+            # If no facility in address tags, check feature name if not generic highway/boundary
+            if not fac_name and raw_name and data.get("class") not in ["highway", "boundary", "waterway"]:
+                fac_name = raw_name
+
+            # Check Overpass elements if passed for close named facilities (<= 2.5 km)
+            if not fac_name and elements:
+                for el in elements:
+                    el_tags = el.get("tags", {})
+                    el_name = el_tags.get("name") or el_tags.get("name:en")
+                    if el_name and str(el_name).lower() not in ["yes", "no", "true", "false", "unnamed"]:
+                        el_lat = el.get("lat") or el.get("center", {}).get("lat")
+                        el_lon = el.get("lon") or el.get("center", {}).get("lon")
+                        if el_lat and el_lon:
+                            d = haversine_distance_km(lat, lon, float(el_lat), float(el_lon))
+                            if d <= 2.5:
+                                fac_name = str(el_name).strip()
+                                break
+
+            # 2. Administrative Hierarchy Fallback
+            city = addr.get("city") or addr.get("town") or addr.get("municipality")
             suburb = (
                 addr.get("village")
                 or addr.get("suburb")
-                or addr.get("town")
-                or addr.get("city")
                 or addr.get("hamlet")
                 or addr.get("neighbourhood")
-                or addr.get("county")
             )
             dist = addr.get("state_district") or addr.get("district") or addr.get("county")
             st = addr.get("state")
             cntry = addr.get("country") or "India"
 
-            display = f"{suburb}, {st}" if (suburb and st) else (f"{dist}, {st}" if (dist and st) else (st or cntry))
+            # Formulate Line 1: Primary Name
+            # Facility name -> City -> Town -> Village / Suburb -> District -> State
+            if fac_name:
+                primary_name = fac_name
+            elif city:
+                primary_name = city
+            elif suburb:
+                primary_name = suburb
+            elif dist:
+                primary_name = dist
+            elif st:
+                primary_name = st
+            else:
+                primary_name = "Thermal Anomaly"
+
+            # Formulate Line 2: Locality / State
+            if fac_name:
+                loc_part = city or suburb or dist
+                if loc_part and st and loc_part.lower() != fac_name.lower():
+                    secondary_locality = f"{loc_part}, {st}"
+                elif st:
+                    secondary_locality = st
+                elif loc_part:
+                    secondary_locality = loc_part
+                else:
+                    secondary_locality = cntry
+            else:
+                # No facility name (Primary is city, suburb, or district)
+                if (city or suburb) and dist and (city or suburb) != dist:
+                    secondary_locality = f"{dist}, {st}" if st else dist
+                elif st:
+                    secondary_locality = f"{primary_name}, {st}" if primary_name != st else st
+                elif dist:
+                    secondary_locality = dist
+                else:
+                    secondary_locality = cntry
+
+            display = f"{primary_name} ({secondary_locality})" if secondary_locality else primary_name
 
             loc_info = {
-                "locality": suburb,
+                "facility_name": fac_name,
+                "primary_name": primary_name,
+                "secondary_locality": secondary_locality,
+                "locality": suburb or city,
+                "city": city,
                 "district": dist,
                 "state": st,
                 "country": cntry,
@@ -309,10 +416,10 @@ async def resolve_osm_locality(lat: float, lon: float, client: Optional[httpx.As
         if own_client:
             await client.aclose()
 
-    # If Nominatim returned no locality or failed, extract from OSM elements
-    if not loc_info.get("display_name") and elements:
-        loc_fallback = _resolve_locality_from_elements(elements, lat, lon)
-        if loc_fallback.get("display_name"):
+    # If Nominatim returned no locality or failed, extract from OSM elements or regional bounds
+    if not loc_info.get("primary_name"):
+        loc_fallback = _resolve_locality_from_elements(elements or [], lat, lon)
+        if loc_fallback.get("primary_name"):
             loc_info.update({k: v for k, v in loc_fallback.items() if v is not None})
             _nominatim_cache[nom_key] = loc_info
 
@@ -516,6 +623,14 @@ out center 50;
         "osm_id": nearest_industrial.get("osm_id", ""),
     } if nearest_industrial else None
 
+    # Determine true primary place/facility name & secondary administrative locality
+    prim_name = (
+        nearest_industrial["name"]
+        if (nearest_industrial and nearest_industrial.get("distance_km", 99) <= 2.5)
+        else (loc_info.get("primary_name") or loc_info.get("locality") or loc_info.get("district") or loc_info.get("state") or "Thermal Anomaly")
+    )
+    sec_loc = loc_info.get("secondary_locality") or loc_info.get("display_name") or (f"{loc_info.get('district')}, {loc_info.get('state')}" if loc_info.get('district') and loc_info.get('state') else (loc_info.get('state') or "India"))
+
     result_data = {
         "hotspot": {
             "latitude": lat,
@@ -533,6 +648,9 @@ out center 50;
         "closest_industrial": nearest_industrial,
         "nearby_facility": nearest_industrial["name"] if nearest_industrial else None,
         "distance_km": nearest_industrial["distance_km"] if nearest_industrial else None,
+        "primary_name": prim_name,
+        "secondary_locality": sec_loc,
+        "facility_name": nearest_industrial["name"] if nearest_industrial else loc_info.get("facility_name"),
         "locality": loc_info.get("locality"),
         "district": loc_info.get("district"),
         "state": loc_info.get("state"),
