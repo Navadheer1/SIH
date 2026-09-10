@@ -62,6 +62,7 @@ from app.services.impact_service import calculate_impact_assessment
 from app.services.fire_spread_service import calculate_spread_projection
 from app.services.future_impact_service import calculate_future_impact_forecast
 from app.services.simulation_service import run_what_if_simulation
+from app.agent.router import router as agent_router
 
 logger = logging.getLogger("sih_backend")
 
@@ -80,6 +81,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount Anomaly Intelligence Agent router (Phase 1)
+app.include_router(agent_router, prefix="/api/agent", tags=["Anomaly Intelligence Agent"])
 
 
 @app.on_event("startup")
