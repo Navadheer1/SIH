@@ -18,8 +18,10 @@ import {
 } from './types/hotspot';
 import { getApiUrl, fetchLatestFirmsObservation, getDecisionSupport, DEMO_SCENARIO_PRESETS } from './config/api';
 import { AnomalyIntelligenceAgentDrawer } from './components/agent';
+import { AuthProvider } from './auth';
+import { AuthGate } from './components/auth/AuthGate';
 
-export function App() {
+function AppContent() {
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
   const [region, setRegion] = useState<string>('india');
   const [customBbox, setCustomBbox] = useState<string>('');
@@ -527,6 +529,16 @@ export function App() {
         }}
       />
     </div>
+  );
+}
+
+export function App() {
+  return (
+    <AuthProvider>
+      <AuthGate>
+        <AppContent />
+      </AuthGate>
+    </AuthProvider>
   );
 }
 

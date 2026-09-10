@@ -5,6 +5,8 @@
  * Defaults to 'http://localhost:8000' for local development.
  */
 
+import { getAccessToken } from '../lib/supabase.ts';
+
 export const API_BASE_URL: string = (
   (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.VITE_API_BASE_URL) || 'http://localhost:8000'
 ).replace(/\/+$/, '');
@@ -18,6 +20,21 @@ export const API_BASE_URL: string = (
 export function getApiUrl(path: string): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   return `${API_BASE_URL}${normalizedPath}`;
+}
+
+/**
+ * Central authenticated fetch wrapper that attaches the active Supabase JWT Bearer token.
+ */
+export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const token = await getAccessToken();
+  const headers = new Headers(init?.headers);
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+  return fetch(input, {
+    ...init,
+    headers,
+  });
 }
 
 /**
@@ -39,7 +56,7 @@ export function getAssetUrl(path?: string | null): string | null {
  * Fetches the newest real NASA FIRMS observation with data freshness categorization.
  */
 export async function fetchLatestFirmsObservation(): Promise<import('../types/hotspot').LatestFirmsResponse> {
-  const response = await fetch(getApiUrl('/api/firms/latest'));
+  const response = await apiFetch(getApiUrl('/api/firms/latest'));
   if (!response.ok) {
     throw new Error(`Failed to fetch latest FIRMS observation: HTTP ${response.status}`);
   }
@@ -70,78 +87,50 @@ export async function getInvestigation(
 
   const cleanId = observationId.trim();
 
-  if (signal?.aborted) {
-    throw new DOMException('The user aborted a request.', 'AbortError');
+  // If not forcing refresh, no signal passed or signal not aborted, and an identical request is in flight, reuse the promise
+  if (!forceRefresh && !signal?.aborted && inFlightInvestigations.has(cleanId)) {
+    return inFlightInvestigations.get(cleanId)!;
   }
 
-  // Check if an identical request is already in flight
-  let existingPromise = inFlightInvestigations.get(cleanId);
+  const queryParam = forceRefresh ? '?force_refresh=true' : '';
+  const url = getApiUrl(`/api/firms/${encodeURIComponent(cleanId)}/investigation${queryParam}`);
 
-  if (forceRefresh || !existingPromise) {
-    const queryParam = forceRefresh ? '?force_refresh=true' : '';
-    const url = getApiUrl(`/api/firms/${encodeURIComponent(cleanId)}/investigation${queryParam}`);
-
-    const basePromise = (async () => {
-      try {
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          let errorDetail = `HTTP ${response.status}`;
-          try {
-            const errJson = await response.json();
-            if (errJson.detail) {
-              errorDetail = typeof errJson.detail === 'string' ? errJson.detail : JSON.stringify(errJson.detail);
-            }
-          } catch {
-            // fallback to status text
-          }
-          throw new Error(`Investigation fetch failed (${errorDetail})`);
-        }
-
-        const data: import('../types/hotspot').InvestigationResponse = await response.json();
-        return data;
-      } finally {
-        // Clean up in-flight registry once complete
-        inFlightInvestigations.delete(cleanId);
-      }
-    })();
-
-    inFlightInvestigations.set(cleanId, basePromise);
-    existingPromise = basePromise;
-  }
-
-  if (!signal) {
-    return existingPromise;
-  }
-
-  // If caller provided an AbortSignal, race caller's promise with their signal without aborting shared fetch
-  return new Promise<import('../types/hotspot').InvestigationResponse>((resolve, reject) => {
-    const onAbort = () => {
-      signal.removeEventListener('abort', onAbort);
-      reject(new DOMException('The user aborted a request.', 'AbortError'));
-    };
-
-    if (signal.aborted) {
-      return onAbort();
-    }
-
-    signal.addEventListener('abort', onAbort);
-
-    existingPromise!
-      .then((res) => {
-        signal.removeEventListener('abort', onAbort);
-        resolve(res);
-      })
-      .catch((err) => {
-        signal.removeEventListener('abort', onAbort);
-        reject(err);
+  const fetchPromise = (async () => {
+    try {
+      const response = await apiFetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        signal,
       });
-  });
+
+      if (!response.ok) {
+        let errorDetail = `HTTP ${response.status}`;
+        try {
+          const errJson = await response.json();
+          if (errJson.detail) {
+            errorDetail = typeof errJson.detail === 'string' ? errJson.detail : JSON.stringify(errJson.detail);
+          }
+        } catch {
+          // fallback to status text
+        }
+        throw new Error(`Investigation fetch failed (${errorDetail})`);
+      }
+
+      const data: import('../types/hotspot').InvestigationResponse = await response.json();
+      return data;
+    } finally {
+      // Clean up in-flight registry
+      inFlightInvestigations.delete(cleanId);
+    }
+  })();
+
+  if (!forceRefresh) {
+    inFlightInvestigations.set(cleanId, fetchPromise);
+  }
+
+  return fetchPromise;
 }
 
 /**
@@ -177,7 +166,7 @@ export async function getDecisionSupport(
 
   const fetchPromise = (async () => {
     try {
-      const response = await fetch(url, {
+      const response = await apiFetch(url, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
@@ -369,7 +358,7 @@ export async function recordIncidentAction(
   const cleanId = observationId.trim();
   const url = getApiUrl(`/api/incidents/${encodeURIComponent(cleanId)}/action`);
 
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -408,7 +397,7 @@ export async function getIncidentAuditTrail(
   const cleanId = observationId.trim();
   const url = getApiUrl(`/api/incidents/${encodeURIComponent(cleanId)}/audit-trail?descending=${descending}`);
 
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     method: 'GET',
     headers: { 'Accept': 'application/json' },
   });
@@ -434,7 +423,7 @@ export async function getIncidentAuditTrail(
  */
 export async function getIncidentOperationalSummary(): Promise<import('../types/hotspot').IncidentOperationalSummary> {
   const url = getApiUrl('/api/incidents/operational-summary');
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     method: 'GET',
     headers: { 'Accept': 'application/json' },
   });

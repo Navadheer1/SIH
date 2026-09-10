@@ -13,6 +13,7 @@ from app.agent.schemas import (
     AgentCapabilitiesResponse,
 )
 from app.agent.service import AnomalyIntelligenceAgent, get_agent_service
+from app.auth import get_current_user, AuthenticatedUser
 
 logger = logging.getLogger("agent_router")
 
@@ -30,6 +31,7 @@ router = APIRouter()
 )
 async def agent_chat(
     request: AgentChatRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
     agent: AnomalyIntelligenceAgent = Depends(get_agent_service),
 ) -> AgentChatResponse:
     """

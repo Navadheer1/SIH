@@ -104,6 +104,13 @@ AGENT_MAX_TOOL_CALLS = int(os.getenv("AGENT_MAX_TOOL_CALLS", "6"))
 OSM_CONTEXT_RADIUS_KM = float(os.getenv("OSM_CONTEXT_RADIUS_KM", "5.0"))
 OSM_REQUEST_TIMEOUT_SECONDS = float(os.getenv("OSM_REQUEST_TIMEOUT_SECONDS", "8.0"))
 
+# Supabase Authentication Configuration
+SUPABASE_URL = os.getenv("SUPABASE_URL", "https://agxtdttgjdtduyxeijcv.supabase.co").strip().rstrip("/")
+SUPABASE_PUBLISHABLE_KEY = os.getenv("SUPABASE_PUBLISHABLE_KEY", os.getenv("VITE_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_PDCeB8_EbqZ_Y7kxOOROew_EjEa8omq")).strip()
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", os.getenv("VITE_SUPABASE_ANON_KEY", SUPABASE_PUBLISHABLE_KEY)).strip()
+SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY", "").strip()
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "").strip()
+
 def get_config_status() -> dict:
     """
     Returns a safe dictionary summarizing configuration status.
@@ -114,6 +121,7 @@ def get_config_status() -> dict:
         "nasa_firms_map_key_configured": bool(NASA_FIRMS_MAP_KEY),
         "firms_ingest_interval_minutes": FIRMS_INGEST_INTERVAL_MINUTES,
         "database_configured": bool(DATABASE_URL),
+        "supabase_auth_configured": bool(SUPABASE_URL),
         "cors_origins": CORS_ORIGINS,
         "satellite_provider": SATELLITE_PROVIDER,
         "copernicus_configured": bool(COPERNICUS_CLIENT_ID and COPERNICUS_CLIENT_SECRET),
