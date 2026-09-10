@@ -19,6 +19,7 @@ import {
 } from './types/hotspot';
 import { getApiUrl, fetchLatestFirmsObservation, getDecisionSupport, DEMO_SCENARIO_PRESETS } from './config/api';
 import { LandingPage } from './components/landing/LandingPage';
+import { AnomalyIntelligenceAgentDrawer } from './components/agent';
 
 export function App() {
   const [currentView, setCurrentView] = useState<AppView>('landing');
@@ -476,17 +477,35 @@ export function App() {
         />
       )}
 
-      {/* 4. FOOTER */}
-      <footer className="app-footer">
-        <div className="footer-left">
-          <span>SIH Problem Statement 26162</span>
-          <span className="footer-dot">•</span>
-          <span>Industrial Fire & Thermal Source Intelligence</span>
-        </div>
-        <div className="footer-right">
-          <span>Sensors: NASA FIRMS (VIIRS/MODIS) • Copernicus Sentinel-2 L2A • OpenStreetMap</span>
-        </div>
-      </footer>
+      {/* 4. ANOMALY INTELLIGENCE AGENT OPERATIONAL DRAWER (Phase 3) */}
+      <AnomalyIntelligenceAgentDrawer
+        hotspots={hotspotsData?.hotspots || []}
+        selectedObservationId={
+          selectedHotspot?.observation_id ||
+          selectedPriorityIncident?.hotspot_id ||
+          selectedPriorityIncident?.cluster_id ||
+          (selectedAlert?.cluster_id ? selectedAlert.cluster_id.replace('FIRMS_', '') : selectedAlert?.alert_id) ||
+          null
+        }
+        onSelectObservation={(obsId) => {
+          const found = (hotspotsData?.hotspots || []).find(
+            (h) => h.observation_id === obsId || (h as any).id === obsId
+          );
+          if (found) {
+            handleSelectHotspot(found);
+          }
+        }}
+        onZoomToCoords={(lat, lon, zoom) => {
+          setMapCenterCoords([lat, lon]);
+          setMapZoomLevel(zoom || 14);
+        }}
+        onFilterChange={(filters) => {
+          console.log('[App] Agent applied filters:', filters);
+        }}
+        onHighlightObservations={(ids) => {
+          console.log('[App] Agent highlighted observations:', ids);
+        }}
+      />
     </div>
   );
 }

@@ -3,7 +3,6 @@ import { AppView } from '../types/hotspot';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faFire,
-  faChartSimple,
   faTriangleExclamation,
   faMap,
   faBolt,
