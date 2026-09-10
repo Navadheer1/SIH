@@ -186,6 +186,7 @@ export function DashboardView({
     const matchingPri = priorityItems.find((p) => (p.cluster_id || p.hotspot_id) === item.id);
     if (matchingPri && onSelectPriorityIncident) {
       onSelectPriorityIncident(matchingPri);
+      return;
     }
 
     // Coordinate with parent selection handlers to open the Right Sidebar Investigation Panel

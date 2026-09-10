@@ -70,8 +70,8 @@ export async function getInvestigation(
 
   const cleanId = observationId.trim();
 
-  // If not forcing refresh and an identical request is in flight, reuse the promise
-  if (!forceRefresh && inFlightInvestigations.has(cleanId)) {
+  // If not forcing refresh, no signal passed or signal not aborted, and an identical request is in flight, reuse the promise
+  if (!forceRefresh && !signal?.aborted && inFlightInvestigations.has(cleanId)) {
     return inFlightInvestigations.get(cleanId)!;
   }
 
@@ -103,6 +103,9 @@ export async function getInvestigation(
 
       const data: import('../types/hotspot').InvestigationResponse = await response.json();
       return data;
+    } catch (err) {
+      inFlightInvestigations.delete(cleanId);
+      throw err;
     } finally {
       // Clean up in-flight registry
       inFlightInvestigations.delete(cleanId);

@@ -273,7 +273,20 @@ export function App() {
 
   const handleSelectPriorityIncident = useCallback((p: PriorityRankingItem) => {
     setSelectedPriorityIncident(p);
-    setSelectedHotspot(null);
+    const obsId = p.hotspot_id || p.cluster_id;
+    const fallbackHotspot: Hotspot = {
+      observation_id: obsId,
+      latitude: p.latitude,
+      longitude: p.longitude,
+      brightness: p.brightness || 340.0,
+      confidence: p.confidence || 'nominal',
+      frp: p.frp || 25.0,
+      acquired_at: new Date().toISOString(),
+      satellite: p.data_source || 'NASA FIRMS',
+      instrument: 'VIIRS',
+      source: 'NASA FIRMS',
+    };
+    setSelectedHotspot(fallbackHotspot);
     setSelectedCluster(null);
     setSelectedAlert(null);
     setShowDetailPanel(true);
@@ -281,7 +294,6 @@ export function App() {
       setMapCenterCoords([p.latitude, p.longitude]);
       setMapZoomLevel(12);
     }
-    const obsId = p.hotspot_id || p.cluster_id;
     loadDecisionSupportForMap(obsId, p.latitude, p.longitude);
   }, [loadDecisionSupportForMap]);
 
@@ -471,6 +483,7 @@ export function App() {
           hotspot={selectedHotspot}
           cluster={selectedCluster}
           alert={selectedAlert}
+          priorityIncident={selectedPriorityIncident}
           onClose={handleCloseDetailPanel}
           onStatusChange={handleAlertStatusChange}
         />
