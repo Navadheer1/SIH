@@ -328,6 +328,7 @@ export const FireMap: React.FC<FireMapProps> = ({
   const [showOperationalBuffer, setShowOperationalBuffer] = useState<boolean>(false);
   const [showThreatZones, setShowThreatZones] = useState<boolean>(false);
   const [showLegend, setShowLegend] = useState<boolean>(false);
+  const [isHudVisible, setIsHudVisible] = useState<boolean>(true);
 
   const mapWrapperRef = useRef<HTMLDivElement>(null);
   const isMapHoveredRef = useRef<boolean>(false);
@@ -660,12 +661,13 @@ export const FireMap: React.FC<FireMapProps> = ({
     };
   }, [selectedLat, selectedLon, selectedHotspot?.latitude, selectedAlert?.alert_id, selectedPriorityIncident?.cluster_id, selectedPriorityIncident?.hotspot_id]);
 
-  // Smooth 2D Camera Navigation on Anomaly Selection
+  // Smooth 2D Camera Navigation & HUD activation on Anomaly Selection
   useEffect(() => {
     if (selectedLat && selectedLon) {
+      setIsHudVisible(true);
       setNavCommand({ lat: selectedLat, lon: selectedLon, zoom: 12, timestamp: Date.now() });
     }
-  }, [selectedLat, selectedLon]);
+  }, [selectedLat, selectedLon, selectedHotspot?.observation_id, selectedAlert?.alert_id, selectedPriorityIncident?.cluster_id, selectedPriorityIncident?.hotspot_id]);
 
   // Camera presets
   const handleIndiaFocus = () => {
@@ -831,6 +833,18 @@ export const FireMap: React.FC<FireMapProps> = ({
                 <Shield size={12} className="text-indigo-600" /> Threat Zones
               </button>
             )}
+            <button
+              type="button"
+              className={`layer-toggle-btn ${isHudVisible ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsHudVisible((prev) => !prev);
+              }}
+              title={isHudVisible ? 'Hide Telemetry HUD overlay' : 'Reopen Telemetry HUD overlay'}
+            >
+              <Activity size={12} className={isHudVisible ? 'text-cyan-600' : 'text-slate-500'} />
+              {isHudVisible ? 'HUD Active' : 'Show HUD'}
+            </button>
           </div>
         )}
 
@@ -1240,11 +1254,21 @@ export const FireMap: React.FC<FireMapProps> = ({
               key={`alert-${alt.alert_id}`}
               center={[alt.latitude, alt.longitude]}
               radius={radius}
+              ref={(marker: any) => {
+                if (marker && isSelected) {
+                  if (isHudVisible) {
+                    if (!marker.isPopupOpen()) marker.openPopup();
+                  } else {
+                    if (marker.isPopupOpen()) marker.closePopup();
+                  }
+                }
+              }}
               eventHandlers={{
                 click: (e) => {
                   if (e.originalEvent) {
                     e.originalEvent.stopPropagation();
                   }
+                  setIsHudVisible(true);
                   onSelectAlert(alt);
                 },
               }}
@@ -1255,70 +1279,87 @@ export const FireMap: React.FC<FireMapProps> = ({
                 weight: isSelected ? 3 : 1.5,
               }}
             >
-              <Popup className="telemetry-hud-popup">
-                <div className="hud-container">
-                  <div className="hud-header">
-                    <div className="hud-header-title">
-                      <Activity size={13} className="text-cyan-600" />
-                      <span>INCIDENT TELEMETRY</span>
+              {isHudVisible && (
+                <Popup className="telemetry-hud-popup">
+                  <div className="hud-container">
+                    <div className="hud-header">
+                      <div className="hud-header-title">
+                        <Activity size={12} className="text-cyan-600" />
+                        <span>INCIDENT TELEMETRY</span>
+                      </div>
+                      <div className="hud-header-actions">
+                        <span className={`hud-badge hud-badge-${(alt.risk_level || 'critical').toLowerCase()}`}>
+                          {alt.risk_level || 'CRITICAL'}
+                        </span>
+                        <button
+                          type="button"
+                          className="hud-close-btn"
+                          title="Close Telemetry HUD"
+                          aria-label="Close Telemetry HUD"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setIsHudVisible(false);
+                          }}
+                        >
+                          <LucideX size={11} />
+                        </button>
+                      </div>
                     </div>
-                    <span className={`hud-badge hud-badge-${(alt.risk_level || 'critical').toLowerCase()}`}>
-                      {alt.risk_level || 'CRITICAL'}
-                    </span>
-                  </div>
 
-                  <div className="hud-subhead">
-                    <span className="hud-id-tag">ID: {alt.alert_id.slice(0, 16)}</span>
-                    <span className="hud-type-tag">{alt.classification.replace(/_/g, ' ')}</span>
-                  </div>
+                    <div className="hud-subhead">
+                      <span className="hud-id-tag">ID: {alt.alert_id.slice(0, 16)}</span>
+                      <span className="hud-type-tag">{alt.classification.replace(/_/g, ' ')}</span>
+                    </div>
 
-                  <div className="hud-telemetry-grid">
-                    <div className="hud-cell">
-                      <span className="hud-cell-label">RADIATIVE POWER</span>
-                      <span className="hud-cell-val highlight-amber">
-                        {alt.frp ? `${alt.frp.toFixed(1)} MW` : (alt.features?.frp ? `${Number(alt.features.frp).toFixed(1)} MW` : 'Active Core')}
-                      </span>
+                    <div className="hud-telemetry-grid">
+                      <div className="hud-cell">
+                        <span className="hud-cell-label">RADIATIVE POWER</span>
+                        <span className="hud-cell-val highlight-amber">
+                          {alt.frp ? `${alt.frp.toFixed(1)} MW` : (alt.features?.frp ? `${Number(alt.features.frp).toFixed(1)} MW` : 'Active Core')}
+                        </span>
+                      </div>
+                      <div className="hud-cell">
+                        <span className="hud-cell-label">PERSISTENCE / PASSES</span>
+                        <span className="hud-cell-val">
+                          {alt.observation_count || 1} Passes {alt.duration_hours ? `(${alt.duration_hours.toFixed(1)}h)` : ''}
+                        </span>
+                      </div>
+                      <div className="hud-cell hud-cell-full">
+                        <span className="hud-cell-label">COORDINATES</span>
+                        <span className="hud-cell-val font-mono text-slate-800">
+                          {alt.latitude.toFixed(4)}°N, {alt.longitude.toFixed(4)}°E
+                        </span>
+                      </div>
+                      <div className="hud-cell">
+                        <span className="hud-cell-label">RISK SCORE</span>
+                        <span className="hud-cell-val highlight-red font-mono">
+                          {alt.risk_score} / 100
+                        </span>
+                      </div>
+                      <div className="hud-cell">
+                        <span className="hud-cell-label">STATUS</span>
+                        <span className="hud-cell-val text-slate-700">
+                          {alt.status}
+                        </span>
+                      </div>
                     </div>
-                    <div className="hud-cell">
-                      <span className="hud-cell-label">PERSISTENCE / PASSES</span>
-                      <span className="hud-cell-val">
-                        {alt.observation_count || 1} Passes {alt.duration_hours ? `(${alt.duration_hours.toFixed(1)}h)` : ''}
-                      </span>
-                    </div>
-                    <div className="hud-cell hud-cell-full">
-                      <span className="hud-cell-label">COORDINATES</span>
-                      <span className="hud-cell-val font-mono text-slate-800">
-                        {alt.latitude.toFixed(4)}°N, {alt.longitude.toFixed(4)}°E
-                      </span>
-                    </div>
-                    <div className="hud-cell">
-                      <span className="hud-cell-label">RISK SCORE</span>
-                      <span className="hud-cell-val highlight-red font-mono">
-                        {alt.risk_score} / 100
-                      </span>
-                    </div>
-                    <div className="hud-cell">
-                      <span className="hud-cell-label">STATUS</span>
-                      <span className="hud-cell-val text-slate-700">
-                        {alt.status}
-                      </span>
-                    </div>
-                  </div>
 
-                  <button
-                    type="button"
-                    className="hud-action-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelectAlert(alt);
-                      onOpenInvestigation && onOpenInvestigation();
-                    }}
-                  >
-                    <Zap size={13} />
-                    <span>Open Incident &amp; Impact Intelligence</span>
-                  </button>
-                </div>
-              </Popup>
+                    <button
+                      type="button"
+                      className="hud-action-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectAlert(alt);
+                        onOpenInvestigation && onOpenInvestigation();
+                      }}
+                    >
+                      <Zap size={12} />
+                      <span>Open Incident &amp; Impact Intelligence</span>
+                    </button>
+                  </div>
+                </Popup>
+              )}
             </CircleMarker>
           );
         })}
@@ -1341,11 +1382,21 @@ export const FireMap: React.FC<FireMapProps> = ({
                 key={`spot-${spot.latitude}-${spot.longitude}-${index}`}
                 center={[spot.latitude, spot.longitude]}
                 radius={radius}
+                ref={(marker: any) => {
+                  if (marker && isSelected) {
+                    if (isHudVisible) {
+                      if (!marker.isPopupOpen()) marker.openPopup();
+                    } else {
+                      if (marker.isPopupOpen()) marker.closePopup();
+                    }
+                  }
+                }}
                 eventHandlers={{
                   click: (e) => {
                     if (e.originalEvent) {
                       e.originalEvent.stopPropagation();
                     }
+                    setIsHudVisible(true);
                     onSelectHotspot(spot);
                   },
                 }}
@@ -1356,72 +1407,89 @@ export const FireMap: React.FC<FireMapProps> = ({
                   weight: isSelected ? 2.5 : 1,
                 }}
               >
-                <Popup className="telemetry-hud-popup">
-                  <div className="hud-container">
-                    <div className="hud-header">
-                      <div className="hud-header-title">
-                        <Flame size={13} className="text-amber-600" />
-                        <span>THERMAL TELEMETRY HUD</span>
+                {isHudVisible && (
+                  <Popup className="telemetry-hud-popup">
+                    <div className="hud-container">
+                      <div className="hud-header">
+                        <div className="hud-header-title">
+                          <Flame size={12} className="text-amber-600" />
+                          <span>THERMAL TELEMETRY HUD</span>
+                        </div>
+                        <div className="hud-header-actions">
+                          <span className={`hud-badge hud-badge-${severity.toLowerCase()}`}>
+                            {severity}
+                          </span>
+                          <button
+                            type="button"
+                            className="hud-close-btn"
+                            title="Close Telemetry HUD"
+                            aria-label="Close Telemetry HUD"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setIsHudVisible(false);
+                            }}
+                          >
+                            <LucideX size={11} />
+                          </button>
+                        </div>
                       </div>
-                      <span className={`hud-badge hud-badge-${severity.toLowerCase()}`}>
-                        {severity}
-                      </span>
-                    </div>
 
-                    <div className="hud-subhead">
-                      <span className="hud-id-tag">SAT: {spot.satellite || 'VIIRS'}</span>
-                      <span className="hud-type-tag">{spot.confidence}% Conf</span>
-                    </div>
+                      <div className="hud-subhead">
+                        <span className="hud-id-tag">SAT: {spot.satellite || 'VIIRS'}</span>
+                        <span className="hud-type-tag">{spot.confidence}% Conf</span>
+                      </div>
 
-                    <div className="hud-telemetry-grid">
-                      <div className="hud-cell">
-                        <span className="hud-cell-label">RADIATIVE POWER</span>
-                        <span className="hud-cell-val highlight-amber font-mono">
-                          {spot.frp.toFixed(1)} MW
-                        </span>
-                      </div>
-                      <div className="hud-cell">
-                        <span className="hud-cell-label">PERSISTENCE / PASSES</span>
-                        <span className="hud-cell-val">
-                          1 Pass ({spot.acq_date ? `${spot.acq_date} ${spot.acq_time || ''}`.trim() : 'Active'})
-                        </span>
-                      </div>
-                      <div className="hud-cell hud-cell-full">
-                        <span className="hud-cell-label">COORDINATES</span>
-                        <span className="hud-cell-val font-mono text-slate-800">
-                          {spot.latitude.toFixed(4)}°N, {spot.longitude.toFixed(4)}°E
-                        </span>
-                      </div>
-                      {spot.brightness ? (
+                      <div className="hud-telemetry-grid">
                         <div className="hud-cell">
-                          <span className="hud-cell-label">BRIGHTNESS TEMP</span>
-                          <span className="hud-cell-val font-mono">
-                            {spot.brightness.toFixed(1)} K
+                          <span className="hud-cell-label">RADIATIVE POWER</span>
+                          <span className="hud-cell-val highlight-amber font-mono">
+                            {spot.frp.toFixed(1)} MW
                           </span>
                         </div>
-                      ) : null}
-                      <div className={spot.brightness ? 'hud-cell' : 'hud-cell hud-cell-full'}>
-                        <span className="hud-cell-label">SEVERITY LEVEL</span>
-                        <span className={`hud-cell-val ${severity === 'CRITICAL' ? 'highlight-red' : 'highlight-amber'}`}>
-                          {severity}
-                        </span>
+                        <div className="hud-cell">
+                          <span className="hud-cell-label">PERSISTENCE / PASSES</span>
+                          <span className="hud-cell-val">
+                            1 Pass ({spot.acq_date ? `${spot.acq_date} ${spot.acq_time || ''}`.trim() : 'Active'})
+                          </span>
+                        </div>
+                        <div className="hud-cell hud-cell-full">
+                          <span className="hud-cell-label">COORDINATES</span>
+                          <span className="hud-cell-val font-mono text-slate-800">
+                            {spot.latitude.toFixed(4)}°N, {spot.longitude.toFixed(4)}°E
+                          </span>
+                        </div>
+                        {spot.brightness ? (
+                          <div className="hud-cell">
+                            <span className="hud-cell-label">BRIGHTNESS TEMP</span>
+                            <span className="hud-cell-val font-mono">
+                              {spot.brightness.toFixed(1)} K
+                            </span>
+                          </div>
+                        ) : null}
+                        <div className={spot.brightness ? 'hud-cell' : 'hud-cell hud-cell-full'}>
+                          <span className="hud-cell-label">SEVERITY LEVEL</span>
+                          <span className={`hud-cell-val ${severity === 'CRITICAL' ? 'highlight-red' : 'highlight-amber'}`}>
+                            {severity}
+                          </span>
+                        </div>
                       </div>
-                    </div>
 
-                    <button
-                      type="button"
-                      className="hud-action-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectHotspot(spot);
-                        onOpenInvestigation && onOpenInvestigation();
-                      }}
-                    >
-                      <Zap size={13} />
-                      <span>Open Incident &amp; Impact Intelligence</span>
-                    </button>
-                  </div>
-                </Popup>
+                      <button
+                        type="button"
+                        className="hud-action-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectHotspot(spot);
+                          onOpenInvestigation && onOpenInvestigation();
+                        }}
+                      >
+                        <Zap size={12} />
+                        <span>Open Incident &amp; Impact Intelligence</span>
+                      </button>
+                    </div>
+                  </Popup>
+                )}
               </CircleMarker>
             );
           })}
@@ -1438,11 +1506,21 @@ export const FireMap: React.FC<FireMapProps> = ({
                 key={`cluster-${cluster.cluster_id}-${index}`}
                 center={[cluster.center_latitude, cluster.center_longitude]}
                 radius={radius}
+                ref={(marker: any) => {
+                  if (marker && isSelected) {
+                    if (isHudVisible) {
+                      if (!marker.isPopupOpen()) marker.openPopup();
+                    } else {
+                      if (marker.isPopupOpen()) marker.closePopup();
+                    }
+                  }
+                }}
                 eventHandlers={{
                   click: (e) => {
                     if (e.originalEvent) {
                       e.originalEvent.stopPropagation();
                     }
+                    setIsHudVisible(true);
                     onSelectCluster(cluster);
                   },
                 }}
@@ -1453,70 +1531,87 @@ export const FireMap: React.FC<FireMapProps> = ({
                   weight: isSelected ? 2.5 : 1.5,
                 }}
               >
-                <Popup className="telemetry-hud-popup">
-                  <div className="hud-container">
-                    <div className="hud-header">
-                      <div className="hud-header-title">
-                        <LucideSatellite size={13} className="text-red-600" />
-                        <span>CLUSTER TELEMETRY HUD</span>
+                {isHudVisible && (
+                  <Popup className="telemetry-hud-popup">
+                    <div className="hud-container">
+                      <div className="hud-header">
+                        <div className="hud-header-title">
+                          <LucideSatellite size={12} className="text-red-600" />
+                          <span>CLUSTER TELEMETRY HUD</span>
+                        </div>
+                        <div className="hud-header-actions">
+                          <span className="hud-badge hud-badge-critical">
+                            {cluster.classification}
+                          </span>
+                          <button
+                            type="button"
+                            className="hud-close-btn"
+                            title="Close Telemetry HUD"
+                            aria-label="Close Telemetry HUD"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setIsHudVisible(false);
+                            }}
+                          >
+                            <LucideX size={11} />
+                          </button>
+                        </div>
                       </div>
-                      <span className="hud-badge hud-badge-critical">
-                        {cluster.classification}
-                      </span>
-                    </div>
 
-                    <div className="hud-subhead">
-                      <span className="hud-id-tag">CLUSTER: {cluster.cluster_id.slice(0, 16)}</span>
-                      <span className="hud-type-tag">{cluster.observation_count} DETECTIONS</span>
-                    </div>
+                      <div className="hud-subhead">
+                        <span className="hud-id-tag">CLUSTER: {cluster.cluster_id.slice(0, 16)}</span>
+                        <span className="hud-type-tag">{cluster.observation_count} DETECTIONS</span>
+                      </div>
 
-                    <div className="hud-telemetry-grid">
-                      <div className="hud-cell">
-                        <span className="hud-cell-label">RADIATIVE POWER</span>
-                        <span className="hud-cell-val highlight-amber font-mono">
-                          {cluster.total_frp ? `${cluster.total_frp.toFixed(1)} MW` : 'Cumulative'}
-                        </span>
+                      <div className="hud-telemetry-grid">
+                        <div className="hud-cell">
+                          <span className="hud-cell-label">RADIATIVE POWER</span>
+                          <span className="hud-cell-val highlight-amber font-mono">
+                            {cluster.total_frp ? `${cluster.total_frp.toFixed(1)} MW` : 'Cumulative'}
+                          </span>
+                        </div>
+                        <div className="hud-cell">
+                          <span className="hud-cell-label">PERSISTENCE / PASSES</span>
+                          <span className="hud-cell-val">
+                            {cluster.observation_count} Passes ({cluster.duration_hours.toFixed(1)}h)
+                          </span>
+                        </div>
+                        <div className="hud-cell hud-cell-full">
+                          <span className="hud-cell-label">COORDINATES</span>
+                          <span className="hud-cell-val font-mono text-slate-800">
+                            {cluster.center_latitude.toFixed(4)}°N, {cluster.center_longitude.toFixed(4)}°E
+                          </span>
+                        </div>
+                        <div className="hud-cell">
+                          <span className="hud-cell-label">SPATIAL RADIUS</span>
+                          <span className="hud-cell-val font-mono">
+                            {cluster.spatial_radius_km.toFixed(2)} km
+                          </span>
+                        </div>
+                        <div className="hud-cell">
+                          <span className="hud-cell-label">PERSISTENCE SCORE</span>
+                          <span className="hud-cell-val highlight-red font-mono">
+                            {Math.round(cluster.persistence_score * 100)}%
+                          </span>
+                        </div>
                       </div>
-                      <div className="hud-cell">
-                        <span className="hud-cell-label">PERSISTENCE / PASSES</span>
-                        <span className="hud-cell-val">
-                          {cluster.observation_count} Passes ({cluster.duration_hours.toFixed(1)}h)
-                        </span>
-                      </div>
-                      <div className="hud-cell hud-cell-full">
-                        <span className="hud-cell-label">COORDINATES</span>
-                        <span className="hud-cell-val font-mono text-slate-800">
-                          {cluster.center_latitude.toFixed(4)}°N, {cluster.center_longitude.toFixed(4)}°E
-                        </span>
-                      </div>
-                      <div className="hud-cell">
-                        <span className="hud-cell-label">SPATIAL RADIUS</span>
-                        <span className="hud-cell-val font-mono">
-                          {cluster.spatial_radius_km.toFixed(2)} km
-                        </span>
-                      </div>
-                      <div className="hud-cell">
-                        <span className="hud-cell-label">PERSISTENCE SCORE</span>
-                        <span className="hud-cell-val highlight-red font-mono">
-                          {Math.round(cluster.persistence_score * 100)}%
-                        </span>
-                      </div>
-                    </div>
 
-                    <button
-                      type="button"
-                      className="hud-action-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectCluster(cluster);
-                        onOpenInvestigation && onOpenInvestigation();
-                      }}
-                    >
-                      <Zap size={13} />
-                      <span>Open Incident &amp; Impact Intelligence</span>
-                    </button>
-                  </div>
-                </Popup>
+                      <button
+                        type="button"
+                        className="hud-action-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectCluster(cluster);
+                          onOpenInvestigation && onOpenInvestigation();
+                        }}
+                      >
+                        <Zap size={12} />
+                        <span>Open Incident &amp; Impact Intelligence</span>
+                      </button>
+                    </div>
+                  </Popup>
+                )}
               </CircleMarker>
             );
           })}
