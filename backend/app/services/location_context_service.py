@@ -157,9 +157,6 @@ class LocationContextEngine:
         def _apply_regional_fallback():
             if 17.5 <= lat <= 22.5 and 81.0 <= lon <= 87.5:
                 locality_info["state"] = "Odisha"
-                if 20.5 <= lat <= 21.3 and 85.5 <= lon <= 86.4:
-                    locality_info["district"] = "Jajpur"
-                    locality_info["locality"] = "Kalinganagar / Duburi"
             elif 21.0 <= lat <= 27.5 and 78.0 <= lon <= 84.5:
                 locality_info["state"] = "Madhya Pradesh"
             elif 17.0 <= lat <= 24.5 and 80.0 <= lon <= 84.5:

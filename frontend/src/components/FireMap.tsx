@@ -12,7 +12,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Circle, Polyline, Popup, Tooltip, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, CircleMarker, Circle, Polyline, Popup, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import {
   Hotspot,
   OsmFeature,
@@ -21,10 +21,12 @@ import {
   ThreatZonesResponse,
   ExposedAsset,
   PriorityRankingItem,
+  HotspotContextResponse,
 } from '../types/hotspot';
+import { getApiUrl } from '../config/api';
 import { filterThermalPointsInsideIndia, isPointInsideIndia } from '../utils/geoUtils';
 
-interface FireMapProps {
+export interface FireMapProps {
   viewMode?: 'hotspots' | 'clusters';
   hotspots?: Hotspot[];
   clusters?: PersistentCluster[];
@@ -48,85 +50,87 @@ interface FireMapProps {
   onSelectAsset?: (asset: ExposedAsset) => void;
   basemap?: 'standard' | 'satellite';
   onBasemapChange?: (mode: 'standard' | 'satellite') => void;
+  onOpenInvestigation?: () => void;
+  onMapBackgroundClick?: () => void;
 }
 
 const MapViewController: React.FC<{ center: [number, number]; zoom: number }> = ({ center, zoom }) => {
   const map = useMap();
+  const prevRef = useRef<{ lat: number; lng: number; zoom: number }>({
+    lat: center[0],
+    lng: center[1],
+    zoom,
+  });
+
   useEffect(() => {
-    map.setView(center, zoom);
+    const prev = prevRef.current;
+    if (
+      Math.abs(prev.lat - center[0]) > 0.0001 ||
+      Math.abs(prev.lng - center[1]) > 0.0001 ||
+      prev.zoom !== zoom
+    ) {
+      prevRef.current = { lat: center[0], lng: center[1], zoom };
+      map.setView(center, zoom);
+    }
   }, [center, zoom, map]);
+
   return null;
 };
 
-// CTRL + SCROLL ZOOM ONLY handler for Leaflet 2D tactical map
-const LeafletCtrlScrollZoomHandler: React.FC<{
-  onShowHint: () => void;
-  onCtrlStatus: (active: boolean | null) => void;
-}> = ({ onShowHint, onCtrlStatus }) => {
+// Map Background Click Handler: detects clicks on empty canvas to deselect anomaly and reset map
+const LeafletMapBackgroundClickHandler: React.FC<{
+  onMapBackgroundClick?: () => void;
+}> = ({ onMapBackgroundClick }) => {
+  useMapEvents({
+    click: (e) => {
+      const target = e.originalEvent?.target as HTMLElement | null;
+      if (target) {
+        if (
+          target.tagName === 'path' ||
+          target.tagName === 'circle' ||
+          target.closest('.leaflet-popup') ||
+          target.closest('.leaflet-marker-icon') ||
+          target.closest('.leaflet-control') ||
+          target.closest('button')
+        ) {
+          return;
+        }
+      }
+      onMapBackgroundClick?.();
+    },
+  });
+  return null;
+};
+
+// Direct mouse wheel scroll zoom handler for Leaflet 2D map
+const LeafletMouseScrollZoomHandler: React.FC = () => {
   const map = useMap();
 
   useEffect(() => {
-    const container = map.getContainer();
-    map.scrollWheelZoom.disable();
+    map.scrollWheelZoom.enable();
 
-    let isOver = false;
+    const container = map.getContainer();
     let lastZoomTime = 0;
 
     const onWheel = (e: WheelEvent) => {
-      if (e.ctrlKey && !e.shiftKey) {
-        // Ctrl + scroll zoom authorized: prevent document scroll and smoothly step zoom
-        e.preventDefault();
-        const now = Date.now();
-        if (now - lastZoomTime > 160) {
-          lastZoomTime = now;
-          if (e.deltaY < 0) {
-            map.zoomIn(1);
-          } else if (e.deltaY > 0) {
-            map.zoomOut(1);
-          }
+      // Whenever mouse is on the map canvas, scrolling the wheel zooms in/out directly
+      e.preventDefault();
+      const now = Date.now();
+      if (now - lastZoomTime > 75) {
+        lastZoomTime = now;
+        if (e.deltaY < 0) {
+          map.zoomIn(1);
+        } else if (e.deltaY > 0) {
+          map.zoomOut(1);
         }
-        onCtrlStatus(true);
-      } else {
-        // Normal scroll: DO NOT zoom, DO NOT preventDefault -> allows natural page scroll
-        onShowHint();
-      }
-    };
-
-    const onMouseEnter = () => {
-      isOver = true;
-    };
-
-    const onMouseLeave = () => {
-      isOver = false;
-      onCtrlStatus(null);
-    };
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Control' && isOver) {
-        onCtrlStatus(true);
-      }
-    };
-
-    const onKeyUp = (e: KeyboardEvent) => {
-      if (e.key === 'Control') {
-        onCtrlStatus(isOver ? false : null);
       }
     };
 
     container.addEventListener('wheel', onWheel, { passive: false });
-    container.addEventListener('mouseenter', onMouseEnter);
-    container.addEventListener('mouseleave', onMouseLeave);
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
-
     return () => {
       container.removeEventListener('wheel', onWheel);
-      container.removeEventListener('mouseenter', onMouseEnter);
-      container.removeEventListener('mouseleave', onMouseLeave);
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
     };
-  }, [map, onShowHint, onCtrlStatus]);
+  }, [map]);
 
   return null;
 };
@@ -258,6 +262,8 @@ export const FireMap: React.FC<FireMapProps> = ({
   onSelectAsset,
   basemap = 'satellite',
   onBasemapChange,
+  onOpenInvestigation,
+  onMapBackgroundClick,
 }) => {
   const effectiveCenter: [number, number] = center || mapCenter || [20.5937, 78.9629];
   const effectiveZoom: number = zoom || mapZoom || 5;
@@ -301,37 +307,9 @@ export const FireMap: React.FC<FireMapProps> = ({
   ]);
 
   // Layer Toggles
-  const [showThreatZones] = useState<boolean>(true);
-  const [showLegend, setShowLegend] = useState<boolean>(true);
-
-  // Ctrl + Scroll Zoom Interaction Feedback
-  const [showZoomHint, setShowZoomHint] = useState<boolean>(false);
-  const [ctrlZoomStatus, setCtrlZoomStatus] = useState<'enabled' | 'locked' | null>(null);
-  const zoomHintTimerRef = useRef<number | null>(null);
-  const zoomStatusTimerRef = useRef<number | null>(null);
-
-  const handleShowHint = useCallback(() => {
-    setShowZoomHint(true);
-    if (zoomHintTimerRef.current) clearTimeout(zoomHintTimerRef.current);
-    zoomHintTimerRef.current = window.setTimeout(() => {
-      setShowZoomHint(false);
-    }, 2000);
-  }, []);
-
-  const handleCtrlStatus = useCallback((active: boolean | null) => {
-    if (active === true) {
-      setCtrlZoomStatus('enabled');
-      if (zoomStatusTimerRef.current) clearTimeout(zoomStatusTimerRef.current);
-    } else if (active === false) {
-      setCtrlZoomStatus('locked');
-      if (zoomStatusTimerRef.current) clearTimeout(zoomStatusTimerRef.current);
-      zoomStatusTimerRef.current = window.setTimeout(() => {
-        setCtrlZoomStatus(null);
-      }, 1200);
-    } else {
-      setCtrlZoomStatus(null);
-    }
-  }, []);
+  const [showOperationalBuffer, setShowOperationalBuffer] = useState<boolean>(false);
+  const [showThreatZones, setShowThreatZones] = useState<boolean>(false);
+  const [showLegend, setShowLegend] = useState<boolean>(false);
 
   const mapWrapperRef = useRef<HTMLDivElement>(null);
   const isMapHoveredRef = useRef<boolean>(false);
@@ -525,12 +503,7 @@ export const FireMap: React.FC<FireMapProps> = ({
     }
   }, [workspaceState]);
 
-  useEffect(() => {
-    return () => {
-      if (zoomHintTimerRef.current) clearTimeout(zoomHintTimerRef.current);
-      if (zoomStatusTimerRef.current) clearTimeout(zoomStatusTimerRef.current);
-    };
-  }, []);
+
 
   const getSeverity = (frp: number): 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW' => {
     if (frp >= 50) return 'CRITICAL';
@@ -582,7 +555,56 @@ export const FireMap: React.FC<FireMapProps> = ({
   const activeNearbyFeatures: OsmFeature[] = (selectedPriorityIncident?.nearby_features || _nearbyFeatures || []).filter(
     (f) => f.distance_km <= 5.0 && f.latitude && f.longitude
   );
-  const closestAsset = selectedPriorityIncident?.closest_critical_asset || (activeNearbyFeatures.length > 0 ? activeNearbyFeatures[0] : null);
+
+  // Live on-demand OSM context state for any dynamically selected anomaly
+  const [liveOsmContext, setLiveOsmContext] = useState<HotspotContextResponse | null>(null);
+
+  useEffect(() => {
+    if (!selectedLat || !selectedLon) {
+      setLiveOsmContext(null);
+      return;
+    }
+
+    // If selectedPriorityIncident already has rich nearby_features, reuse them
+    if (selectedPriorityIncident?.nearby_features && selectedPriorityIncident.nearby_features.length > 0) {
+      return;
+    }
+
+    let isMounted = true;
+    const controller = new AbortController();
+
+    const fetchOsmContext = async () => {
+      try {
+        const res = await fetch(
+          getApiUrl(`/api/hotspots/context?lat=${selectedLat}&lon=${selectedLon}&radius_km=5.0`),
+          { signal: controller.signal }
+        );
+        if (res.ok && isMounted) {
+          const data: HotspotContextResponse = await res.json();
+          setLiveOsmContext(data);
+        }
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.debug('Live OSM context query:', err);
+        }
+      }
+    };
+
+    fetchOsmContext();
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [selectedLat, selectedLon, selectedPriorityIncident?.nearby_features]);
+
+  // Combined real features strictly within 5.0 KM
+  const liveFeatures: OsmFeature[] = (liveOsmContext?.nearby_features || []).filter(
+    (f) => f.distance_km <= 5.0 && f.latitude && f.longitude
+  );
+  const allAvailableFeatures: OsmFeature[] = activeNearbyFeatures.length > 0 ? activeNearbyFeatures : liveFeatures;
+
+  const closestAsset = selectedPriorityIncident?.closest_critical_asset || (allAvailableFeatures.length > 0 ? allAvailableFeatures[0] : null);
 
   const filteredAssets = exposedAssets;
 
@@ -636,18 +658,34 @@ export const FireMap: React.FC<FireMapProps> = ({
     setNavCommand({ lat: 20.0, lon: 0.0, zoom: 2, timestamp: Date.now() });
   };
 
-  // Industrial Context Facility Identification
-  const industrialFacility: OsmFeature = activeNearbyFeatures.find(
-    (f) => f.category === 'INDUSTRIAL' || f.type.toLowerCase().includes('refinery') || f.type.toLowerCase().includes('chemical') || f.type.toLowerCase().includes('industrial')
-  ) || {
-    name: selectedPriorityIncident?.industrial_facility || 'Petrochemical Processing & Hydrocarbon Unit',
-    type: 'Refinery / Chemical Complex',
-    category: 'INDUSTRIAL',
-    distance_km: selectedPriorityIncident?.industrial_distance_km ?? 1.8,
-    latitude: (selectedLat || 22.42) + 0.012,
-    longitude: (selectedLon || 69.83) + 0.011,
-    osm_id: '99401',
-  };
+  // Industrial Context Facility Identification (100% genuine data, strictly no fake fallbacks)
+  const directIndustrial = allAvailableFeatures.find(
+    (f) =>
+      f.category === 'INDUSTRIAL' ||
+      f.type.toLowerCase().includes('refinery') ||
+      f.type.toLowerCase().includes('chemical') ||
+      f.type.toLowerCase().includes('industrial') ||
+      f.type.toLowerCase().includes('power') ||
+      f.type.toLowerCase().includes('works') ||
+      f.type.toLowerCase().includes('manufacturing')
+  );
+
+  const nearestFacFromIncident: OsmFeature | null =
+    selectedPriorityIncident?.nearest_facility &&
+    selectedPriorityIncident.nearest_facility.latitude &&
+    selectedPriorityIncident.nearest_facility.longitude
+      ? selectedPriorityIncident.nearest_facility
+      : null;
+
+  const nearestFacFromContext: OsmFeature | null =
+    (liveOsmContext as any)?.nearest_facility &&
+    (liveOsmContext as any).nearest_facility.latitude &&
+    (liveOsmContext as any).nearest_facility.longitude
+      ? (liveOsmContext as any).nearest_facility
+      : null;
+
+  const industrialFacility: OsmFeature | null =
+    directIndustrial || nearestFacFromIncident || nearestFacFromContext || null;
 
   // Animated radius based on expansion stage
   const displayedRadiusMeters =
@@ -661,7 +699,9 @@ export const FireMap: React.FC<FireMapProps> = ({
     let text = '';
     switch (actionType) {
       case 'dispatch':
-        text = `Hazard Command: Dispatched Hazmat & Industrial Fire Squad to ${industrialFacility.name}`;
+        text = industrialFacility?.name
+          ? `Hazard Command: Dispatched Hazmat & Industrial Fire Squad to ${industrialFacility.name}`
+          : `Hazard Command: Dispatched District Field Response Unit to coordinates [${selectedLat?.toFixed(3)}, ${selectedLon?.toFixed(3)}]`;
         break;
       case 'tasking':
         text = 'Satellite Tasking: Scheduled Sentinel-2 high-res optical pass';
@@ -689,32 +729,11 @@ export const FireMap: React.FC<FireMapProps> = ({
       onMouseLeave={() => { isMapHoveredRef.current = false; }}
       style={{ position: 'relative' }}
     >
-      {/* TACTICAL TOP-LEFT SATELLITE OBSERVATION OVERLAY */}
-      <div className="tactical-satellite-overlay">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
-          <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px #22c55e' }} />
-          <span style={{ color: '#38bdf8', fontWeight: 800, fontSize: '10px', letterSpacing: '0.08em' }}>
-            SATELLITE OBSERVATION • NOAA-21 VIIRS 375m
-          </span>
-        </div>
-        <div style={{ fontSize: '9.5px', color: '#94a3b8', display: 'flex', flexDirection: 'column', gap: '1px', lineHeight: 1.35 }}>
-          <div>STATUS: <span style={{ color: '#4ade80', fontWeight: 700 }}>ACTIVE ORBIT PASS</span> • FIRMS SYNCED</div>
-          {selectedLat && selectedLon ? (
-            <div>
-              TARGET: <span style={{ color: '#f8fafc', fontWeight: 700 }}>{selectedLat.toFixed(3)}°N, {selectedLon.toFixed(3)}°E</span> • FRP: <span style={{ color: '#ef4444', fontWeight: 700 }}>{activeFrp.toFixed(1)} MW</span>
-            </div>
-          ) : (
-            <div>SURVEILLANCE: <span style={{ color: '#f8fafc' }}>INDIAN SUB-CONTINENTAL GRID</span></div>
-          )}
-          <div>MODE: <span style={{ color: '#f59e0b', fontWeight: 700 }}>{riskDisplayMode === 'ai_risk' ? 'AI RISK PROPAGATION FIELD' : 'THERMAL RADIOMETRIC FIELD'}</span></div>
-        </div>
-      </div>
-
       {/* MAP LAYER & BASEMAP CONTROLS FLOATING BAR */}
       <div className="map-layer-toggles-bar">
         {/* BASEMAP SWITCHER */}
         <div className="basemap-switch-controls" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-          <span className="layer-bar-title" style={{ fontWeight: 700, fontSize: '11px', color: '#cbd5e1' }}>BASEMAP:</span>
+          <span className="layer-bar-title" style={{ fontWeight: 700, fontSize: '11px', color: '#64748b' }}>BASEMAP:</span>
           <button
             type="button"
             className={`layer-toggle-btn ${activeBasemap === 'satellite' ? 'active' : ''}`}
@@ -739,7 +758,7 @@ export const FireMap: React.FC<FireMapProps> = ({
             type="button"
             className={`layer-toggle-btn ${riskDisplayMode === 'ai_risk' ? 'active' : ''}`}
             onClick={() => setRiskDisplayMode('ai_risk')}
-            title="AI 2D Risk Propagation Field with smooth continuous radial gradient"
+            title="AI 2D Risk Propagation Field"
           >
             🔥 AI Risk Field
           </button>
@@ -773,23 +792,71 @@ export const FireMap: React.FC<FireMapProps> = ({
           </button>
         </div>
 
-        {/* OPEN INCIDENT BUTTON */}
+        {/* INCIDENT OPERATIONAL BOUNDARY TOGGLES (Visible when incident selected) */}
         {selectedLat && selectedLon && (
-          <button
-            type="button"
-            className="layer-toggle-btn active"
-            onClick={handleOpenIncident}
-            title="Open Incident Intelligence Command Panel (Split Workspace)"
-            style={{
-              marginLeft: '6px',
-              background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.3) 0%, rgba(2, 132, 199, 0.4) 100%)',
-              borderColor: '#38bdf8',
-              color: '#ffffff',
-              fontWeight: 700,
-            }}
-          >
-            ⚡ OPEN INCIDENT
-          </button>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: '6px' }}>
+            <button
+              type="button"
+              className={`layer-toggle-btn ${showOperationalBuffer ? 'active' : ''}`}
+              onClick={() => setShowOperationalBuffer(!showOperationalBuffer)}
+              title="Toggle 5.0 KM Operational Threat Buffer"
+            >
+              ⭕ 5km Buffer
+            </button>
+            {threatZones && (
+              <button
+                type="button"
+                className={`layer-toggle-btn ${showThreatZones ? 'active' : ''}`}
+                onClick={() => setShowThreatZones(!showThreatZones)}
+                title="Toggle Threat Dispersion Zones"
+              >
+                🛡️ Threat Zones
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* OPEN INCIDENT & RESET SELECTION BUTTONS */}
+        {selectedLat && selectedLon && (
+          <>
+            <button
+              type="button"
+              className="layer-toggle-btn active"
+              onClick={() => {
+                if (onOpenInvestigation) {
+                  onOpenInvestigation();
+                } else {
+                  handleOpenIncident();
+                }
+              }}
+              title="Open Incident Intelligence Command Panel (Split Workspace)"
+              style={{
+                marginLeft: '6px',
+                background: '#0284c7',
+                borderColor: '#0284c7',
+                color: '#ffffff',
+                fontWeight: 700,
+              }}
+            >
+              ⚡ OPEN INCIDENT
+            </button>
+            {onMapBackgroundClick && (
+              <button
+                type="button"
+                className="layer-toggle-btn"
+                onClick={onMapBackgroundClick}
+                title="Deselect incident and reset camera to India view"
+                style={{
+                  marginLeft: '4px',
+                  background: '#f1f5f9',
+                  borderColor: '#cbd5e1',
+                  color: '#64748b',
+                }}
+              >
+                <FontAwesomeIcon icon={faXmark} /> Reset Selection
+              </button>
+            )}
+          </>
         )}
 
         <button
@@ -798,7 +865,7 @@ export const FireMap: React.FC<FireMapProps> = ({
           onClick={() => setShowLegend(!showLegend)}
           style={{ marginLeft: 'auto' }}
         >
-          <FontAwesomeIcon icon={faBookOpen} /> {showLegend ? 'Hide Legend' : 'Show Legend'}
+          <FontAwesomeIcon icon={faBookOpen} /> {showLegend ? 'Hide Legend' : 'Legend'}
         </button>
 
         <button
@@ -816,15 +883,16 @@ export const FireMap: React.FC<FireMapProps> = ({
       <MapContainer
         center={effectiveCenter}
         zoom={effectiveZoom}
-        scrollWheelZoom={false}
-        className="leaflet-container"
+        scrollWheelZoom={true}
+        className="leaflet-container relative w-full h-full min-h-[500px] z-0"
       >
         <MapViewController center={effectiveCenter} zoom={effectiveZoom} />
-        <LeafletCtrlScrollZoomHandler onShowHint={handleShowHint} onCtrlStatus={handleCtrlStatus} />
+        <LeafletMouseScrollZoomHandler />
         <LeafletFullscreenResizeHandler isFullscreen={isFullscreen} />
-        <LeafletSplitResizeHandler isSplitView={isSplitView} />
+        <LeafletSplitResizeHandler isSplitView={workspaceState === 'INCIDENT_SPLIT_VIEW'} />
         <LeafletFlyToController navCommand={navCommand} />
         <LeafletSvgDefs />
+        <LeafletMapBackgroundClickHandler onMapBackgroundClick={onMapBackgroundClick} />
 
         {/* DYNAMIC BASEMAP TILE LAYER */}
         {activeBasemap === 'standard' ? (
@@ -857,140 +925,100 @@ export const FireMap: React.FC<FireMapProps> = ({
           </>
         )}
 
-        {/* 5 KM OPERATIONAL THREAT RADIUS BUFFER (Green dashed ring) */}
-        {selectedLat && selectedLon && (
+        {/* 5 KM OPERATIONAL THREAT RADIUS BUFFER (Green dashed ring - toggled when incident selected) */}
+        {showOperationalBuffer && selectedLat && selectedLon && (
           <Circle
             center={[selectedLat, selectedLon]}
             radius={5000}
             pathOptions={{
               color: '#059669',
               fillColor: '#10b981',
-              fillOpacity: 0.03,
+              fillOpacity: 0.04,
               weight: 1.5,
               dashArray: '5 5',
             }}
           >
-            <Popup>
-              <div style={{ padding: '4px', minWidth: '180px' }}>
-                <strong style={{ color: '#059669', fontSize: '13px' }}>5.0 KM Operational Threat Buffer</strong>
-                <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#475569' }}>
-                  Maximum operational monitoring perimeter for critical asset exposure analysis.
-                </p>
-                {activeNearbyFeatures.length > 0 && (
-                  <div style={{ marginTop: '6px', fontSize: '11px', fontWeight: 600, color: '#0f172a' }}>
-                    {activeNearbyFeatures.length} infrastructure assets detected.
-                  </div>
-                )}
+            <Popup className="custom-popup">
+              <div className="popup-container" style={{ padding: '2px', minWidth: '180px' }}>
+                <div className="popup-header" style={{ color: '#059669' }}>
+                  5.0 KM Operational Threat Buffer
+                </div>
+                <div className="popup-body">
+                  <p style={{ margin: 0, fontSize: '11px', color: '#64748b', lineHeight: 1.4 }}>
+                    Operational monitoring perimeter for critical asset exposure analysis.
+                  </p>
+                  {activeNearbyFeatures.length > 0 && (
+                    <div style={{ marginTop: '4px', fontSize: '11px', fontWeight: 600, color: '#1e293b' }}>
+                      {activeNearbyFeatures.length} infrastructure assets detected.
+                    </div>
+                  )}
+                </div>
               </div>
             </Popup>
           </Circle>
         )}
 
-        {/* AI 2D THERMAL RISK FIELD: Smooth Radial Gradient Footprint */}
+        {/* AI 2D THERMAL RISK FIELD: Clean Single Risk Boundary */}
         {selectedLat && selectedLon && riskDisplayMode === 'ai_risk' && (
-          <>
-            {/* Outermost Risk Footprint Perimeter (Dashed border + subtle fill) */}
-            <Circle
-              center={[selectedLat, selectedLon]}
-              radius={displayedRadiusMeters}
-              pathOptions={{
-                color: '#ef4444',
-                fillColor: '#ef4444',
-                fillOpacity: 0.12,
-                weight: 1.5,
-                dashArray: '5 5',
-              }}
-            >
-              <Tooltip permanent direction="top" offset={[0, -20]} className="risk-field-disclaimer-tooltip">
-                <div style={{ textAlign: 'center', fontSize: '9px', fontWeight: 700, color: '#fca5a5' }}>
-                  <div>🔥 AI ESTIMATED RISK FIELD: {calculatedRiskRadiusKm} KM</div>
-                  <div style={{ fontSize: '8px', color: '#cbd5e1', fontWeight: 500 }}>
-                    [ AI estimated risk propagation — NOT actual physical fire boundary ]
-                  </div>
+          <Circle
+            center={[selectedLat, selectedLon]}
+            radius={displayedRadiusMeters}
+            pathOptions={{
+              color: '#ef4444',
+              fillColor: '#ef4444',
+              fillOpacity: 0.1,
+              weight: 1.5,
+              dashArray: '5 5',
+            }}
+          >
+            <Tooltip permanent={false} direction="top" offset={[0, -20]} className="risk-field-disclaimer-tooltip">
+              <div style={{ textAlign: 'center', fontSize: '10px', fontWeight: 700, color: '#dc2626' }}>
+                <div>🔥 AI ESTIMATED RISK FIELD: {calculatedRiskRadiusKm} KM</div>
+                <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 500 }}>
+                  [ AI estimated risk propagation — NOT physical fire boundary ]
                 </div>
-              </Tooltip>
-            </Circle>
-
-            {/* Intermediate Gradient Transition Zone */}
-            <Circle
-              center={[selectedLat, selectedLon]}
-              radius={Math.round(displayedRadiusMeters * 0.55)}
-              pathOptions={{
-                color: '#f97316',
-                fillColor: '#f97316',
-                fillOpacity: 0.22,
-                weight: 1,
-                dashArray: '3 3',
-              }}
-            />
-
-            {/* High Threat Thermal Zone */}
-            <Circle
-              center={[selectedLat, selectedLon]}
-              radius={Math.round(displayedRadiusMeters * 0.25)}
-              pathOptions={{
-                color: '#dc2626',
-                fillColor: '#dc2626',
-                fillOpacity: 0.38,
-                weight: 1.5,
-              }}
-            />
-          </>
+              </div>
+            </Tooltip>
+          </Circle>
         )}
 
-        {/* THERMAL ANOMALY CORE & 375m VIIRS PIXEL FOOTPRINT (Stage >= 2) */}
+        {/* THERMAL ANOMALY CORE (Stage >= 2) */}
         {selectedLat && selectedLon && expansionStage >= 2 && (
-          <>
-            {/* VIIRS 375m Resolution Pixel Footprint Buffer */}
-            <Circle
-              center={[selectedLat, selectedLon]}
-              radius={375}
-              pathOptions={{
-                color: '#f97316',
-                fillColor: '#f97316',
-                fillOpacity: 0.25,
-                weight: 1.5,
-                dashArray: '2 2',
-              }}
-            />
-
-            {/* Selected Thermal Anomaly Core (Bright center + permanent label) */}
-            <CircleMarker
-              center={[selectedLat, selectedLon]}
-              radius={8}
-              pathOptions={{
-                color: '#ef4444',
-                fillColor: '#ffffff',
-                fillOpacity: 1.0,
-                weight: 2.5,
-              }}
-            >
-              <Tooltip permanent direction="top" offset={[0, -10]} className="thermal-detection-tooltip">
-                <div style={{ textAlign: 'center', fontSize: '10px', fontWeight: 800, color: '#ef4444' }}>
-                  <div>THERMAL DETECTION ▼</div>
-                  <div style={{ fontSize: '9px', color: '#f8fafc', fontWeight: 600 }}>
-                    {activeFrp.toFixed(1)} MW • Conf: {activeConf}%
-                  </div>
+          <CircleMarker
+            center={[selectedLat, selectedLon]}
+            radius={8}
+            pathOptions={{
+              color: '#ef4444',
+              fillColor: '#ffffff',
+              fillOpacity: 1.0,
+              weight: 2.5,
+            }}
+          >
+            <Tooltip permanent={false} direction="top" offset={[0, -10]} className="thermal-detection-tooltip">
+              <div style={{ textAlign: 'center', fontSize: '10px', fontWeight: 800, color: '#dc2626' }}>
+                <div>THERMAL DETECTION ▼</div>
+                <div style={{ fontSize: '9px', color: '#1e293b', fontWeight: 600 }}>
+                  {activeFrp.toFixed(1)} MW • Conf: {activeConf}%
                 </div>
-              </Tooltip>
-            </CircleMarker>
-          </>
+              </div>
+            </Tooltip>
+          </CircleMarker>
         )}
 
         {/* OSM INDUSTRIAL CONTEXT: Proximity Line & Facility Marker (Stage >= 6) */}
-        {selectedLat && selectedLon && expansionStage >= 6 && industrialFacility && (
+        {selectedLat && selectedLon && expansionStage >= 6 && industrialFacility && industrialFacility.latitude && industrialFacility.longitude && industrialFacility.name && (
           <>
             {/* Proximity Vector Connection Line */}
             <Polyline
               positions={[[selectedLat, selectedLon], [industrialFacility.latitude, industrialFacility.longitude]]}
               pathOptions={{
-                color: '#38bdf8',
+                color: '#0284c7',
                 weight: 2,
                 dashArray: '4 4',
               }}
             >
-              <Tooltip permanent direction="center" className="proximity-vector-tooltip">
-                <span style={{ fontSize: '9px', fontWeight: 700, color: '#38bdf8' }}>
+              <Tooltip permanent={false} direction="center" className="proximity-vector-tooltip">
+                <span style={{ fontSize: '10px', fontWeight: 700, color: '#0284c7' }}>
                   🔥 ── {industrialFacility.distance_km.toFixed(1)} KM ── 🏭
                 </span>
               </Tooltip>
@@ -1001,14 +1029,14 @@ export const FireMap: React.FC<FireMapProps> = ({
               center={[industrialFacility.latitude, industrialFacility.longitude]}
               radius={7}
               pathOptions={{
-                color: '#f59e0b',
+                color: '#d97706',
                 fillColor: '#f59e0b',
                 fillOpacity: 0.9,
                 weight: 2,
               }}
             >
-              <Tooltip permanent direction="right" offset={[10, 0]} className="industrial-facility-tooltip">
-                <span style={{ fontSize: '9px', fontWeight: 700, color: '#fbbf24' }}>
+              <Tooltip permanent={false} direction="right" offset={[10, 0]} className="industrial-facility-tooltip">
+                <span style={{ fontSize: '10px', fontWeight: 700, color: '#b45309' }}>
                   🏭 {industrialFacility.name} ({industrialFacility.distance_km.toFixed(1)} KM)
                 </span>
               </Tooltip>
@@ -1017,7 +1045,7 @@ export const FireMap: React.FC<FireMapProps> = ({
         )}
 
         {/* 5 KM NEARBY INFRASTRUCTURE MARKERS & PROXIMITY VECTORS */}
-        {activeNearbyFeatures.map((feat, fIdx) => {
+        {allAvailableFeatures.map((feat, fIdx) => {
           const isClosest = closestAsset && (closestAsset.osm_id === feat.osm_id || closestAsset.name === feat.name);
           const featColor = getAssetColor(feat.category);
 
@@ -1217,7 +1245,12 @@ export const FireMap: React.FC<FireMapProps> = ({
               center={[alt.latitude, alt.longitude]}
               radius={radius}
               eventHandlers={{
-                click: () => onSelectAlert(alt),
+                click: (e) => {
+                  if (e.originalEvent) {
+                    e.originalEvent.stopPropagation();
+                  }
+                  onSelectAlert(alt);
+                },
               }}
               pathOptions={{
                 color: '#ffffff',
@@ -1253,7 +1286,11 @@ export const FireMap: React.FC<FireMapProps> = ({
                     <button
                       className="btn btn-primary btn-sm"
                       style={{ marginTop: '0.5rem', width: '100%' }}
-                      onClick={() => onSelectAlert(alt)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectAlert(alt);
+                        onOpenInvestigation && onOpenInvestigation();
+                      }}
                     >
                       <FontAwesomeIcon icon={faBolt} /> Open Incident & Impact Intelligence
                     </button>
@@ -1271,8 +1308,8 @@ export const FireMap: React.FC<FireMapProps> = ({
             const color = getSeverityColor(severity);
             const isSelected =
               selectedHotspot &&
-              selectedHotspot.latitude === spot.latitude &&
-              selectedHotspot.longitude === spot.longitude;
+              (selectedHotspot.observation_id === spot.observation_id ||
+                (selectedHotspot.latitude === spot.latitude && selectedHotspot.longitude === spot.longitude));
 
             // Small, subtle FIRMS observations: 4px default, 5px critical, 8px selected
             const radius = isSelected ? 8 : (severity === 'CRITICAL' ? 5 : 4);
@@ -1283,7 +1320,12 @@ export const FireMap: React.FC<FireMapProps> = ({
                 center={[spot.latitude, spot.longitude]}
                 radius={radius}
                 eventHandlers={{
-                  click: () => onSelectHotspot(spot),
+                  click: (e) => {
+                    if (e.originalEvent) {
+                      e.originalEvent.stopPropagation();
+                    }
+                    onSelectHotspot(spot);
+                  },
                 }}
                 pathOptions={{
                   color: isSelected ? '#ffffff' : color,
@@ -1313,7 +1355,11 @@ export const FireMap: React.FC<FireMapProps> = ({
                       <button
                         className="btn btn-primary btn-sm"
                         style={{ marginTop: '0.6rem', width: '100%' }}
-                        onClick={() => onSelectHotspot(spot)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectHotspot(spot);
+                          onOpenInvestigation && onOpenInvestigation();
+                        }}
                       >
                         <FontAwesomeIcon icon={faBolt} /> Open Incident & Impact Intelligence
                       </button>
@@ -1337,7 +1383,12 @@ export const FireMap: React.FC<FireMapProps> = ({
                 center={[cluster.center_latitude, cluster.center_longitude]}
                 radius={radius}
                 eventHandlers={{
-                  click: () => onSelectCluster(cluster),
+                  click: (e) => {
+                    if (e.originalEvent) {
+                      e.originalEvent.stopPropagation();
+                    }
+                    onSelectCluster(cluster);
+                  },
                 }}
                 pathOptions={{
                   color: isSelected ? '#ffffff' : '#ef4444',
@@ -1361,7 +1412,11 @@ export const FireMap: React.FC<FireMapProps> = ({
                       <button
                         className="btn btn-primary btn-sm"
                         style={{ marginTop: '0.5rem', width: '100%' }}
-                        onClick={() => onSelectCluster(cluster)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectCluster(cluster);
+                          onOpenInvestigation && onOpenInvestigation();
+                        }}
                       >
                         <FontAwesomeIcon icon={faBolt} /> Open Incident & Impact Intelligence
                       </button>
@@ -1377,27 +1432,27 @@ export const FireMap: React.FC<FireMapProps> = ({
       {selectedLat && selectedLon && (
         <div className="map-phase-indicator">
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ color: expansionStage >= 1 ? '#38bdf8' : '#475569', fontWeight: expansionStage === 1 ? 800 : 500 }}>
+            <span style={{ color: expansionStage >= 1 ? '#0284c7' : '#94a3b8', fontWeight: expansionStage === 1 ? 700 : 500 }}>
               ● SATELLITE OBS
             </span>
-            <span style={{ color: '#475569' }}>&rarr;</span>
-            <span style={{ color: expansionStage >= 2 ? '#ef4444' : '#475569', fontWeight: expansionStage === 2 ? 800 : 500 }}>
+            <span style={{ color: '#cbd5e1' }}>&rarr;</span>
+            <span style={{ color: expansionStage >= 2 ? '#dc2626' : '#94a3b8', fontWeight: expansionStage === 2 ? 700 : 500 }}>
               ● THERMAL CORE
             </span>
-            <span style={{ color: '#475569' }}>&rarr;</span>
-            <span style={{ color: expansionStage >= 3 ? '#f97316' : '#475569', fontWeight: expansionStage === 3 ? 800 : 500 }}>
+            <span style={{ color: '#cbd5e1' }}>&rarr;</span>
+            <span style={{ color: expansionStage >= 3 ? '#ea580c' : '#94a3b8', fontWeight: expansionStage === 3 ? 700 : 500 }}>
               ● PERSISTENCE
             </span>
-            <span style={{ color: '#475569' }}>&rarr;</span>
-            <span style={{ color: expansionStage >= 4 ? '#eab308' : '#475569', fontWeight: expansionStage === 4 ? 800 : 500 }}>
+            <span style={{ color: '#cbd5e1' }}>&rarr;</span>
+            <span style={{ color: expansionStage >= 4 ? '#d97706' : '#94a3b8', fontWeight: expansionStage === 4 ? 700 : 500 }}>
               ● AI CLASSIFICATION
             </span>
-            <span style={{ color: '#475569' }}>&rarr;</span>
-            <span style={{ color: expansionStage >= 5 ? '#f43f5e' : '#475569', fontWeight: expansionStage === 5 ? 800 : 500 }}>
+            <span style={{ color: '#cbd5e1' }}>&rarr;</span>
+            <span style={{ color: expansionStage >= 5 ? '#e11d48' : '#94a3b8', fontWeight: expansionStage === 5 ? 700 : 500 }}>
               ● RISK FIELD ({calculatedRiskRadiusKm} KM)
             </span>
-            <span style={{ color: '#475569' }}>&rarr;</span>
-            <span style={{ color: expansionStage >= 6 ? '#10b981' : '#475569', fontWeight: expansionStage === 6 ? 800 : 500 }}>
+            <span style={{ color: '#cbd5e1' }}>&rarr;</span>
+            <span style={{ color: expansionStage >= 6 ? '#059669' : '#94a3b8', fontWeight: expansionStage === 6 ? 700 : 500 }}>
               ● OSM CONTEXT
             </span>
           </div>
@@ -1419,7 +1474,13 @@ export const FireMap: React.FC<FireMapProps> = ({
           <button
             type="button"
             className="btn-cta-open-incident"
-            onClick={() => setWorkspaceState('INCIDENT_SPLIT_VIEW')}
+            onClick={() => {
+              if (onOpenInvestigation) {
+                onOpenInvestigation();
+              } else {
+                setWorkspaceState('INCIDENT_SPLIT_VIEW');
+              }
+            }}
           >
             <span>⚡ OPEN INCIDENT</span>
             <span className="cta-arrow">&rarr;</span>
@@ -1616,20 +1677,53 @@ export const FireMap: React.FC<FireMapProps> = ({
                 <h3 className="section-title">OSM INDUSTRIAL GROUND CONTEXT</h3>
                 <span className="section-tag">OSM / INFRA</span>
               </div>
-              <div className="facility-context-card">
-                <div className="facility-head-row">
-                  <span className="fac-icon">🏭</span>
-                  <div className="fac-details">
-                    <span className="fac-name">{industrialFacility.name}</span>
-                    <span className="fac-type">{industrialFacility.type} • {industrialFacility.category}</span>
+              {industrialFacility ? (
+                <div className="facility-context-card">
+                  <div className="facility-head-row">
+                    <span className="fac-icon">🏭</span>
+                    <div className="fac-details">
+                      <span className="fac-name">{industrialFacility.name}</span>
+                      <span className="fac-type">{industrialFacility.type} • {industrialFacility.category}</span>
+                    </div>
+                    <span className="fac-distance-badge">{industrialFacility.distance_km.toFixed(1)} KM</span>
                   </div>
-                  <span className="fac-distance-badge">{industrialFacility.distance_km.toFixed(1)} KM</span>
+                  <div className={`proximity-alert-box ${industrialFacility.distance_km <= 2.0 ? 'critical' : 'warning'}`}>
+                    <span>⚠️</span>
+                    <span>
+                      {industrialFacility.distance_km <= 2.0
+                        ? 'Direct threat exposure: Industrial facility in active thermal influence corridor.'
+                        : `Nearby industrial infrastructure located ${industrialFacility.distance_km.toFixed(1)} km from anomaly perimeter.`}
+                    </span>
+                  </div>
                 </div>
-                <div className="proximity-alert-box critical">
-                  <span>⚠️</span>
-                  <span>Direct threat exposure: Industrial fuel storage & processing facility in active influence corridor.</span>
+              ) : (
+                <div className="facility-context-card empty-context" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px' }}>
+                  <div className="facility-head-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className="fac-icon" style={{ fontSize: '18px' }}>🌿</span>
+                      <div className="fac-details">
+                        <span className="fac-name" style={{ color: '#059669', fontWeight: 700, fontSize: '12px' }}>
+                          {selectedPriorityIncident?.display_locality
+                            ? `Unclassified Open Land (${selectedPriorityIncident.display_locality})`
+                            : (liveOsmContext as any)?.display_locality
+                            ? `Unclassified Open Land (${(liveOsmContext as any).display_locality})`
+                            : 'Unclassified Open Land'}
+                        </span>
+                        <div className="fac-type" style={{ fontSize: '11px', color: '#64748b' }}>
+                          No industrial assets within 5km
+                        </div>
+                      </div>
+                    </div>
+                    <span className="fac-distance-badge safe" style={{ background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                      RURAL / OPEN
+                    </span>
+                  </div>
+                  <div className="proximity-alert-box safe" style={{ background: '#f0fdf4', borderColor: '#bbf7d0', color: '#166534', marginTop: '8px', fontSize: '11px', padding: '6px 8px', borderRadius: '4px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <span>🛡️</span>
+                    <span>No hazardous industrial infrastructure detected within 5.0 KM operational radius.</span>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* 06: 2D AI Thermal Risk Field */}
@@ -1767,8 +1861,18 @@ export const FireMap: React.FC<FireMapProps> = ({
         </div>
       )}
 
-      {/* FLOATING MAP LEGEND */}
-      {showLegend && (
+      {/* FLOATING MAP LEGEND & COLLAPSED TRIGGER */}
+      {!showLegend ? (
+        <button
+          type="button"
+          className="map-legend-floating-trigger"
+          onClick={() => setShowLegend(true)}
+          title="Open EOC 2D Map Legend"
+        >
+          <FontAwesomeIcon icon={faBookOpen} />
+          <span>Map Legend</span>
+        </button>
+      ) : (
         <div className="map-legend-panel">
           <div className="legend-header">
             <span className="legend-title"><FontAwesomeIcon icon={faMap} /> EOC 2D MAP LEGEND</span>
@@ -1792,9 +1896,9 @@ export const FireMap: React.FC<FireMapProps> = ({
 
             <div className="legend-section">
               <div className="legend-subtitle">AI RISK FOOTPRINT & ZONES</div>
-              <div className="legend-item"><span className="legend-dash" style={{ borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.22)' }}></span> AI Risk Field ({calculatedRiskRadiusKm} km)</div>
-              <div className="legend-item"><span className="legend-dash" style={{ borderColor: '#f97316', backgroundColor: 'rgba(249, 115, 22, 0.14)' }}></span> Moderate Hazard (800m)</div>
-              <div className="legend-item"><span className="legend-dash" style={{ borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.05)' }}></span> Operational Perimeter (5.0 km)</div>
+              <div className="legend-item"><span className="legend-dash" style={{ borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.12)' }}></span> AI Risk Field ({calculatedRiskRadiusKm} km)</div>
+              <div className="legend-item"><span className="legend-dash" style={{ borderColor: '#f97316', backgroundColor: 'rgba(249, 115, 22, 0.10)' }}></span> Moderate Hazard (800m)</div>
+              <div className="legend-item"><span className="legend-dash" style={{ borderColor: '#059669', backgroundColor: 'rgba(16, 185, 129, 0.05)' }}></span> Operational Perimeter (5.0 km)</div>
             </div>
 
             <div className="legend-section">
@@ -1808,20 +1912,6 @@ export const FireMap: React.FC<FireMapProps> = ({
               AI Risk Field is a propagation estimate — NOT an official evacuation order.
             </div>
           </div>
-        </div>
-      )}
-
-      {/* CTRL + SCROLL UX HINT & STATUS INDICATOR */}
-      {showZoomHint && (
-        <div className="globe-zoom-hint" role="status" aria-live="polite">
-          <span className="hint-icon">🖱️</span>
-          <span>HOLD CTRL + SCROLL TO ZOOM</span>
-        </div>
-      )}
-      {ctrlZoomStatus && (
-        <div className={`globe-ctrl-indicator ${ctrlZoomStatus}`} role="status">
-          <span className={`ctrl-dot ${ctrlZoomStatus}`} />
-          <span>{ctrlZoomStatus === 'enabled' ? 'CTRL + SCROLL ZOOM ENABLED' : 'ZOOM LOCKED'}</span>
         </div>
       )}
     </div>

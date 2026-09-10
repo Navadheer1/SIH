@@ -32,17 +32,24 @@ interface DashboardViewProps {
   loadingClusters: boolean;
   loadingPriority: boolean;
   lastUpdated: string;
+  selectedHotspot?: Hotspot | null;
+  selectedCluster?: PersistentCluster | null;
+  selectedAlert?: ThermalAlert | null;
+  selectedPriorityIncident?: PriorityRankingItem | null;
   onSelectHotspot: (h: Hotspot) => void;
   onSelectCluster: (c: PersistentCluster) => void;
   onSelectAlert: (a: ThermalAlert) => void;
+  onSelectPriorityIncident?: (p: PriorityRankingItem) => void;
+  onOpenInvestigation?: () => void;
+  onDeselectAnomaly?: () => void;
   onRefreshAll: () => void;
   refreshing?: boolean;
   onNavigateView?: (view: 'status' | 'incidents' | 'map' | 'settings') => void;
-  selectedPriorityIncident?: PriorityRankingItem | null;
-  onSelectPriorityIncident?: (p: PriorityRankingItem) => void;
   onEnrichHotspot?: (hotspotId: string, lat: number, lon: number) => void;
   basemap?: 'standard' | 'satellite';
   onBasemapChange?: (mode: 'standard' | 'satellite') => void;
+  mapCenter?: [number, number];
+  mapZoom?: number;
 }
 
 export function DashboardView({
@@ -53,16 +60,23 @@ export function DashboardView({
   loadingPriority,
   lastUpdated = '',
   refreshing = false,
+  selectedHotspot = null,
+  selectedCluster = null,
+  selectedAlert = null,
+  selectedPriorityIncident = null,
   onSelectHotspot,
   onSelectCluster,
   onSelectAlert,
+  onSelectPriorityIncident,
+  onOpenInvestigation,
+  onDeselectAnomaly,
   onRefreshAll,
   onNavigateView,
-  selectedPriorityIncident,
-  onSelectPriorityIncident,
   onEnrichHotspot,
   basemap = 'satellite',
   onBasemapChange,
+  mapCenter,
+  mapZoom,
 }: DashboardViewProps) {
   const [metricFilter, setMetricFilter] = useState<'all' | 'persistent' | 'industrial' | 'high_risk'>('all');
   const [mapLayerMode, setMapLayerMode] = useState<'all' | 'hotspots' | 'clusters' | 'industrial'>('all');
@@ -105,7 +119,7 @@ export function DashboardView({
         risk_score: p.risk_score,
         risk_level: p.risk_level || p.priority || 'MODERATE',
         classification: p.classification || 'Industrial Fire Candidate',
-        industrial_facility: p.industrial_facility || 'Thermal Anomaly (5 KM enrichment pending)',
+        industrial_facility: p.industrial_facility || (p.display_locality ? `Unclassified Open Land (${p.display_locality})` : 'Unclassified Open Land'),
         industrial_distance_km: p.industrial_distance_km ?? null,
         closest_critical_asset: p.closest_critical_asset ?? null,
         exposed_assets_count: p.exposed_assets_count ?? (p.nearby_features ? p.nearby_features.length : 0),
@@ -137,7 +151,7 @@ export function DashboardView({
             risk_score: score,
             risk_level: level,
             classification: c.classification || 'Persistent Thermal Source',
-            industrial_facility: c.industrial_context?.nearby_facility || 'Rural / Agricultural Zone',
+            industrial_facility: c.industrial_context?.nearby_facility || 'Unclassified Open Land',
             industrial_distance_km: c.industrial_context?.distance_km ?? null,
             persistence_score: c.persistence_score || (c.observation_count > 1 ? 75 : 15),
             observation_count: c.observation_count,
@@ -160,7 +174,7 @@ export function DashboardView({
           risk_score: score,
           risk_level: level,
           classification: 'NASA FIRMS Detection',
-          industrial_facility: 'Rural Land',
+          industrial_facility: 'Unclassified Open Land',
           industrial_distance_km: null,
           persistence_score: 15,
           observation_count: 1,
@@ -333,7 +347,7 @@ export function DashboardView({
                 clusters={clusters}
                 activeAlerts={alerts}
                 priorityItems={priorityItems}
-                selectedHotspot={activeTargetHotspot}
+                selectedHotspot={selectedHotspot || activeTargetHotspot}
                 selectedPriorityIncident={selectedPriorityIncident}
                 onSelectHotspot={(h) => {
                   setActiveTargetHotspot(h);
@@ -341,7 +355,7 @@ export function DashboardView({
                 }}
                 onSelectCluster={onSelectCluster}
                 onSelectPriorityIncident={onSelectPriorityIncident}
-                initialCoords={activeMapCoords || [20.5937, 78.9629]}
+                initialCoords={activeMapCoords || mapCenter || [20.5937, 78.9629]}
               />
             ) : (
               <FireMap
@@ -349,8 +363,9 @@ export function DashboardView({
                 clusters={clusters}
                 activeAlerts={alerts}
                 priorityItems={priorityItems}
-                selectedHotspot={activeTargetHotspot}
-                selectedCluster={null}
+                selectedHotspot={selectedHotspot || activeTargetHotspot}
+                selectedCluster={selectedCluster}
+                selectedAlert={selectedAlert}
                 selectedPriorityIncident={selectedPriorityIncident}
                 onSelectHotspot={(h) => {
                   setActiveTargetHotspot(h);
@@ -358,8 +373,17 @@ export function DashboardView({
                 }}
                 onSelectCluster={onSelectCluster}
                 onSelectAlert={onSelectAlert}
-                mapCenter={activeMapCoords || [20.5937, 78.9629]}
-                mapZoom={activeMapZoom}
+                onSelectPriorityIncident={onSelectPriorityIncident}
+                onOpenInvestigation={onOpenInvestigation}
+                onMapBackgroundClick={() => {
+                  setActiveTargetHotspot(null);
+                  setSelectedIncidentId(null);
+                  setActiveMapCoords([20.5937, 78.9629]);
+                  setActiveMapZoom(5);
+                  onDeselectAnomaly && onDeselectAnomaly();
+                }}
+                mapCenter={activeMapCoords || mapCenter || [20.5937, 78.9629]}
+                mapZoom={activeMapCoords ? activeMapZoom : (mapZoom || 5)}
                 viewMode={mapLayerMode === 'clusters' ? 'clusters' : 'hotspots'}
                 basemap={basemap}
                 onBasemapChange={onBasemapChange}
@@ -467,7 +491,7 @@ export function DashboardView({
 
                     <div className="card-mid-row">
                       <h4 className="incident-facility-name">
-                        {inc.industrial_facility || 'Unregistered Sector'}
+                        {inc.industrial_facility || 'Unclassified Open Land'}
                       </h4>
                       <p className="incident-coords-text">
                         <FontAwesomeIcon icon={faLocationDot} className="mr-1 text-muted" />

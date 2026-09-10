@@ -57,31 +57,31 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
   // Determine primary observation ID
   const rawId =
     propObservationId ||
-    priorityIncident?.hotspot_id ||
-    priorityIncident?.cluster_id ||
     hotspot?.observation_id ||
-    (alert?.cluster_id && alert.cluster_id.startsWith('FIRMS_')
-      ? alert.cluster_id.replace('FIRMS_', '')
-      : undefined) ||
-    alert?.cluster_id ||
     (cluster?.observations && cluster.observations.length > 0
       ? cluster.observations[0].observation_id
       : undefined) ||
     cluster?.cluster_id ||
+    (alert?.cluster_id && alert.cluster_id.startsWith('FIRMS_')
+      ? alert.cluster_id.replace('FIRMS_', '')
+      : undefined) ||
+    alert?.cluster_id ||
+    priorityIncident?.hotspot_id ||
+    priorityIncident?.cluster_id ||
     (hotspot ? `HOTSPOT_${hotspot.latitude.toFixed(3)}_${hotspot.longitude.toFixed(3)}` : undefined);
 
   const cleanObservationId = rawId?.trim();
-
-  // Coordinates fallback
-  const lat = priorityIncident?.latitude ?? hotspot?.latitude ?? cluster?.center_latitude ?? alert?.latitude ?? 22.6789;
-  const lon = priorityIncident?.longitude ?? hotspot?.longitude ?? cluster?.center_longitude ?? alert?.longitude ?? 80.54321;
-  const alertId = alert?.alert_id;
 
   // Investigation state
   const [data, setData] = useState<InvestigationResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+
+  // Coordinates: prioritize response detection coordinates, then selected entity, then priority/alert
+  const lat = data?.detection?.latitude ?? hotspot?.latitude ?? cluster?.center_latitude ?? alert?.latitude ?? priorityIncident?.latitude ?? 20.0;
+  const lon = data?.detection?.longitude ?? hotspot?.longitude ?? cluster?.center_longitude ?? alert?.longitude ?? priorityIncident?.longitude ?? 78.0;
+  const alertId = alert?.alert_id;
   const [activeWorkflowTab, setActiveWorkflowTab] = useState<'INVESTIGATE' | 'DECIDE'>('INVESTIGATE');
   const [provenanceExpanded, setProvenanceExpanded] = useState<boolean>(false);
   const [actionNotes, setActionNotes] = useState<string>('');

@@ -156,6 +156,8 @@ export interface PriorityRankingItem {
   industrial_facility: string;
   industrial_distance_km: number | null;
   closest_critical_asset?: OsmFeature | null;
+  nearest_facility?: OsmFeature | null;
+  display_locality?: string | null;
   exposed_assets_count?: number;
   exposure_summary?: Record<string, number>;
   nearby_features?: OsmFeature[];

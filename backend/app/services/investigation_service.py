@@ -128,21 +128,24 @@ class InvestigationService:
             clusters_res = clusters_dict.get("clusters", [])
             matched_clust = next((c for c in clusters_res if c.get("cluster_id") == clean_id), None)
             if matched_clust:
-                if matched_clust.get("observations"):
-                    target_obs = matched_clust["observations"][0]
-                else:
-                    target_obs = {
-                        "observation_id": clean_id,
-                        "latitude": float(matched_clust.get("center_latitude", 20.0)),
-                        "longitude": float(matched_clust.get("center_longitude", 78.0)),
-                        "frp": float(matched_clust.get("total_frp", 25.0)),
-                        "brightness": 340.0,
-                        "confidence": "nominal",
-                        "acquired_at": matched_clust.get("last_detected") or datetime.now(timezone.utc).isoformat(),
-                        "satellite": "VIIRS",
-                        "instrument": "VIIRS",
-                        "source": "NASA FIRMS",
-                    }
+                obs_list = matched_clust.get("observations", [])
+                base_dict = dict(obs_list[0]) if obs_list else {}
+                target_obs = {
+                    **base_dict,
+                    "observation_id": clean_id,
+                    "latitude": float(matched_clust.get("center_latitude", base_dict.get("latitude", 20.0))),
+                    "longitude": float(matched_clust.get("center_longitude", base_dict.get("longitude", 78.0))),
+                    "frp": float(matched_clust.get("total_frp", base_dict.get("frp", 25.0))),
+                    "brightness": float(base_dict.get("brightness", 340.0)),
+                    "confidence": str(base_dict.get("confidence", "nominal")),
+                    "acquired_at": matched_clust.get("last_detected") or base_dict.get("acquired_at") or datetime.now(timezone.utc).isoformat(),
+                    "satellite": base_dict.get("satellite", "VIIRS"),
+                    "instrument": base_dict.get("instrument", "VIIRS"),
+                    "source": "NASA FIRMS",
+                    "persistence_score": float(matched_clust.get("persistence_score", 60.0)),
+                    "observation_count": int(matched_clust.get("observation_count", len(obs_list) or 1)),
+                    "duration_hours": float(matched_clust.get("duration_hours", 0.0)),
+                }
 
         # 2c. If not found, check if clean_id is coordinate-encoded: HOTSPOT_{lat}_{lon} or SPOT-{lat}_{lon}
         if not target_obs and ("HOTSPOT_" in clean_id or "SPOT-" in clean_id):
@@ -173,9 +176,9 @@ class InvestigationService:
             except Exception as ex:
                 logger.warning(f"Could not parse coordinate observation ID '{clean_id}': {ex}")
 
-        # 2d. If still not found, check if clean_id matches substring in observation IDs
+        # 2d. If still not found, check if clean_id matches strictly in observation IDs
         if not target_obs:
-            target_obs = next((obs for obs in all_obs if clean_id in obs.get("observation_id", "") or obs.get("observation_id", "") in clean_id), None)
+            target_obs = next((obs for obs in all_obs if obs.get("observation_id") and (clean_id == obs["observation_id"] or obs["observation_id"].startswith(clean_id))), None)
 
         if not target_obs:
             raise HTTPException(status_code=404, detail=f"Observation with ID '{clean_id}' not found.")
@@ -192,8 +195,47 @@ class InvestigationService:
 
         # 3. Concurrent Evidence Collection with Fault Isolation
         async def fetch_osm():
+            # First attempt: LocationContextEngine with multi-tier Overpass mirrors + caching
             try:
-                return await asyncio.wait_for(fetch_hotspot_osm_context(lat=lat, lon=lon), timeout=5.0)
+                from app.services.location_context_service import get_location_context_engine
+                loc_engine = get_location_context_engine()
+                loc_ctx = await loc_engine.analyze_location_context(
+                    lat=lat,
+                    lon=lon,
+                    firms_data=target_obs,
+                    persistence_data=pers_data,
+                )
+                if loc_ctx and loc_ctx.nearby_features:
+                    feats = [
+                        {
+                            "name": f.name,
+                            "type": f.type,
+                            "category": f.category,
+                            "distance_km": f.distance_km,
+                            "latitude": f.latitude,
+                            "longitude": f.longitude,
+                            "osm_id": f.osm_id
+                        }
+                        for f in loc_ctx.nearby_features
+                    ]
+                    ind_feats = [f for f in feats if f.get("category") in ["INDUSTRIAL", "INFRASTRUCTURE", "CRITICAL_INFRASTRUCTURE"]]
+                    nearest_ind = min(ind_feats, key=lambda x: x["distance_km"]) if ind_feats else None
+                    return {
+                        "available": True,
+                        "distance_km": nearest_ind["distance_km"] if nearest_ind else loc_ctx.primary_distance_km,
+                        "nearby_facility": nearest_ind["name"] if nearest_ind else loc_ctx.primary_nearby_feature,
+                        "features": feats,
+                        "nearby_features": feats,
+                        "industrial_features": ind_feats,
+                        "context_classification": loc_ctx.classification,
+                        "_location_ctx_model": loc_ctx
+                    }
+            except Exception as ex:
+                logger.debug(f"Location context engine query in fetch_osm: {ex}")
+
+            # Fallback to standard osm_service
+            try:
+                return await asyncio.wait_for(fetch_hotspot_osm_context(lat=lat, lon=lon), timeout=4.0)
             except asyncio.TimeoutError:
                 logger.warning(f"OSM context fetch timed out for ({lat}, {lon})")
                 return {"available": False, "error": "TIMEOUT", "distance_km": None, "features": []}
@@ -354,7 +396,8 @@ class InvestigationService:
             osm_data=osm_context,
             satellite_data=sat_evidence_merged,
             sentinel1_data=s1_data,
-            selected_satellite=selected_satellite
+            selected_satellite=selected_satellite,
+            base_ai_classification=base_ai.get("classification") if base_ai else None
         )
         fusion_out = fusion_svc.fuse(evidence_obj)
 

@@ -154,6 +154,11 @@ export function App() {
       const res = await fetch(getApiUrl(`/api/hotspots/${encodeURIComponent(hotspotId)}/enrich-osm?lat=${lat}&lon=${lon}&radius_km=5.0`));
       if (res.ok) {
         const enriched = await res.json();
+        const resolvedFacility = enriched.nearest_facility?.name
+          || enriched.closest_industrial?.name
+          || (enriched.display_locality ? `Unclassified Open Land (${enriched.display_locality})` : 'No industrial assets within 5km');
+        const resolvedDistance = enriched.nearest_facility?.distance_km ?? enriched.closest_industrial?.distance_km ?? null;
+
         setPriorityItems((prev) =>
           prev.map((item) => {
             if (item.cluster_id === hotspotId || item.hotspot_id === hotspotId) {
@@ -162,6 +167,10 @@ export function App() {
                 data_status: enriched.data_status,
                 nearby_features: enriched.nearby_features,
                 closest_critical_asset: enriched.closest_critical_asset,
+                nearest_facility: enriched.nearest_facility,
+                display_locality: enriched.display_locality,
+                industrial_facility: resolvedFacility,
+                industrial_distance_km: resolvedDistance,
                 exposed_assets_count: enriched.facility_count,
                 exposure_summary: enriched.category_summary,
               };
@@ -176,6 +185,10 @@ export function App() {
               data_status: enriched.data_status,
               nearby_features: enriched.nearby_features,
               closest_critical_asset: enriched.closest_critical_asset,
+              nearest_facility: enriched.nearest_facility,
+              display_locality: enriched.display_locality,
+              industrial_facility: resolvedFacility,
+              industrial_distance_km: resolvedDistance,
               exposed_assets_count: enriched.facility_count,
               exposure_summary: enriched.category_summary,
             };
@@ -231,12 +244,14 @@ export function App() {
     return () => clearInterval(interval);
   }, [handleRefreshAll]);
 
-  // Selection Handlers
+  // Selection Handlers - Decoupled from Investigation Panel Drawer State
   const handleSelectHotspot = (h: Hotspot) => {
     setSelectedHotspot(h);
     setSelectedCluster(null);
     setSelectedAlert(null);
-    setShowDetailPanel(true);
+    setSelectedPriorityIncident(null);
+    // Preserves showDetailPanel state: if already open, it stays open for the new anomaly.
+    // If closed, it stays closed.
     if (h.latitude && h.longitude) {
       setMapCenterCoords([h.latitude, h.longitude]);
       setMapZoomLevel(11);
@@ -248,7 +263,7 @@ export function App() {
     setSelectedCluster(c);
     setSelectedHotspot(null);
     setSelectedAlert(null);
-    setShowDetailPanel(true);
+    setSelectedPriorityIncident(null);
     if (c.center_latitude && c.center_longitude) {
       setMapCenterCoords([c.center_latitude, c.center_longitude]);
       setMapZoomLevel(11);
@@ -261,7 +276,7 @@ export function App() {
     setSelectedAlert(a);
     setSelectedHotspot(null);
     setSelectedCluster(null);
-    setShowDetailPanel(true);
+    setSelectedPriorityIncident(null);
     if (a.latitude && a.longitude) {
       setMapCenterCoords([a.latitude, a.longitude]);
       setMapZoomLevel(11);
@@ -288,7 +303,6 @@ export function App() {
     setSelectedHotspot(fallbackHotspot);
     setSelectedCluster(null);
     setSelectedAlert(null);
-    setShowDetailPanel(true);
     if (p.latitude && p.longitude) {
       setMapCenterCoords([p.latitude, p.longitude]);
       setMapZoomLevel(12);
@@ -330,9 +344,27 @@ export function App() {
     loadDecisionSupportForMap(scenario.observation_id, scenario.coordinates[0], scenario.coordinates[1]);
   };
 
-  const handleCloseDetailPanel = () => {
+  // Explicit Investigation Panel Controls: Open panel without altering selection
+  const handleOpenInvestigation = useCallback(() => {
+    setShowDetailPanel(true);
+  }, []);
+
+  // Closing the Investigation Panel ONLY closes the drawer.
+  // It NEVER deselects the anomaly, unsets selection, or resets the map zoom/center.
+  const handleCloseDetailPanel = useCallback(() => {
     setShowDetailPanel(false);
-  };
+  }, []);
+
+  // Explicit anomaly deselection and map reset (triggered ONLY by clicking the map background or explicit reset)
+  const handleDeselectAnomaly = useCallback(() => {
+    setSelectedHotspot(null);
+    setSelectedCluster(null);
+    setSelectedAlert(null);
+    setSelectedPriorityIncident(null);
+    setShowDetailPanel(false);
+    setMapCenterCoords([20.5937, 78.9629]);
+    setMapZoomLevel(5);
+  }, []);
 
   const handleAlertStatusChange = async (alertId: string, newStatus: ThermalAlert['status'], notes?: string) => {
     try {
@@ -370,17 +402,24 @@ export function App() {
             loadingClusters={loadingClusters}
             loadingPriority={loadingPriority}
             lastUpdated={lastUpdated}
+            selectedHotspot={selectedHotspot}
+            selectedCluster={selectedCluster}
+            selectedAlert={selectedAlert}
+            selectedPriorityIncident={selectedPriorityIncident}
             onSelectHotspot={handleSelectHotspot}
             onSelectCluster={handleSelectCluster}
             onSelectAlert={handleSelectAlert}
+            onSelectPriorityIncident={handleSelectPriorityIncident}
+            onOpenInvestigation={handleOpenInvestigation}
+            onDeselectAnomaly={handleDeselectAnomaly}
             onRefreshAll={handleRefreshAll}
             refreshing={refreshing}
             onNavigateView={setCurrentView}
-            selectedPriorityIncident={selectedPriorityIncident}
-            onSelectPriorityIncident={handleSelectPriorityIncident}
             onEnrichHotspot={handleEnrichHotspot}
             basemap={basemap}
             onBasemapChange={setBasemap}
+            mapCenter={mapCenterCoords}
+            mapZoom={mapZoomLevel}
           />
         )}
 
@@ -395,6 +434,7 @@ export function App() {
             onSelectHotspot={handleSelectHotspot}
             onSelectCluster={handleSelectCluster}
             onSelectAlert={handleSelectAlert}
+            onOpenInvestigation={handleOpenInvestigation}
           />
         )}
 
@@ -412,12 +452,14 @@ export function App() {
               onSelectHotspot={handleSelectHotspot}
               onSelectCluster={handleSelectCluster}
               onSelectAlert={handleSelectAlert}
+              onOpenInvestigation={handleOpenInvestigation}
+              onMapBackgroundClick={handleDeselectAnomaly}
               threatZones={mapThreatZones}
               exposedAssets={mapExposedAssets}
               mapCenter={mapCenterCoords}
               mapZoom={mapZoomLevel}
-              center={[20.5937, 78.9629]}
-              zoom={5}
+              center={mapCenterCoords}
+              zoom={mapZoomLevel}
               basemap={basemap}
               onBasemapChange={setBasemap}
             />
