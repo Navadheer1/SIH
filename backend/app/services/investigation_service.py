@@ -15,7 +15,10 @@ from app.schemas.investigation import (
     FusionResult,
     RiskResult,
     Provenance,
-    InvestigationResponse
+    InvestigationResponse,
+    NearbyFeature,
+    PossibleCause,
+    LocationContext
 )
 from app.services.firms_ingestion_service import load_stored_observations
 from app.services.osm_service import fetch_hotspot_osm_context
@@ -81,10 +84,15 @@ class InvestigationService:
         if not clean_id:
             raise HTTPException(status_code=400, detail="Observation ID cannot be empty.")
 
+        t_start = time.perf_counter()
+        logger.info(f"[Investigation] Request started for observation_id='{clean_id}' (force_refresh={force_refresh})")
+
         # 1. Check Cache
         if not force_refresh:
             cached = self._get_from_cache(clean_id)
             if cached:
+                dur_ms = round((time.perf_counter() - t_start) * 1000, 2)
+                logger.info(f"[Investigation] Request completed (CACHE HIT) for observation_id='{clean_id}' in {dur_ms} ms")
                 return cached
 
         # 2. Locate FIRMS Observation
@@ -477,6 +485,30 @@ class InvestigationService:
             disclaimer=fusion_out.get("disclaimer", "")
         )
 
+        # 8b. Location Context Analysis (Triggered automatically whenever fusion is UNKNOWN or for spatial context enrichment)
+        location_ctx_model: Optional[LocationContext] = None
+        nearby_features_list: List[NearbyFeature] = []
+        possible_cause_model: Optional[PossibleCause] = None
+
+        try:
+            from app.services.location_context_service import get_location_context_engine
+            loc_engine = get_location_context_engine()
+            location_ctx_model = await loc_engine.analyze_location_context(
+                lat=lat,
+                lon=lon,
+                firms_data=target_obs,
+                persistence_data=pers_data,
+                satellite_data=sat_evidence_merged,
+                fusion_data=fusion_out,
+                osm_data=osm_context,
+            )
+            if location_ctx_model:
+                nearby_features_list = location_ctx_model.nearby_features
+                possible_cause_model = location_ctx_model.possible_cause
+        except Exception as ex:
+            logger.warning(f"Location context analysis error for observation {clean_id}: {ex}")
+            all_warnings.append("OpenStreetMap location context analysis temporarily unavailable.")
+
         now_iso = datetime.now(timezone.utc).isoformat()
         response = InvestigationResponse(
             observation_id=clean_id,
@@ -497,11 +529,17 @@ class InvestigationService:
                 "Sentinel-2 imagery is optical evidence and may not be temporally coincident with the FIRMS observation.",
                 "Sentinel-1 is SAR radar evidence that can provide cloud-independent surface information. It does not measure fire temperature."
             ],
+            location_context=location_ctx_model,
+            nearby_features=nearby_features_list,
+            possible_cause=possible_cause_model,
             created_at=now_iso
         )
 
         # 9. Save to Cache
         self._save_to_cache(clean_id, response)
+
+        dur_ms = round((time.perf_counter() - t_start) * 1000, 2)
+        logger.info(f"[Investigation] Request completed for observation_id='{clean_id}' in {dur_ms} ms")
         return response
 
 

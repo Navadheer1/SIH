@@ -88,13 +88,49 @@ app.include_router(agent_router, prefix="/api/agent", tags=["Anomaly Intelligenc
 
 @app.on_event("startup")
 async def startup_event():
-    """Execute configuration validation and environment checks on backend startup."""
+    """Execute configuration validation, ML pre-warming, and cache priming on backend startup."""
     log_startup_configuration(logger.info)
     try:
         from app.db.database import init_db
         init_db()
     except Exception as ex:
         logger.warning(f"Database table initialization skipped or encountered error: {ex}")
+
+    # Pre-warm Sentinel-2 ML inference engine and vision classifier (loaded once in RAM)
+    try:
+        from app.ml.satellite_model.inference import get_inference_engine
+        engine = get_inference_engine()
+        logger.info(f"Pre-warmed Sentinel-2 Multispectral ResNet-18 Inference Engine (ready={engine.is_ready()})")
+    except Exception as ex:
+        logger.warning(f"Could not pre-warm satellite inference engine: {ex}")
+
+    try:
+        from app.services.satellite_classifier import get_satellite_classifier
+        classifier = get_satellite_classifier()
+        logger.info("Pre-warmed Satellite Classifier singleton.")
+    except Exception as ex:
+        logger.warning(f"Could not pre-warm satellite classifier: {ex}")
+
+    # Asynchronously prime the investigation cache for active hotspots in background
+    async def _prime_investigations():
+        try:
+            from app.services.firms_ingestion_service import load_stored_observations
+            from app.services.investigation_service import get_investigation_service
+            obs_list = load_stored_observations()
+            svc = get_investigation_service()
+            logger.info(f"Background pre-warming investigation cache for {len(obs_list)} active hotspots...")
+            for obs in obs_list[:10]:
+                obs_id = obs.get("observation_id")
+                if obs_id:
+                    try:
+                        await svc.investigate_observation(obs_id, force_refresh=False)
+                    except Exception as e:
+                        logger.debug(f"Pre-warm skipped for {obs_id}: {e}")
+            logger.info("Completed investigation cache pre-warming.")
+        except Exception as ex:
+            logger.warning(f"Background investigation cache priming error: {ex}")
+
+    asyncio.create_task(_prime_investigations())
 
 
 @app.get("/")

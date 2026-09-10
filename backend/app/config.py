@@ -100,6 +100,9 @@ GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b").strip()
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini" if GEMINI_API_KEY else ("groq" if GROQ_API_KEY else "gemini")).strip().lower()
 AGENT_MAX_TOOL_CALLS = int(os.getenv("AGENT_MAX_TOOL_CALLS", "6"))
 
+# OpenStreetMap (OSM) Location Context Engine Configuration
+OSM_CONTEXT_RADIUS_KM = float(os.getenv("OSM_CONTEXT_RADIUS_KM", "5.0"))
+OSM_REQUEST_TIMEOUT_SECONDS = float(os.getenv("OSM_REQUEST_TIMEOUT_SECONDS", "8.0"))
 
 def get_config_status() -> dict:
     """

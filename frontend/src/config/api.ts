@@ -70,53 +70,78 @@ export async function getInvestigation(
 
   const cleanId = observationId.trim();
 
-  // If not forcing refresh, no signal passed or signal not aborted, and an identical request is in flight, reuse the promise
-  if (!forceRefresh && !signal?.aborted && inFlightInvestigations.has(cleanId)) {
-    return inFlightInvestigations.get(cleanId)!;
+  if (signal?.aborted) {
+    throw new DOMException('The user aborted a request.', 'AbortError');
   }
 
-  const queryParam = forceRefresh ? '?force_refresh=true' : '';
-  const url = getApiUrl(`/api/firms/${encodeURIComponent(cleanId)}/investigation${queryParam}`);
+  // Check if an identical request is already in flight
+  let existingPromise = inFlightInvestigations.get(cleanId);
 
-  const fetchPromise = (async () => {
-    try {
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-        signal,
-      });
+  if (forceRefresh || !existingPromise) {
+    const queryParam = forceRefresh ? '?force_refresh=true' : '';
+    const url = getApiUrl(`/api/firms/${encodeURIComponent(cleanId)}/investigation${queryParam}`);
 
-      if (!response.ok) {
-        let errorDetail = `HTTP ${response.status}`;
-        try {
-          const errJson = await response.json();
-          if (errJson.detail) {
-            errorDetail = typeof errJson.detail === 'string' ? errJson.detail : JSON.stringify(errJson.detail);
+    const basePromise = (async () => {
+      try {
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          let errorDetail = `HTTP ${response.status}`;
+          try {
+            const errJson = await response.json();
+            if (errJson.detail) {
+              errorDetail = typeof errJson.detail === 'string' ? errJson.detail : JSON.stringify(errJson.detail);
+            }
+          } catch {
+            // fallback to status text
           }
-        } catch {
-          // fallback to status text
+          throw new Error(`Investigation fetch failed (${errorDetail})`);
         }
-        throw new Error(`Investigation fetch failed (${errorDetail})`);
+
+        const data: import('../types/hotspot').InvestigationResponse = await response.json();
+        return data;
+      } finally {
+        // Clean up in-flight registry once complete
+        inFlightInvestigations.delete(cleanId);
       }
+    })();
 
-      const data: import('../types/hotspot').InvestigationResponse = await response.json();
-      return data;
-    } catch (err) {
-      inFlightInvestigations.delete(cleanId);
-      throw err;
-    } finally {
-      // Clean up in-flight registry
-      inFlightInvestigations.delete(cleanId);
-    }
-  })();
-
-  if (!forceRefresh) {
-    inFlightInvestigations.set(cleanId, fetchPromise);
+    inFlightInvestigations.set(cleanId, basePromise);
+    existingPromise = basePromise;
   }
 
-  return fetchPromise;
+  if (!signal) {
+    return existingPromise;
+  }
+
+  // If caller provided an AbortSignal, race caller's promise with their signal without aborting shared fetch
+  return new Promise<import('../types/hotspot').InvestigationResponse>((resolve, reject) => {
+    const onAbort = () => {
+      signal.removeEventListener('abort', onAbort);
+      reject(new DOMException('The user aborted a request.', 'AbortError'));
+    };
+
+    if (signal.aborted) {
+      return onAbort();
+    }
+
+    signal.addEventListener('abort', onAbort);
+
+    existingPromise!
+      .then((res) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(res);
+      })
+      .catch((err) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(err);
+      });
+  });
 }
 
 /**

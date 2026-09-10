@@ -15,14 +15,12 @@ import {
   ThermalAlert,
   AppView,
   LatestFirmsResponse,
-  HotspotTelemetryItem,
 } from './types/hotspot';
 import { getApiUrl, fetchLatestFirmsObservation, getDecisionSupport, DEMO_SCENARIO_PRESETS } from './config/api';
-import { LandingPage } from './components/landing/LandingPage';
 import { AnomalyIntelligenceAgentDrawer } from './components/agent';
 
 export function App() {
-  const [currentView, setCurrentView] = useState<AppView>('landing');
+  const [currentView, setCurrentView] = useState<AppView>('dashboard');
   const [region, setRegion] = useState<string>('india');
   const [customBbox, setCustomBbox] = useState<string>('');
 
@@ -350,39 +348,6 @@ export function App() {
       console.error('Failed to update alert status:', e);
     }
   };
-
-  const handleSelectLandingHotspot = (item: HotspotTelemetryItem) => {
-    const demoHotspot: Hotspot = {
-      observation_id: item.id,
-      latitude: item.latitude,
-      longitude: item.longitude,
-      brightness: item.brightness,
-      confidence: typeof item.confidence === 'string' ? item.confidence : `${item.confidence}%`,
-      frp: item.frp,
-      acquired_at: item.timestamp,
-      satellite: item.satellite,
-      instrument: item.instrument,
-      source: 'NASA FIRMS',
-    };
-
-    setSelectedHotspot(demoHotspot);
-    setSelectedCluster(null);
-    setSelectedAlert(null);
-    setMapCenterCoords([item.latitude, item.longitude]);
-    setMapZoomLevel(12);
-    setShowDetailPanel(true);
-    loadDecisionSupportForMap(item.id, item.latitude, item.longitude);
-    setCurrentView('dashboard');
-  };
-
-  if (currentView === 'landing') {
-    return (
-      <LandingPage
-        onLaunchDashboard={() => setCurrentView('dashboard')}
-        onSelectHotspotForInvestigation={handleSelectLandingHotspot}
-      />
-    );
-  }
 
   return (
     <div className="app-layout">
