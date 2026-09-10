@@ -277,6 +277,8 @@ class EvidenceFusionService:
         osm_status = osm.get("data_status") or ("READY" if (osm.get("distance_km") is not None or osm.get("context") or osm.get("nearby_facility")) else "OSM_UNAVAILABLE")
         osm_available = bool(osm.get("available", True)) and bool(osm_status == "READY" or osm.get("distance_km") is not None or osm.get("nearby_facility") or osm.get("features"))
         dist_km = osm.get("distance_km")
+        if dist_km is None and osm.get("nearest_distance_km") is not None:
+            dist_km = osm.get("nearest_distance_km")
         if dist_km is None and osm.get("nearby_features"):
             dist_km = osm["nearby_features"][0].get("distance_km")
         dist_m = round(float(dist_km) * 1000.0, 1) if dist_km is not None else None
@@ -543,17 +545,39 @@ class EvidenceFusionService:
 
         # 6. Candidate Classification & Conflict Handling Logic
         base_ai_class = str(evidence_object.get("base_ai_classification") or "").upper()
+        osm_ctx_str = str(osm.get("context") or osm.get("context_classification") or "").upper()
+        osm_fac_name = str(osm.get("facility_name") or osm.get("nearby_facility") or "")
+        osm_feats = osm.get("industrial_features") or osm.get("features") or []
+        nearest_d = osm.get("nearest_distance_km")
+        if nearest_d is None and osm.get("distance_km") is not None:
+            nearest_d = osm.get("distance_km")
+        nearest_d_float = float(nearest_d) if nearest_d is not None else 99.0
+
         has_industrial_osm = (
             (osm_score >= 0.35)
-            or (osm.get("nearest_distance_km") is not None and float(osm["nearest_distance_km"]) <= 3.0)
-            or (osm.get("context") == "INDUSTRIAL")
-            or (osm.get("facility_name") and osm.get("data_status") == "READY" and float(osm.get("nearest_distance_km") or 99) <= 3.0)
+            or (nearest_d_float <= 2.5)
+            or ("INDUSTRIAL" in osm_ctx_str)
+            or ("INFRASTRUCTURE" in osm_ctx_str)
+            or (bool(osm_fac_name) and nearest_d_float <= 3.0)
+            or any(f.get("category") in ["INDUSTRIAL", "INFRASTRUCTURE", "CRITICAL_INFRASTRUCTURE"] and float(f.get("distance_km", 99.0)) <= 2.5 for f in osm_feats)
         )
-        is_direct_industrial = (osm.get("nearest_distance_km") == 0.0) or (osm.get("context") == "INDUSTRIAL" and float(osm.get("nearest_distance_km") or 0.0) <= 0.5)
+        is_direct_industrial = (
+            (nearest_d_float <= 0.5)
+            or ("INDUSTRIAL" in osm_ctx_str and nearest_d_float <= 1.0)
+        )
+        has_wildfire_osm = (
+            "WILDFIRE" in osm_ctx_str
+            or "FOREST" in osm_ctx_str
+            or any(f.get("category") == "ENVIRONMENTAL" and float(f.get("distance_km", 99.0)) <= 1.5 for f in osm_feats)
+        )
+        has_agricultural_osm = (
+            "AGRICULTURAL" in osm_ctx_str
+            or any(f.get("category") == "AGRICULTURAL" and float(f.get("distance_km", 99.0)) <= 2.0 for f in osm_feats)
+        )
         has_strong_firms = (firms_score >= 0.35) or (firms.get("frp") is not None and float(firms["frp"]) >= 15.0)
         has_high_persistence = (pers_score >= 0.40) or (pers.get("observation_count", 1) > 1)
         base_ai_industrial = any(term in base_ai_class for term in ["INDUSTRIAL", "PERSISTENT", "FLARE"])
-        base_ai_wildfire = any(term in base_ai_class for term in ["WILDFIRE", "AGRICULTURAL", "FOREST"])
+        base_ai_wildfire = any(term in base_ai_class for term in ["WILDFIRE", "FOREST"]) and not has_industrial_osm
 
         candidate_class = "UNKNOWN"
         candidate_score = 0.0
@@ -574,7 +598,7 @@ class EvidenceFusionService:
             if is_direct_industrial:
                 candidate_class = "INDUSTRIAL_FIRE"
                 candidate_score = round(0.45 * firms_score + 0.35 * osm_score + 0.20 * pers_score, 4)
-                reasoning.append("Resolved conflict in favor of INDUSTRIAL_FIRE: hotspot is located directly within mapped industrial perimeter (0.0 km).")
+                reasoning.append("Resolved conflict in favor of INDUSTRIAL_FIRE: hotspot is located directly within mapped industrial perimeter.")
             else:
                 candidate_class = "WILDFIRE"
                 candidate_score = round(0.50 * firms_score + 0.30 * sat_score + 0.20 * (1.0 - osm_score), 4)
@@ -597,7 +621,7 @@ class EvidenceFusionService:
                 confidence_label = "MEDIUM"
 
         elif sat.get("available") and sat_class == "INDUSTRIAL_FIRE" and sat_quality in ["GOOD", "MODERATE"]:
-            # Clear optical industrial fire
+            # Clear optical industrial fire confirmed by Sentinel-2 CNN
             candidate_class = "INDUSTRIAL_FIRE"
             raw_composite = (
                 norm_firms_w * firms_score +
@@ -638,18 +662,48 @@ class EvidenceFusionService:
                 reasoning.append(f"Confirmed WILDFIRE candidate via Sentinel-2 optical vegetative combustion patterns ({sat_conf*100:.0f}%).")
 
         elif (has_industrial_osm or base_ai_industrial or is_direct_industrial) and (has_strong_firms or has_high_persistence or firms.get("available")):
-            # Industrial fire alignment: proximity to mapped industrial infrastructure + positive thermal detection
-            candidate_class = "INDUSTRIAL_FIRE"
-            reasoning.append("Classified as INDUSTRIAL_FIRE candidate based on proximity to mapped industrial infrastructure and thermal emission signature.")
+            # Industrial context alignment: thermal anomaly aligns with industrial facility (e.g. Tata Steel)
+            # Scientific Rule: Proximity indicates industrial context, NOT confirmed fire without optical model confirmation
+            candidate_class = "INDUSTRIAL_CONTEXT_ANOMALY"
+            fac_desc = osm_fac_name or "Industrial Facility"
+            reasoning.append(f"Classified as Industrial-Context Anomaly: thermal hotspot aligns with verified industrial infrastructure ({fac_desc} at {nearest_d_float:.2f} km), pending optical fire confirmation.")
             raw_composite = (
                 norm_firms_w * firms_score +
                 norm_pers_w * pers_score +
                 norm_osm_w * osm_score +
-                norm_sat_w * (sat_score if sat_class == "INDUSTRIAL_FIRE" else 0.5)
+                norm_sat_w * 0.5
             )
             candidate_score = round(max(0.0, min(1.0, raw_composite)), 4)
             evidence_strength = "STRONG" if candidate_score >= 0.60 else "MODERATE"
             confidence_label = "HIGH" if candidate_score >= 0.60 else "MEDIUM"
+
+        elif has_wildfire_osm and (firms.get("available") and (firms_score >= 0.15 or (firms.get("frp") is not None and float(firms["frp"]) >= 5.0))):
+            # Active combustion in verified forest / woodland terrain
+            candidate_class = "WILDFIRE"
+            raw_composite = (
+                norm_firms_w * firms_score +
+                norm_pers_w * (1.0 - pers_score * 0.5) +
+                norm_osm_w * (1.0 - osm_score) +
+                norm_sat_w * (sat_score if sat_class == "WILDFIRE" else 0.5)
+            )
+            candidate_score = round(max(0.0, min(1.0, raw_composite)), 4)
+            evidence_strength = "STRONG" if candidate_score >= 0.60 else "MODERATE"
+            confidence_label = "HIGH" if candidate_score >= 0.60 else "MEDIUM"
+            reasoning.append("Classified as WILDFIRE candidate based on active satellite thermal anomaly detection in verified forest/woodland terrain.")
+
+        elif has_agricultural_osm and (firms.get("available") and (firms_score >= 0.15 or (firms.get("frp") is not None and float(firms["frp"]) >= 5.0))):
+            # Active combustion in verified agricultural / crop terrain
+            candidate_class = "AGRICULTURAL_CONTEXT_ANOMALY"
+            raw_composite = (
+                norm_firms_w * firms_score +
+                norm_pers_w * (1.0 - pers_score * 0.5) +
+                norm_osm_w * (1.0 - osm_score) +
+                norm_sat_w * 0.5
+            )
+            candidate_score = round(max(0.0, min(1.0, raw_composite)), 4)
+            evidence_strength = "MODERATE"
+            confidence_label = "MEDIUM"
+            reasoning.append("Classified as Agricultural-Context Anomaly: thermal anomaly detected in verified agricultural/cropland terrain.")
 
         elif (firms.get("available") and firms_score < 0.20 and not has_strong_firms) and (sat_class == "NON_FIRE" or (not sat.get("available") and (firms.get("frp") is not None and float(firms["frp"]) < 3.0))):
             candidate_class = "NON_FIRE"
@@ -659,44 +713,8 @@ class EvidenceFusionService:
             confidence_label = "MEDIUM"
             reasoning.append("Classified as NON_FIRE based on negligible thermal radiative power and lack of active combustion indicators.")
 
-        elif (firms.get("available") and (firms_score >= 0.15 or (firms.get("frp") is not None and float(firms["frp"]) >= 5.0))) or base_ai_wildfire:
-            # Active combustion in non-industrial open/vegetation terrain
-            # SAFETY FALLBACK: If OSM context is unavailable, NEVER default to WILDFIRE!
-            if osm.get("data_status") == "OSM_UNAVAILABLE" or (not osm.get("available") and not base_ai_wildfire):
-                candidate_class = "UNKNOWN"
-                raw_composite = (
-                    norm_firms_w * firms_score +
-                    norm_pers_w * pers_score +
-                    norm_sat_w * sat_score
-                )
-                candidate_score = round(max(0.0, min(1.0, raw_composite)), 4)
-                evidence_strength = "MODERATE"
-                confidence_label = "MEDIUM"
-                reasoning.append("NASA FIRMS thermal anomaly detected, but OpenStreetMap geospatial context is unavailable. Designated as UNKNOWN (PENDING_GEOSPATIAL_CONTEXT) pending spatial confirmation.")
-                warnings.append("Geospatial context unavailable: thermal source unverified pending OSM or high-resolution optical confirmation.")
-            else:
-                candidate_class = "WILDFIRE"
-                raw_composite = (
-                    norm_firms_w * firms_score +
-                    norm_pers_w * (1.0 - pers_score * 0.5) +
-                    norm_osm_w * (1.0 - osm_score) +
-                    norm_sat_w * (sat_score if sat_class == "WILDFIRE" else 0.5)
-                )
-                candidate_score = round(max(0.0, min(1.0, raw_composite)), 4)
-                evidence_strength = "STRONG" if candidate_score >= 0.60 else "MODERATE"
-                confidence_label = "HIGH" if candidate_score >= 0.60 else "MEDIUM"
-                reasoning.append("Classified as WILDFIRE candidate based on active satellite thermal anomaly detection in non-industrial open/vegetation terrain.")
-
-        elif (firms.get("available") and firms_score < 0.20 and not has_strong_firms) and (sat_class == "NON_FIRE" or not sat.get("available")):
-            candidate_class = "NON_FIRE"
-            candidate_score = round(1.0 - (0.5 * firms_score + 0.5 * (1.0 - sat_score if sat_class == "NON_FIRE" else 0.5)), 4)
-            candidate_score = max(0.0, min(1.0, candidate_score))
-            evidence_strength = "MODERATE"
-            confidence_label = "MEDIUM"
-            reasoning.append("Classified as NON_FIRE based on negligible thermal radiative power and lack of active combustion indicators.")
-
         else:
-            # Inconclusive fallback only when no positive thermal or satellite signal exists
+            # Multi-source data insufficient to support a definitive fire class -> UNKNOWN (Never guess Wildfire)
             candidate_class = "UNKNOWN"
             raw_composite = (
                 norm_firms_w * firms_score +
@@ -705,8 +723,10 @@ class EvidenceFusionService:
                 norm_sat_w * sat_score
             )
             candidate_score = round(max(0.0, min(1.0, raw_composite)), 4)
-            evidence_strength = "WEAK"
+            evidence_strength = "MODERATE" if candidate_score >= 0.40 else "WEAK"
             confidence_label = "LOW"
+            reasoning.append("Thermal anomaly detected by NASA FIRMS, but spatial context and optical imagery do not confirm a specific fire class. Classified as Unknown / Unclassified pending multi-source verification.")
+            warnings.append("Insufficient data for classification: thermal anomaly unverified pending OSM or optical confirmation.")
 
         # S2 High Cloud Guardrail overrides for Industrial Fire
         if sat_quality == "VERY_HIGH_CLOUD" and sat_class == "INDUSTRIAL_FIRE" and not has_industrial_osm:

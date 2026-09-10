@@ -59,7 +59,7 @@ def extract_features(
     if ctx:
         if isinstance(ctx, dict):
             ctx_class = str(ctx.get("context_classification") or ctx.get("context") or "").upper()
-            if ctx_class == "INDUSTRIAL" or ctx.get("is_industrial") or ctx.get("category") == "INDUSTRIAL":
+            if "INDUSTRIAL" in ctx_class or ctx.get("is_industrial") or ctx.get("category") == "INDUSTRIAL" or bool(ctx.get("industrial_features")):
                 is_industrial_zone = 1
             
             dist = ctx.get("distance_km")
@@ -67,7 +67,7 @@ def extract_features(
                 dist = ctx.get("nearest_distance_km")
             if dist is not None:
                 industrial_distance_km = float(dist)
-                if industrial_distance_km <= 1.0 or industrial_distance_km == 0.0:
+                if industrial_distance_km <= 2.5 or industrial_distance_km == 0.0:
                     is_industrial_zone = 1
 
     # Construct named feature dictionary

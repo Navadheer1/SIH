@@ -345,8 +345,14 @@ class DecisionSupportService:
             priority_reasons.append(f"Nearest critical facility: {nca.asset_name} ({nca.distance_km:.2f} km away in {nca.threat_zone}).")
         if candidate_class == "INDUSTRIAL_FIRE":
             priority_reasons.append("Multi-source AI candidate classified as INDUSTRIAL FIRE.")
+        elif candidate_class == "INDUSTRIAL_CONTEXT_ANOMALY":
+            priority_reasons.append("Thermal anomaly detected within verified industrial facility perimeter/infrastructure.")
         elif candidate_class == "WILDFIRE":
             priority_reasons.append("Multi-source AI candidate classified as WILDFIRE.")
+        elif candidate_class == "AGRICULTURAL_CONTEXT_ANOMALY":
+            priority_reasons.append("Thermal anomaly detected in mapped agricultural terrain.")
+        elif candidate_class == "UNKNOWN":
+            priority_reasons.append("Thermal anomaly detected; multi-source data currently insufficient for definitive classification.")
         if not priority_reasons:
             priority_reasons.append("Routine thermal anomaly within acceptable monitoring baseline.")
 

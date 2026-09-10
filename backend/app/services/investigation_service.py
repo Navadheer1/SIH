@@ -193,6 +193,18 @@ class InvestigationService:
 
         system_warnings: List[str] = []
 
+        # 2b. Persistence Context (Extracted early for multi-source alignment)
+        persistence_score = float(target_obs.get("persistence_score", 0.0))
+        obs_count = int(target_obs.get("observation_count", 1))
+        duration_hours = float(target_obs.get("duration_hours", 0.0))
+        pers_data = {
+            "score": persistence_score,
+            "observation_count": obs_count,
+            "duration_hours": duration_hours,
+            "time_window_hours": float(target_obs.get("time_window_hours", 24.0)),
+            "classification": "PERSISTENT" if persistence_score >= 60.0 else ("SUSPICIOUS" if persistence_score >= 30.0 else "TEMPORARY")
+        }
+
         # 3. Concurrent Evidence Collection with Fault Isolation
         async def fetch_osm():
             # First attempt: LocationContextEngine with multi-tier Overpass mirrors + caching
@@ -205,7 +217,7 @@ class InvestigationService:
                     firms_data=target_obs,
                     persistence_data=pers_data,
                 )
-                if loc_ctx and loc_ctx.nearby_features:
+                if loc_ctx:
                     feats = [
                         {
                             "name": f.name,
@@ -216,18 +228,25 @@ class InvestigationService:
                             "longitude": f.longitude,
                             "osm_id": f.osm_id
                         }
-                        for f in loc_ctx.nearby_features
+                        for f in (loc_ctx.nearby_features or [])
                     ]
                     ind_feats = [f for f in feats if f.get("category") in ["INDUSTRIAL", "INFRASTRUCTURE", "CRITICAL_INFRASTRUCTURE"]]
                     nearest_ind = min(ind_feats, key=lambda x: x["distance_km"]) if ind_feats else None
+                    facility_name = nearest_ind["name"] if nearest_ind else loc_ctx.primary_nearby_feature
+                    dist_km = nearest_ind["distance_km"] if nearest_ind else loc_ctx.primary_distance_km
+
                     return {
-                        "available": True,
-                        "distance_km": nearest_ind["distance_km"] if nearest_ind else loc_ctx.primary_distance_km,
-                        "nearby_facility": nearest_ind["name"] if nearest_ind else loc_ctx.primary_nearby_feature,
+                        "available": bool(loc_ctx.nearby_features or loc_ctx.primary_nearby_feature or loc_ctx.classification != "NO_CLEAR_CONTEXT"),
+                        "distance_km": dist_km,
+                        "nearest_distance_km": dist_km,
+                        "nearby_facility": facility_name,
+                        "facility_name": facility_name,
                         "features": feats,
                         "nearby_features": feats,
                         "industrial_features": ind_feats,
                         "context_classification": loc_ctx.classification,
+                        "context": loc_ctx.classification,
+                        "data_status": loc_ctx.status,
                         "_location_ctx_model": loc_ctx
                     }
             except Exception as ex:
@@ -317,17 +336,8 @@ class InvestigationService:
         if selected_satellite == "SENTINEL_1" and fallback_reason:
             system_warnings.append(f"Sentinel-1 SAR radar backup engaged: {fallback_reason}")
 
-        # 4. Persistence Context
-        persistence_score = float(target_obs.get("persistence_score", 0.0))
-        obs_count = int(target_obs.get("observation_count", 1))
-        duration_hours = float(target_obs.get("duration_hours", 0.0))
-        pers_data = {
-            "score": persistence_score,
-            "observation_count": obs_count,
-            "duration_hours": duration_hours,
-            "time_window_hours": float(target_obs.get("time_window_hours", 24.0)),
-            "classification": "PERSISTENT" if persistence_score >= 60.0 else ("SUSPICIOUS" if persistence_score >= 30.0 else "TEMPORARY")
-        }
+        # 4. Persistence Context (Already extracted in Step 2b)
+
 
         # 5. Sentinel-2 CNN Inference (Run on genuine S2 optical imagery if available)
         sat_cv_res: Dict[str, Any] = {}

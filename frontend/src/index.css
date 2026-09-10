@@ -2806,6 +2806,12 @@ body::-webkit-scrollbar {
   border: 1px solid rgba(16, 185, 129, 0.5);
 }
 
+.candidate-badge-agricultural {
+  background: #FEF3C7;
+  color: #92400E;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+}
+
 .candidate-badge-unknown {
   background: rgba(148, 163, 184, 0.2);
   color: #374151;

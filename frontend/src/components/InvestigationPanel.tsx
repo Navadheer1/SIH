@@ -197,14 +197,49 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
     switch (candidate?.toUpperCase()) {
       case 'INDUSTRIAL_FIRE':
       case 'INDUSTRIAL FIRE':
+      case 'INDUSTRIAL_CONTEXT_ANOMALY':
+      case 'INDUSTRIAL CONTEXT ANOMALY':
+      case 'INDUSTRIAL_FIRE_CANDIDATE':
         return 'candidate-badge-industrial';
       case 'WILDFIRE':
+      case 'WILDFIRE_CANDIDATE':
         return 'candidate-badge-wildfire';
+      case 'AGRICULTURAL_CONTEXT_ANOMALY':
+      case 'AGRICULTURAL CONTEXT ANOMALY':
+      case 'AGRICULTURAL_BURNING_CANDIDATE':
+        return 'candidate-badge-agricultural';
       case 'NON_FIRE':
       case 'NON FIRE':
         return 'candidate-badge-nonfire';
       default:
         return 'candidate-badge-unknown';
+    }
+  };
+
+  const formatCandidateTitle = (candidateClass?: string) => {
+    switch (candidateClass?.toUpperCase()) {
+      case 'INDUSTRIAL_CONTEXT_ANOMALY':
+      case 'INDUSTRIAL CONTEXT ANOMALY':
+        return 'Thermal Anomaly — Industrial Context';
+      case 'INDUSTRIAL_FIRE':
+      case 'INDUSTRIAL FIRE':
+      case 'INDUSTRIAL_FIRE_CANDIDATE':
+        return 'Industrial Fire Candidate';
+      case 'WILDFIRE':
+      case 'WILDFIRE_CANDIDATE':
+        return 'Wildfire Candidate';
+      case 'AGRICULTURAL_CONTEXT_ANOMALY':
+      case 'AGRICULTURAL CONTEXT ANOMALY':
+      case 'AGRICULTURAL_BURNING_CANDIDATE':
+        return 'Agricultural / Crop Burning Anomaly';
+      case 'NON_FIRE':
+      case 'NON FIRE':
+        return 'Non-Fire / Controlled Source';
+      case 'UNKNOWN':
+      case 'UNCLASSIFIED':
+        return 'Unknown / Unclassified';
+      default:
+        return candidateClass ? candidateClass.replace(/_/g, ' ') : 'Unknown / Unclassified';
     }
   };
 
@@ -290,7 +325,7 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
               {data && (
                 <>
                   <span className={`ai-candidate-pill ${getCandidateBadgeClass(data.fusion.candidate_class)}`}>
-                    AI CANDIDATE: {data.fusion.candidate_class.replace('_', ' ')}
+                    AI CANDIDATE: {formatCandidateTitle(data.fusion.candidate_class)}
                   </span>
                   <span className={`evidence-strength-pill ${getEvidenceStrengthClass(data.fusion.evidence_strength)}`}>
                     EVIDENCE: {data.fusion.evidence_strength}
@@ -459,7 +494,7 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
                     <div className="fusion-candidate-box">
                       <span className="fusion-box-label">Synthesized Candidate</span>
                       <div className="fusion-candidate-title">
-                        {data.fusion.candidate_class.replace('_', ' ')}
+                        {formatCandidateTitle(data.fusion.candidate_class)}
                       </div>
                       <div className="fusion-candidate-sub">
                         Evidence Strength: <strong>{data.fusion.evidence_strength}</strong>
@@ -541,6 +576,12 @@ export const InvestigationPanel: React.FC<InvestigationPanelProps> = ({
                   {data.fusion.candidate_class === 'UNKNOWN' && (
                     <div className="location-context-alert-banner">
                       <FontAwesomeIcon icon={faInfoCircle} /> Primary satellite & FIRMS fusion cannot confidently classify this incident. Automated 5 km OpenStreetMap location context analysis has been performed around exact coordinates ({lat.toFixed(4)}°N, {lon.toFixed(4)}°E).
+                    </div>
+                  )}
+
+                  {data.fusion.candidate_class === 'INDUSTRIAL_CONTEXT_ANOMALY' && (
+                    <div className="location-context-alert-banner">
+                      <FontAwesomeIcon icon={faInfoCircle} /> Thermal hotspot aligns with verified industrial facility perimeter/infrastructure. High-resolution optical fire confirmation is currently pending next coincident satellite pass.
                     </div>
                   )}
 
