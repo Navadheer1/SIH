@@ -93,6 +93,12 @@ def _prototype_rule_engine_predict(fd: Dict[str, Any]) -> Tuple[str, int]:
     if dist <= 1.5 and frp < 30.0 and score >= 30:
         return ("GAS_FLARE_CANDIDATE", 78)
 
+    # Rule 3b: Industrial Zone or direct containment -> INDUSTRIAL_FIRE_CANDIDATE or PERSISTENT_THERMAL_SOURCE
+    if is_ind == 1 or dist <= 1.0:
+        if score >= 40 or obs >= 2:
+            return ("PERSISTENT_THERMAL_SOURCE", 82)
+        return ("INDUSTRIAL_FIRE_CANDIDATE", 80)
+
     # Rule 4: High FRP + Non-Industrial Zone + Single/Short Duration -> AGRICULTURAL_BURNING_CANDIDATE
     if is_ind == 0 and dist > 3.0 and frp >= 20.0 and dur <= 4.0:
         return ("AGRICULTURAL_BURNING_CANDIDATE", 75)
@@ -135,6 +141,12 @@ def classify_thermal_event(
     else:
         prediction, confidence_pct = _prototype_rule_engine_predict(feature_dict)
         model_source = "PROTOTYPE_RULE_ENGINE"
+
+    # Safety Guardrail: Hotspots located directly inside or <= 1.0 km from an industrial zone CANNOT be WILDFIRE or AGRICULTURAL_BURNING
+    if (feature_dict.get("is_industrial_zone") == 1 or feature_dict.get("industrial_distance_km", 10.0) <= 1.0) and prediction in ["WILDFIRE_CANDIDATE", "AGRICULTURAL_BURNING_CANDIDATE"]:
+        prediction = "INDUSTRIAL_FIRE_CANDIDATE"
+        confidence_pct = max(75, confidence_pct)
+        model_source = f"{model_source}_SAFETY_OVERRIDE"
 
     supporting_indicators = _generate_supporting_indicators(feature_dict, prediction)
 

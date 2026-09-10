@@ -58,13 +58,17 @@ def extract_features(
     ctx = osm_context or spot_or_cluster.get("industrial_context")
     if ctx:
         if isinstance(ctx, dict):
-            ctx_class = ctx.get("context_classification", "").upper()
-            if ctx_class == "INDUSTRIAL":
+            ctx_class = str(ctx.get("context_classification") or ctx.get("context") or "").upper()
+            if ctx_class == "INDUSTRIAL" or ctx.get("is_industrial") or ctx.get("category") == "INDUSTRIAL":
                 is_industrial_zone = 1
             
             dist = ctx.get("distance_km")
+            if dist is None and ctx.get("nearest_distance_km") is not None:
+                dist = ctx.get("nearest_distance_km")
             if dist is not None:
                 industrial_distance_km = float(dist)
+                if industrial_distance_km <= 1.0 or industrial_distance_km == 0.0:
+                    is_industrial_zone = 1
 
     # Construct named feature dictionary
     feature_dict = {

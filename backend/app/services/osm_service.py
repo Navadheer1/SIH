@@ -44,6 +44,20 @@ def haversine_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) ->
     return round(R * c, 2)
 
 
+INDUSTRIAL_KEYWORDS = [
+    "steel", "plant", "refinery", "works", "smelter", "power", "mine",
+    "factory", "chemical", "petrochemical", "mill", "foundry", "manufacturing",
+    "industrial", "fabrication", "thermal power", "cement", "metal"
+]
+
+
+def is_industrial_string(val: Optional[str]) -> bool:
+    if not val:
+        return False
+    low = val.lower()
+    return any(k in low for k in INDUSTRIAL_KEYWORDS)
+
+
 def _categorize_osm_tags(tags: Dict[str, str]) -> Tuple[str, str, int]:
     """
     Categorize real OpenStreetMap tags into standardized disaster intelligence categories:
@@ -67,9 +81,11 @@ def _categorize_osm_tags(tags: Dict[str, str]) -> Tuple[str, str, int]:
     place = (tags.get("place") or "").lower()
     natural = (tags.get("natural") or "").lower()
     man_made = (tags.get("man_made") or "").lower()
+    building = (tags.get("building") or "").lower()
+    boundary = (tags.get("boundary") or "").lower()
     name = (tags.get("name") or "").lower()
 
-    combined = f"{amenity} {industrial} {landuse} {power} {railway} {place} {natural} {man_made} {name}"
+    combined = f"{amenity} {industrial} {landuse} {power} {railway} {place} {natural} {man_made} {building} {boundary} {name}"
 
     # 1. HEALTHCARE (Top vulnerability)
     if amenity in ["hospital", "clinic", "doctors"] or any(k in combined for k in ["hospital", "clinic", "medical center", "dispensary"]):
@@ -90,7 +106,15 @@ def _categorize_osm_tags(tags: Dict[str, str]) -> Tuple[str, str, int]:
         return ("INDUSTRIAL", "Power Generation Facility", 9)
     if power in ["substation"] or "substation" in combined:
         return ("CRITICAL_INFRASTRUCTURE", "Electrical Substation", 8)
-    if industrial or landuse == "industrial" or any(k in combined for k in ["factory", "manufacturing", "steel", "works", "mill", "industrial"]):
+    if (
+        industrial
+        or landuse == "industrial"
+        or building == "industrial"
+        or amenity == "factory"
+        or boundary == "industrial"
+        or man_made == "works"
+        or any(k in combined for k in ["factory", "manufacturing", "steel", "works", "mill", "industrial", "smelter", "foundry", "mine", "quarry"])
+    ):
         return ("INDUSTRIAL", "Industrial Manufacturing Facility", 8)
     if any(k in combined for k in ["warehouse", "storage", "depot", "godown"]):
         return ("INDUSTRIAL", "Industrial Warehouse / Storage", 6)
@@ -302,6 +326,7 @@ async def resolve_osm_locality(lat: float, lon: float, client: Optional[httpx.As
         "state": None,
         "country": "India",
         "display_name": None,
+        "is_industrial": False,
     }
 
     own_client = False
@@ -315,6 +340,7 @@ async def resolve_osm_locality(lat: float, lon: float, client: Optional[httpx.As
             data = resp.json()
             addr = data.get("address", {})
             raw_name = (data.get("name") or "").strip()
+            disp_name_val = data.get("display_name") or ""
 
             # 1. Facility / Place Name Detection
             fac_keys = [
@@ -346,6 +372,27 @@ async def resolve_osm_locality(lat: float, lon: float, client: Optional[httpx.As
                             if d <= 2.5:
                                 fac_name = str(el_name).strip()
                                 break
+
+            # Industrial confirmation from reverse geocode address or keywords
+            is_industrial = False
+            addr_ind = addr.get("industrial") or addr.get("factory")
+            if addr_ind and str(addr_ind).lower() not in ["no", "false", "none", "unnamed"]:
+                is_industrial = True
+                if not fac_name or str(fac_name).lower() in ["unnamed", "industrial"]:
+                    fac_name = str(addr_ind).strip()
+
+            if not is_industrial:
+                if is_industrial_string(fac_name) or is_industrial_string(raw_name) or is_industrial_string(disp_name_val):
+                    is_industrial = True
+                    if not fac_name:
+                        if is_industrial_string(raw_name):
+                            fac_name = raw_name
+                        elif addr_ind:
+                            fac_name = str(addr_ind).strip()
+                        elif is_industrial_string(disp_name_val):
+                            first_token = disp_name_val.split(",")[0].strip()
+                            if is_industrial_string(first_token):
+                                fac_name = first_token
 
             # 2. Administrative Hierarchy Fallback
             city = addr.get("city") or addr.get("town") or addr.get("municipality")
@@ -408,6 +455,7 @@ async def resolve_osm_locality(lat: float, lon: float, client: Optional[httpx.As
                 "state": st,
                 "country": cntry,
                 "display_name": display,
+                "is_industrial": is_industrial,
             }
             _nominatim_cache[nom_key] = loc_info
     except Exception as ex:
@@ -461,7 +509,11 @@ async def fetch_hotspot_osm_context(
 (
   nwr["industrial"]({min_lat},{min_lon},{max_lat},{max_lon});
   nwr["landuse"="industrial"]({min_lat},{min_lon},{max_lat},{max_lon});
+  nwr["man_made"="works"]({min_lat},{min_lon},{max_lat},{max_lon});
   nwr["man_made"~"works|pipeline|storage_tank|chimney"]({min_lat},{min_lon},{max_lat},{max_lon});
+  nwr["building"="industrial"]({min_lat},{min_lon},{max_lat},{max_lon});
+  nwr["amenity"="factory"]({min_lat},{min_lon},{max_lat},{max_lon});
+  nwr["boundary"="industrial"]({min_lat},{min_lon},{max_lat},{max_lon});
   nwr["power"~"plant|substation|generator"]({min_lat},{min_lon},{max_lat},{max_lon});
   nwr["amenity"~"hospital|clinic|doctors|school|college|university|fire_station|police"]({min_lat},{min_lon},{max_lat},{max_lon});
   nwr["railway"~"station|junction"]({min_lat},{min_lon},{max_lat},{max_lon});
@@ -469,7 +521,7 @@ async def fetch_hotspot_osm_context(
   nwr["natural"~"wood|wetland|scrub|water"]({min_lat},{min_lon},{max_lat},{max_lon});
   nwr["landuse"~"forest|farmland|farm|meadow|orchard|commercial|residential"]({min_lat},{min_lon},{max_lat},{max_lon});
 );
-out center 50;
+out center bb 50;
 """
 
     features: List[Dict[str, Any]] = []
@@ -501,14 +553,27 @@ out center 50;
                             if feat_lat is None or feat_lon is None:
                                 continue
 
-                            # Exact Haversine geodesic distance from hotspot
-                            dist_km = haversine_distance_km(lat, lon, float(feat_lat), float(feat_lon))
+                            cat, specific_type, importance_wt = _categorize_osm_tags(tags)
+
+                            # Point containment in polygon / bounding box for industrial enclosures
+                            bounds = el.get("bounds")
+                            is_contained = False
+                            if bounds:
+                                b_min_lat = float(bounds.get("minlat", 0))
+                                b_max_lat = float(bounds.get("maxlat", 0))
+                                b_min_lon = float(bounds.get("minlon", 0))
+                                b_max_lon = float(bounds.get("maxlon", 0))
+                                if b_min_lat <= lat <= b_max_lat and b_min_lon <= lon <= b_max_lon:
+                                    is_contained = True
+
+                            if is_contained and cat == "INDUSTRIAL":
+                                dist_km = 0.0
+                            else:
+                                dist_km = haversine_distance_km(lat, lon, float(feat_lat), float(feat_lon))
 
                             # Strict 5 km radius boundary
                             if dist_km > operational_radius_km:
                                 continue
-
-                            cat, specific_type, importance_wt = _categorize_osm_tags(tags)
 
                             # Genuine name resolution
                             raw_name = (
@@ -573,9 +638,6 @@ out center 50;
         logger.warning(f"External OSM client error: {outer_ex}")
         loc_info = _resolve_locality_from_elements(raw_elements, lat, lon)
 
-    # Sort all features strictly by distance ascending (closest first)
-    features.sort(key=lambda x: x["distance_km"])
-
     # Extract real industrial features
     industrial_features = [
         f for f in features
@@ -589,6 +651,59 @@ out center 50;
         or "storage_tank" in str(f.get("tags", {}).get("man_made", "")).lower()
         or "chimney" in str(f.get("tags", {}).get("man_made", "")).lower()
     ]
+
+    # Fallback / Direct Verification via Nominatim Reverse Geocode:
+    # When Overpass returns 0 industrial features or coordinate sits directly inside an industrial facility
+    # (e.g. Tata Steel where reverse geocode resolved address.industrial or industrial keywords):
+    is_nom_ind = loc_info.get("is_industrial") or is_industrial_string(loc_info.get("facility_name")) or is_industrial_string(loc_info.get("display_name"))
+    if is_nom_ind:
+        resolved_fac_name = loc_info.get("facility_name") or loc_info.get("primary_name") or "Industrial Facility"
+        if not industrial_features:
+            synth_feature = {
+                "id": "osm-reverse/industrial",
+                "osm_id": "osm-reverse/industrial",
+                "name": resolved_fac_name,
+                "type": "Industrial Manufacturing Facility",
+                "category": "INDUSTRIAL",
+                "latitude": lat,
+                "longitude": lon,
+                "distance_km": 0.0,
+                "importance_weight": 9,
+                "source": "OpenStreetMap Reverse Geocode",
+                "tags": {"industrial": "yes", "name": resolved_fac_name}
+            }
+            features.insert(0, synth_feature)
+            industrial_features.insert(0, synth_feature)
+            data_status = "READY"
+        else:
+            # Overpass returned distal features, but reverse geocode confirms the hotspot is directly inside this facility
+            has_direct_hit = any(f.get("distance_km") == 0.0 for f in industrial_features)
+            if not has_direct_hit:
+                synth_feature = {
+                    "id": "osm-reverse/industrial",
+                    "osm_id": "osm-reverse/industrial",
+                    "name": resolved_fac_name,
+                    "type": "Industrial Manufacturing Facility",
+                    "category": "INDUSTRIAL",
+                    "latitude": lat,
+                    "longitude": lon,
+                    "distance_km": 0.0,
+                    "importance_weight": 9,
+                    "source": "OpenStreetMap Reverse Geocode",
+                    "tags": {"industrial": "yes", "name": resolved_fac_name}
+                }
+                features.insert(0, synth_feature)
+                industrial_features.insert(0, synth_feature)
+            elif resolved_fac_name and industrial_features[0].get("name") in ["Industrial Zone", "Industrial Manufacturing Facility", "Unclassified Mapped Feature"]:
+                industrial_features[0]["name"] = resolved_fac_name
+
+    # If Overpass failed or was empty, but Nominatim reverse geocode succeeded, mark status READY
+    if data_status == "OSM_UNAVAILABLE" and (loc_info.get("primary_name") or loc_info.get("is_industrial")):
+        data_status = "READY"
+
+    # Sort all features strictly by distance ascending (closest first)
+    features.sort(key=lambda x: x["distance_km"])
+    industrial_features.sort(key=lambda x: x["distance_km"])
     nearest_industrial = industrial_features[0] if industrial_features else None
 
     # Context classification
